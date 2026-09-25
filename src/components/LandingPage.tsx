@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Wrench, 
   Cpu, 
@@ -14,7 +14,12 @@ import {
   Sparkles,
   ChevronRight,
   BookOpen,
-  ArrowRight
+  ArrowRight,
+  Volume2,
+  VolumeX,
+  Maximize2,
+  Minimize2,
+  X
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -29,6 +34,50 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [activeFacility, setActiveFacility] = useState<number>(0);
   const [showVideoModal, setShowVideoModal] = useState<boolean>(false);
   const [videoPlaying, setVideoPlaying] = useState<boolean>(true);
+
+  // States & refs for clean looping video in workshop otomotif
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const modalVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [isVideoMuted, setIsVideoMuted] = useState<boolean>(true);
+  const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(true);
+  const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsFullscreenModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const toggleVideoPlay = () => {
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        videoRef.current.play().catch(() => {});
+        setIsVideoPlaying(true);
+      } else {
+        videoRef.current.pause();
+        setIsVideoPlaying(false);
+      }
+    }
+  };
+
+  const toggleVideoMute = () => {
+    const nextMuted = !isVideoMuted;
+    setIsVideoMuted(nextMuted);
+    if (videoRef.current) {
+      videoRef.current.muted = nextMuted;
+    }
+    if (modalVideoRef.current) {
+      modalVideoRef.current.muted = nextMuted;
+    }
+  };
+
+  const handleOpenFullscreen = () => {
+    setIsFullscreenModalOpen(true);
+  };
 
   const fallbackHeroImage =
     'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjG8XVKrvlj5jkknTYzKlB2DYIKwYl1h-gKegies3GGfKcyk-1dkSbyfvt4Ghj1yFFkXhzsQ40PCyNUVALlRtkvQmnQtzCJe2vo7XL3Im96N_eQqnsxxRJkirDNC5NorqApzII5S2-bswtbk3wH3eUwOc6JCuHVkpKC3QCxZa2T2JPHtIJ9tvOEaMz45ZRb/s320/44857.png';
@@ -417,27 +466,72 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {/* Media side: Playable Video if isVideo, otherwise Image */}
                 <div className="md:col-span-5 relative min-h-[300px] md:min-h-[380px] bg-slate-950 flex items-center justify-center overflow-hidden">
                   {facilities[activeFacility].isVideo ? (
-                    <div className="relative w-full h-full min-h-[300px] md:min-h-[380px] bg-black flex flex-col justify-center items-center">
-                      <iframe
-                        src="https://www.tiktok.com/player/v1/7681168904672136468?autoplay=1&muted=0&controls=1"
-                        title="Video Workshop Teknik Otomotif SMK Muhiba"
-                        className="w-full h-full min-h-[320px] md:min-h-[380px] border-0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
+                    <div className="relative w-full h-full min-h-[320px] md:min-h-[390px] bg-slate-950 flex flex-col justify-center items-center group overflow-hidden">
+                      {/* Clean HTML5 looping video without TikTok UI, likes, or watermark */}
+                      <video
+                        ref={videoRef}
+                        src="/videos/workshop_otomotif.mp4"
+                        autoPlay
+                        loop
+                        muted={isVideoMuted}
+                        playsInline
+                        className="w-full h-full min-h-[320px] md:min-h-[390px] object-cover cursor-pointer select-none transition-transform duration-300"
+                        onClick={toggleVideoPlay}
+                        title="Klik untuk Jeda / Putar"
                       />
-                      <div className="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded shadow-md flex items-center gap-1 z-20">
-                        <Play className="w-3 h-3 fill-current" />
-                        <span>VIDEO WORKSHOP BERJALAN</span>
+
+                      {/* Header Badge: Live Loop */}
+                      <div className="absolute top-3 left-3 bg-red-600/90 backdrop-blur-md text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1.5 z-20 pointer-events-none">
+                        <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                        <span>WORKSHOP OTOMOTIF • LIVE LOOP</span>
                       </div>
-                      <a
-                        href="https://vt.tiktok.com/ZSbLkvPQh/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="absolute bottom-2 right-2 bg-slate-900/90 hover:bg-black text-white text-[10px] font-bold px-2 py-1 rounded border border-white/20 shadow z-20 flex items-center gap-1"
-                      >
-                        <span>Buka di TikTok</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
+
+                      {/* Bottom Controls Bar (Clean HUD) */}
+                      <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-transparent flex items-center justify-between z-20 transition-opacity">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={toggleVideoPlay}
+                            className="p-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md transition-colors"
+                            title={isVideoPlaying ? 'Jeda Video' : 'Putar Video'}
+                          >
+                            {isVideoPlaying ? (
+                              <Pause className="w-3.5 h-3.5 fill-current" />
+                            ) : (
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={toggleVideoMute}
+                            className="p-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md transition-colors"
+                            title={isVideoMuted ? 'Nyalakan Audio' : 'Bisukan Audio'}
+                          >
+                            {isVideoMuted ? (
+                              <VolumeX className="w-3.5 h-3.5" />
+                            ) : (
+                              <Volume2 className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          <span className="text-[11px] font-medium text-slate-200 hidden sm:inline">
+                            {isVideoMuted ? 'Audio Bisu' : 'Audio Aktif'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleOpenFullscreen}
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded-full shadow-md flex items-center gap-1.5 transition-all transform hover:scale-105"
+                            title="Tampilkan Layar Penuh (Full Screen)"
+                          >
+                            <Maximize2 className="w-3.5 h-3.5" />
+                            <span>Full Screen</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <>
@@ -680,6 +774,72 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
       </footer>
+
+      {/* FULLSCREEN VIDEO MODAL (Bersih, Looping Otomatis, Tanpa Logo TikTok, Tanpa Tombol Like) */}
+      {isFullscreenModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col justify-between p-4 sm:p-6 animate-in fade-in duration-200">
+          {/* Header */}
+          <div className="flex items-center justify-between text-white z-20 pb-3 border-b border-white/10">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-wide">
+                  Workshop Teknik Otomotif - SMK Muhammadiyah Bawang
+                </h3>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Pemutaran Bersih Layar Penuh • Loop Berulang Otomatis (Tanpa Watermark/Ikon)
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={toggleVideoMute}
+                className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors border border-white/20"
+              >
+                {isVideoMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                <span>{isVideoMuted ? 'Nyalakan Audio' : 'Bisukan Audio'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsFullscreenModalOpen(false)}
+                className="p-2 bg-white/10 hover:bg-red-600 text-white rounded-lg transition-colors border border-white/20"
+                title="Tutup Layar Penuh (Esc)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Full Screen Video Container */}
+          <div className="flex-1 flex items-center justify-center relative overflow-hidden my-3">
+            <video
+              ref={modalVideoRef}
+              src="/videos/workshop_otomotif.mp4"
+              autoPlay
+              loop
+              muted={isVideoMuted}
+              playsInline
+              controls
+              className="max-w-full max-h-[80vh] w-auto h-auto rounded-xl shadow-2xl object-contain border border-white/10"
+            />
+          </div>
+
+          {/* Footer bar */}
+          <div className="text-xs text-slate-400 pt-3 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span>Fasilitas Resmi Teknik Otomotif (TBSM) SMK Muhammadiyah Bawang</span>
+            <button
+              onClick={() => setIsFullscreenModalOpen(false)}
+              className="px-3 py-1 bg-white/10 hover:bg-white/20 text-blue-300 hover:text-white rounded text-xs font-semibold transition-colors flex items-center gap-1.5"
+            >
+              <Minimize2 className="w-3.5 h-3.5" />
+              <span>Keluar Mode Layar Penuh (Esc)</span>
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
