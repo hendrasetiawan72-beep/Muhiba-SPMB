@@ -199,11 +199,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span>Supabase Sync</span>
           </button>
 
+          <a
+            href="https://www.smkmuhiba.sch.id"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1.5 text-xs text-slate-300 hover:text-yellow-300 transition-colors hidden sm:inline-flex items-center gap-1 font-semibold"
+          >
+            <span>Web Sekolah</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+
           <button
             onClick={onNavigateHome}
             className="px-3 py-1.5 text-xs text-slate-300 hover:text-white transition-colors hidden sm:inline"
           >
-            Web Sekolah
+            Beranda PPDB
           </button>
 
           <button
@@ -408,6 +418,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
       </main>
+      
+      <footer className="px-4 sm:px-8 py-4 border-t border-slate-200 bg-white text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2 max-w-7xl mx-auto w-full">
+        <span>Copyright © 2026 SPMB SMK MUHIBA by @hndx07</span>
+        <a
+          href="https://www.smkmuhiba.sch.id"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline"
+        >
+          Website Resmi: www.smkmuhiba.sch.id
+        </a>
+      </footer>
 
       {/* ========================================================================= */}
       {/* MODAL DETAIL SISWA & VERIFIKASI */}

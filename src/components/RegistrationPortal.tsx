@@ -341,6 +341,29 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
           </div>
         </div>
 
+        {/* Footer with official address and website link */}
+        <div className="pt-4 border-t border-slate-200/80 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <div>
+            <p className="font-semibold text-slate-700">SMK Muhammadiyah Bawang</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Jl. Raya Bawang - Sukorejo KM 01, Jlamprang, Bawang, Kabupaten Batang, Jawa Tengah 51274
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <a
+              href="https://www.smkmuhiba.sch.id"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded text-xs transition-colors border border-blue-200"
+            >
+              Kunjungi Web Sekolah (smkmuhiba.sch.id)
+            </a>
+            <span className="text-[11px] text-slate-400">
+              Copyright © 2026 by @hndx07
+            </span>
+          </div>
+        </div>
+
       </div>
 
       {/* ========================================================================= */}

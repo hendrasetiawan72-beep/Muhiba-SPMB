@@ -139,6 +139,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               Contact Us
             </button>
+
+            <a
+              href="https://www.smkmuhiba.sch.id"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-yellow-300 hover:text-white transition-colors py-1 flex items-center gap-1 font-bold text-xs bg-blue-700/60 hover:bg-blue-700 px-2.5 py-1 rounded border border-blue-400/40"
+              title="Kunjungi Website Resmi Sekolah"
+            >
+              <span>Web Sekolah</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </nav>
 
           {/* ZONE 3: PRIMARY ACTIONS */}
@@ -238,12 +249,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               Contact Us
             </button>
             <a
-              href="http://www.smkmuhiba.sch.id"
+              href="https://www.smkmuhiba.sch.id"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-left py-2 px-2 rounded hover:bg-blue-800 text-blue-200 flex items-center justify-between text-xs"
+              className="text-left py-2 px-2 rounded hover:bg-blue-800 text-yellow-300 font-bold flex items-center justify-between text-xs"
             >
-              <span>Website Resmi Sekolah</span>
+              <span>Web Sekolah (smkmuhiba.sch.id)</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>

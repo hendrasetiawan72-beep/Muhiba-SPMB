@@ -20,7 +20,8 @@ import {
   AlertCircle,
   HelpCircle,
   Clock,
-  Sparkles
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
 import { Student, User as UserType, JurusanType } from '../types/database';
 import { dbService } from '../services/supabase';
@@ -365,11 +366,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
           {/* Bottom user / logout card */}
           <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-2">
+            <a
+              href="https://www.smkmuhiba.sch.id"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full text-left text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center justify-between py-1.5 px-2 rounded hover:bg-blue-50 transition-colors"
+            >
+              <span>Web Sekolah</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
             <button
               onClick={onNavigateHome}
               className="w-full text-left text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center gap-2 py-1.5 px-2 rounded hover:bg-slate-100 transition-colors"
             >
-              <span>← Kembali ke Website Sekolah</span>
+              <span>← Beranda PPDB</span>
             </button>
             <button
               onClick={onLogout}
@@ -1631,8 +1641,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
 
           {/* Footer inside Dashboard matching screenshot */}
-          <footer className="mt-auto px-4 sm:px-8 py-4 border-t border-slate-200 bg-white text-[11px] text-slate-400">
-            Copyright © 2026 SPMB SMK MUHIBA | GARUDANET
+          <footer className="mt-auto px-4 sm:px-8 py-4 border-t border-slate-200 bg-white text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span>Copyright © 2026 SPMB SMK MUHIBA | GARUDANET by @hndx07</span>
+            <a
+              href="https://www.smkmuhiba.sch.id"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              Website Resmi: www.smkmuhiba.sch.id
+            </a>
           </footer>
 
         </main>

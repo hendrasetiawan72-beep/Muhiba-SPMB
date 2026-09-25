@@ -42,6 +42,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       tags: ['TEKNIK OTOMOTIF', 'TBSM', 'UNGGUL'],
       completionRate: '100%',
       image: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=900&q=80',
+      isVideo: true,
+      videoId: '7681168904672136468',
+      videoUrl: 'https://vt.tiktok.com/ZSbLkvPQh/',
     },
     {
       title: 'Lab Akuntansi',
@@ -51,6 +54,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       tags: ['AKUNTANSI', 'FINTECH', 'DIGITAL'],
       completionRate: '100%',
       image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=900&q=80',
+      isVideo: false,
     },
     {
       title: 'Lab Fiber Optic',
@@ -60,6 +64,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       tags: ['FIBER OPTIC', 'MIKROTIK', 'CYBER SECURITY'],
       completionRate: '100%',
       image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=900&q=80',
+      isVideo: false,
     },
     {
       title: 'Kewirausahaan',
@@ -69,6 +74,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       tags: ['BUSINESS CENTER', 'TEFA', 'WIRAUSAHA'],
       completionRate: '100%',
       image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=80',
+      isVideo: false,
     },
   ];
 
@@ -211,7 +217,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </div>
                   <h3 className="text-lg font-bold text-white">SMK Muhammadiyah Bawang</h3>
                   <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                    Jl. Raya Bawang - Subah, Jlamprang, Bawang, Kabupaten Batang, Jawa Tengah 51274
+                    Jl. Raya Bawang - Sukorejo KM 01, Jlamprang, Bawang, Kabupaten Batang, Jawa Tengah 51274
                   </p>
                   
                   <div className="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
@@ -408,17 +414,44 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="lg:col-span-8">
               <div className="bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden grid grid-cols-1 md:grid-cols-12">
                 
-                {/* Image side */}
-                <div className="md:col-span-5 relative min-h-[260px] md:min-h-[340px] bg-slate-900">
-                  <img
-                    src={facilities[activeFacility].image}
-                    alt={facilities[activeFacility].title}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute top-4 left-4 bg-purple-600 text-white text-xs font-extrabold px-3 py-1 rounded shadow">
-                    {facilities[activeFacility].completionRate} SIAP
-                  </div>
+                {/* Media side: Playable Video if isVideo, otherwise Image */}
+                <div className="md:col-span-5 relative min-h-[300px] md:min-h-[380px] bg-slate-950 flex items-center justify-center overflow-hidden">
+                  {facilities[activeFacility].isVideo ? (
+                    <div className="relative w-full h-full min-h-[300px] md:min-h-[380px] bg-black flex flex-col justify-center items-center">
+                      <iframe
+                        src="https://www.tiktok.com/player/v1/7681168904672136468?autoplay=1&muted=0&controls=1"
+                        title="Video Workshop Teknik Otomotif SMK Muhiba"
+                        className="w-full h-full min-h-[320px] md:min-h-[380px] border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                      <div className="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded shadow-md flex items-center gap-1 z-20">
+                        <Play className="w-3 h-3 fill-current" />
+                        <span>VIDEO WORKSHOP BERJALAN</span>
+                      </div>
+                      <a
+                        href="https://vt.tiktok.com/ZSbLkvPQh/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute bottom-2 right-2 bg-slate-900/90 hover:bg-black text-white text-[10px] font-bold px-2 py-1 rounded border border-white/20 shadow z-20 flex items-center gap-1"
+                      >
+                        <span>Buka di TikTok</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  ) : (
+                    <>
+                      <img
+                        src={facilities[activeFacility].image}
+                        alt={facilities[activeFacility].title}
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute top-4 left-4 bg-purple-600 text-white text-xs font-extrabold px-3 py-1 rounded shadow">
+                        {facilities[activeFacility].completionRate} SIAP
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Content side */}
@@ -579,7 +612,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <div className="p-4 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2 text-slate-200 font-semibold">
                     <MapPin className="w-4 h-4 text-rose-400" />
-                    <span>SMKS MUHAMMADIYAH BAWANG - Jlamprang, Bawang, Batang</span>
+                    <span>SMKS MUHAMMADIYAH BAWANG - Jl. Raya Bawang - Sukorejo KM 01, Jlamprang, Bawang, Batang 51274</span>
                   </div>
                   <a
                     href="https://maps.google.com/?q=SMK+Muhammadiyah+Bawang+Batang"
@@ -635,10 +668,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* FOOTER */}
       <footer className="bg-slate-950 text-slate-400 py-8 border-t border-slate-800 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 SPMB SMK MUHIBA | SMK Muhammadiyah Bawang. All rights reserved.</p>
+          <p>© 2026 SPMB SMK MUHIBA | SMK Muhammadiyah Bawang by @hndx07. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <a href="http://www.smkmuhiba.sch.id" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
-              www.smkmuhiba.sch.id
+            <a href="https://www.smkmuhiba.sch.id" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1 font-semibold text-blue-400">
+              <span>www.smkmuhiba.sch.id</span>
+              <ExternalLink className="w-3 h-3" />
             </a>
             <button onClick={onLoginClick} className="hover:text-white transition-colors">
               Login Petugas & Siswa
