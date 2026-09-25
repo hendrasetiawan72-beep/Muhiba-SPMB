@@ -14,8 +14,19 @@ export interface User {
   id: string;
   nik: string;
   role: UserRole;
-  password_hash: string;
+  password_hash?: string;
+  full_name?: string;
+  email?: string;
   created_at: string;
+}
+
+export interface ProfileRow {
+  id: string;
+  nik: string | null;
+  full_name: string;
+  role: UserRole;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DataDiri {
@@ -117,11 +128,14 @@ export interface Student {
   data_alamat: DataAlamat;
   data_orang_tua: DataOrangTua;
   data_berkas: DataBerkas;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Pembayaran {
   id: string;
   student_id: string;
+  user_id?: string;
   nik: string;
   nominal: number;
   metode: string;
@@ -129,4 +143,36 @@ export interface Pembayaran {
   status: 'Lunas' | 'Menunggu Verifikasi' | 'Belum Bayar';
   tanggal_bayar: string;
   keterangan: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: ProfileRow;
+        Insert: Partial<ProfileRow> & { id: string; full_name: string };
+        Update: Partial<ProfileRow>;
+      };
+      students: {
+        Row: Student;
+        Insert: Omit<Student, 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Student>;
+      };
+      pembayaran: {
+        Row: Pembayaran;
+        Insert: Omit<Pembayaran, 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Pembayaran>;
+      };
+    };
+  };
 }

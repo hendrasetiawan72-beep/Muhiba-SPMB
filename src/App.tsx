@@ -13,64 +13,56 @@ export default function App() {
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
   const [activeView, setActiveView] = useState<'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard'>('home');
 
-  // Check persisted session if any
+  // Check persisted Supabase Auth session
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem('smk_muhiba_session_user');
-      const savedStudent = localStorage.getItem('smk_muhiba_session_student');
-      if (savedUser) {
-        const u = JSON.parse(savedUser) as User;
-        setCurrentUser(u);
-        if (savedStudent) {
-          const s = JSON.parse(savedStudent) as Student;
-          // Refresh from DB
-          const latest = dbService.getStudentByNik(s.nik);
-          setCurrentStudent(latest || s);
+    let isMounted = true;
+    const restoreSession = async () => {
+      try {
+        const sessionData = await dbService.getCurrentSessionUser();
+        if (isMounted && sessionData) {
+          setCurrentUser(sessionData.user);
+          if (sessionData.student) {
+            setCurrentStudent(sessionData.student);
+            setActiveView('student-dashboard');
+          } else if (sessionData.user.role === 'admin') {
+            setCurrentStudent(null);
+            setActiveView('admin-dashboard');
+          }
         }
+      } catch (err) {
+        console.warn('Session restore warning:', err);
       }
-    } catch {
-      // ignore
-    }
+    };
+
+    restoreSession();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleLoginSuccess = (user: User, student?: Student) => {
     setCurrentUser(user);
-    localStorage.setItem('smk_muhiba_session_user', JSON.stringify(user));
-    
     if (student) {
       setCurrentStudent(student);
-      localStorage.setItem('smk_muhiba_session_student', JSON.stringify(student));
       setActiveView('student-dashboard');
     } else if (user.role === 'admin') {
       setCurrentStudent(null);
-      localStorage.removeItem('smk_muhiba_session_student');
       setActiveView('admin-dashboard');
     } else {
-      // Look up student if available
-      const found = dbService.getStudentByNik(user.nik);
-      if (found) {
-        setCurrentStudent(found);
-        localStorage.setItem('smk_muhiba_session_student', JSON.stringify(found));
-        setActiveView('student-dashboard');
-      } else {
-        setActiveView('home');
-      }
+      setActiveView('student-dashboard');
     }
   };
 
   const handleRegisterSuccess = (user: User, student: Student) => {
     setCurrentUser(user);
     setCurrentStudent(student);
-    localStorage.setItem('smk_muhiba_session_user', JSON.stringify(user));
-    localStorage.setItem('smk_muhiba_session_student', JSON.stringify(student));
     setActiveView('student-dashboard');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await dbService.logout();
     setCurrentUser(null);
     setCurrentStudent(null);
-    localStorage.removeItem('smk_muhiba_session_user');
-    localStorage.removeItem('smk_muhiba_session_student');
     setActiveView('home');
   };
 

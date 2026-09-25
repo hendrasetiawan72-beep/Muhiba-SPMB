@@ -46,6 +46,27 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [showWarningBanner, setShowWarningBanner] = useState(true);
   const [saveToast, setSaveToast] = useState<string | null>(null);
 
+  // Synchronize student data from Supabase
+  useEffect(() => {
+    let isMounted = true;
+    const fetchFreshStudent = async () => {
+      try {
+        const fresh =
+          (await dbService.getStudentByUserId(currentUser.id)) ||
+          (await dbService.getStudentByNik(student.nik));
+        if (fresh && isMounted) {
+          setStudent(fresh);
+        }
+      } catch (err) {
+        console.warn('Student sync notice:', err);
+      }
+    };
+    fetchFreshStudent();
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser.id, student.nik]);
+
   // Form states for Data Diri
   const [jurusan, setJurusan] = useState<JurusanType>(student.jurusan_pilihan || 'TO');
   const [ukuranBaju, setUkuranBaju] = useState(student.data_diri?.ukuran_baju || 'L');

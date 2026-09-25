@@ -169,7 +169,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           />
 
           {/* TikTok Dynamic Video Overlay Embed with reduced opacity scrim */}
-          <div className="absolute inset-0 w-full h-full opacity-85 scale-105 pointer-events-none overflow-hidden">
+          <div className="absolute inset-0 w-full h-full opacity-95 scale-105 pointer-events-none overflow-hidden">
             <iframe
               src="https://www.tiktok.com/player/v1/7462604408816225541?autoplay=1&muted=1&controls=0&loop=1"
               title="TikTok Video Background SMK Muhiba"
@@ -179,7 +179,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Reduced Scrim: Much lighter opacity so video is clearly visible */}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/45 to-blue-950/30 z-10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/50 via-slate-950/25 to-blue-950/15 z-10" />
           
           {/* Halftone patterned decorative rings as seen in screenshot */}
           <div className="absolute right-0 bottom-0 w-[500px] h-[500px] pointer-events-none opacity-20 z-10">
@@ -430,7 +430,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
             {/* Left facility selector list */}
-            <div className="lg:col-span-4 space-y-3">
+            <div className="lg:col-span-4 space-y-2.5">
               {facilities.map((fac, idx) => {
                 const isSelected = activeFacility === idx;
                 return (
@@ -439,14 +439,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     onClick={() => setActiveFacility(idx)}
                     className={`w-full text-left p-4 rounded-xl font-bold text-sm transition-all duration-200 border flex items-center justify-between ${
                       isSelected
-                        ? 'bg-white text-purple-700 border-purple-400 shadow-md ring-2 ring-purple-100'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-100'
                         : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     <span>{fac.title}</span>
                     <ChevronRight
                       className={`w-4 h-4 transition-transform ${
-                        isSelected ? 'text-purple-600 translate-x-1' : 'text-slate-400'
+                        isSelected ? 'text-white translate-x-1' : 'text-slate-400'
                       }`}
                     />
                   </button>
@@ -536,7 +536,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"
                       />
-                      <div className="absolute top-4 left-4 bg-purple-600 text-white text-xs font-extrabold px-3 py-1 rounded shadow">
+                      <div className="absolute top-4 left-4 bg-blue-600 text-white text-xs font-extrabold px-3 py-1 rounded shadow">
                         {facilities[activeFacility].completionRate} SIAP
                       </div>
                     </>
@@ -562,7 +562,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       {facilities[activeFacility].tags.map((tag, tIdx) => (
                         <span
                           key={tIdx}
-                          className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded"
+                          className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded"
                         >
                           {tag}
                         </span>
@@ -571,10 +571,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                     <button
                       onClick={onRegisterClick}
-                      className="text-xs font-bold text-purple-700 hover:text-purple-900 underline flex items-center gap-1"
+                      className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 group"
                     >
-                      <span>Daftar Sekarang</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <span>Pelajari & Daftar</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                     </button>
                   </div>
                 </div>

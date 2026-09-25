@@ -1,283 +1,188 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Student, User, Pembayaran, StatusPendaftaran, JurusanType } from '../types/database';
+import { createClient, SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js';
+import { 
+  Student, 
+  User, 
+  UserRole, 
+  Pembayaran, 
+  StatusPendaftaran, 
+  JurusanType, 
+  Database 
+} from '../types/database';
 
-// Initial default students matching the screenshots
-const SEED_USERS: User[] = [
-  {
-    id: 'user-admin-1',
-    nik: 'admin',
-    role: 'admin',
-    password_hash: 'admin123',
-    created_at: '2026-01-01T00:00:00Z',
-  },
-  {
-    id: 'user-student-1',
-    nik: '3325028202892999',
-    role: 'student',
-    password_hash: '12345',
-    created_at: '2026-09-25T06:49:00Z',
-  },
-  {
-    id: 'user-student-2',
-    nik: '3325028202892888',
-    role: 'student',
-    password_hash: '12345',
-    created_at: '2026-09-24T08:15:00Z',
-  },
-  {
-    id: 'user-student-3',
-    nik: '3325028202892777',
-    role: 'student',
-    password_hash: '12345',
-    created_at: '2026-09-23T10:30:00Z',
-  }
-];
+export const SUPABASE_SQL_SCHEMA = `-- ============================================================================
+-- SKEMA SUPABASE RESMI - SPMB SMK MUHAMMADIYAH BAWANG
+-- File: supabase/migrations/20260925000000_spmb_initial_schema.sql
+-- Silakan copy dan jalankan di: Supabase SQL Editor
+-- ============================================================================
 
-const SEED_STUDENTS: Student[] = [
-  {
-    id: 'student-1',
-    user_id: 'user-student-1',
-    nik: '3325028202892999',
-    nama_lengkap: 'Eko Juniarto',
-    jurusan_pilihan: 'TO',
-    no_wa: '085582580',
-    status_pendaftaran: 'Berkas Fisik',
-    nomor_pendaftaran: '2026476',
-    tanggal_daftar: '25-09-2026 06:49',
-    data_diri: {
-      nisn: '8729209999',
-      nik: '3325028202892999',
-      no_kk: '3325021204050001',
-      nama_lengkap: 'Eko Juniarto',
-      tempat_lahir: 'Batang',
-      tanggal_lahir: '2008-09-25',
-      jenis_kelamin: 'Laki-laki',
-      agama: 'Islam',
-      no_hp: '085582580',
-      asal_sekolah: 'SMP NEGERI 1 PLANTUNGAN',
-      anak_ke: 2,
-      jumlah_saudara: 3,
-      is_anak_guru: false,
-      tinggi_badan: 165,
-      berat_badan: 55,
-      status_dalam_keluarga: 'Anak Kandung',
-      ukuran_baju: 'L',
-      kode_referal: 'ALDI / XII TO 1',
-      kip: 'KIP-2024-88912',
-    },
-    data_alamat: {
-      dukuh: 'Krapyak RT 02 RW 01',
-      rt: '02',
-      rw: '01',
-      provinsi: 'Jawa Tengah',
-      kabupaten: 'Kabupaten Batang',
-      kecamatan: 'Bawang',
-      desa: 'Jlamprang',
-      kode_pos: '51274',
-      tinggal_bersama: 'Orang Tua',
-      transportasi: 'Sepeda Motor',
-    },
-    data_orang_tua: {
-      nik_ayah: '3325021005700001',
-      nama_ayah: 'Suryadi',
-      tempat_lahir_ayah: 'Batang',
-      tanggal_lahir_ayah: '1970-05-10',
-      pendidikan_ayah: 'SMA / SMK',
-      pekerjaan_ayah: 'Wiraswasta',
-      no_hp_ayah: '08561333392',
-      nik_ibu: '3325025008740002',
-      nama_ibu: 'Siti Aminah',
-      tempat_lahir_ibu: 'Batang',
-      tanggal_lahir_ibu: '1974-08-15',
-      pendidikan_ibu: 'SMP / MTs',
-      pekerjaan_ibu: 'Ibu Rumah Tangga',
-      no_hp_ibu: '085741977501',
-    },
-    data_berkas: {
-      kartu_keluarga: {
-        nama_file: 'KK_Eko_Juniarto.pdf',
-        ukuran: '1.2 MB',
-        uploaded_at: '25-09-2026',
-      },
-      ijazah_skl: {
-        nama_file: 'SKL_SMPN1_Plantungan.pdf',
-        ukuran: '850 KB',
-        uploaded_at: '25-09-2026',
-      },
-      akta_kelahiran: {
-        nama_file: 'Akta_Eko_Juniarto.pdf',
-        ukuran: '940 KB',
-        uploaded_at: '25-09-2026',
-      },
-    },
-  },
-  {
-    id: 'student-2',
-    user_id: 'user-student-2',
-    nik: '3325028202892888',
-    nama_lengkap: 'Siti Rahmawati',
-    jurusan_pilihan: 'AKL',
-    no_wa: '081234567890',
-    status_pendaftaran: 'Menunggu Verifikasi',
-    nomor_pendaftaran: '2026477',
-    tanggal_daftar: '24-09-2026 08:15',
-    data_diri: {
-      nisn: '8729208888',
-      nik: '3325028202892888',
-      nama_lengkap: 'Siti Rahmawati',
-      tempat_lahir: 'Pekalongan',
-      tanggal_lahir: '2008-04-12',
-      jenis_kelamin: 'Perempuan',
-      agama: 'Islam',
-      no_hp: '081234567890',
-      asal_sekolah: 'SMP N 2 Bawang',
-      ukuran_baju: 'M',
-    },
-    data_alamat: {
-      dukuh: 'Wonobodro',
-      rt: '01',
-      rw: '03',
-      provinsi: 'Jawa Tengah',
-      kabupaten: 'Kabupaten Batang',
-      kecamatan: 'Blado',
-      desa: 'Wonobodro',
-      kode_pos: '51255',
-      tinggal_bersama: 'Orang Tua',
-      transportasi: 'Angkutan Umum',
-    },
-    data_orang_tua: {
-      nama_ayah: 'Budi Santoso',
-      pekerjaan_ayah: 'Petani',
-      nama_ibu: 'Tri Mulyani',
-      pekerjaan_ibu: 'Pedagang',
-    },
-    data_berkas: {},
-  },
-  {
-    id: 'student-3',
-    user_id: 'user-student-3',
-    nik: '3325028202892777',
-    nama_lengkap: 'Muhammad Rizky Pratama',
-    jurusan_pilihan: 'TJKT',
-    no_wa: '087812345678',
-    status_pendaftaran: 'Terverifikasi',
-    nomor_pendaftaran: '2026478',
-    tanggal_daftar: '23-09-2026 10:30',
-    data_diri: {
-      nisn: '8729207777',
-      nik: '3325028202892777',
-      nama_lengkap: 'Muhammad Rizky Pratama',
-      tempat_lahir: 'Batang',
-      tanggal_lahir: '2008-01-18',
-      jenis_kelamin: 'Laki-laki',
-      agama: 'Islam',
-      no_hp: '087812345678',
-      asal_sekolah: 'MTs Muhammadiyah Bawang',
-      ukuran_baju: 'XL',
-    },
-    data_alamat: {
-      dukuh: 'Pangempon',
-      rt: '03',
-      rw: '02',
-      provinsi: 'Jawa Tengah',
-      kabupaten: 'Kabupaten Batang',
-      kecamatan: 'Bawang',
-      desa: 'Pangempon',
-      kode_pos: '51274',
-      tinggal_bersama: 'Orang Tua',
-      transportasi: 'Sepeda Motor',
-    },
-    data_orang_tua: {
-      nama_ayah: 'Ahmad Fauzi',
-      pekerjaan_ayah: 'Guru / Tenaga Pengajar',
-      nama_ibu: 'Nur Hasanah',
-      pekerjaan_ibu: 'PNS',
-    },
-    data_berkas: {},
-  }
-];
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-export const SUPABASE_SQL_SCHEMA = `-- ==========================================
--- SKEMA SUPABASE UNTUK SPDB SMK MUHAMMADIYAH BAWANG
--- Jalankan di: Supabase SQL Editor
--- ==========================================
-
--- 1. Tabel users
-CREATE TABLE IF NOT EXISTS public.users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nik VARCHAR(20) UNIQUE NOT NULL,
-  role VARCHAR(10) NOT NULL CHECK (role IN ('admin', 'student')),
-  password_hash TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
+-- 1. Tabel profiles (Terhubung langsung ke auth.users)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  nik TEXT UNIQUE,
+  full_name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'admin')),
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
--- 2. Tabel students
+-- 2. Tabel students (Data Pendaftaran Siswa)
 CREATE TABLE IF NOT EXISTS public.students (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
-  nik VARCHAR(20) UNIQUE NOT NULL,
-  nama_lengkap VARCHAR(255) NOT NULL,
-  jurusan_pilihan VARCHAR(10) NOT NULL CHECK (jurusan_pilihan IN ('TO', 'TJKT', 'AKL')),
-  no_wa VARCHAR(20) NOT NULL,
-  status_pendaftaran VARCHAR(30) DEFAULT 'Berkas Fisik',
-  nomor_pendaftaran VARCHAR(20) UNIQUE NOT NULL,
-  tanggal_daftar VARCHAR(50) NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  nik TEXT UNIQUE NOT NULL,
+  nama_lengkap TEXT NOT NULL,
+  jurusan_pilihan TEXT NOT NULL CHECK (jurusan_pilihan IN ('TO', 'TJKT', 'AKL')),
+  no_wa TEXT NOT NULL,
+  status_pendaftaran TEXT DEFAULT 'Berkas Fisik' NOT NULL 
+    CHECK (status_pendaftaran IN ('Belum Lengkap', 'Berkas Fisik', 'Menunggu Verifikasi', 'Terverifikasi', 'Diterima', 'Cadangan')),
+  nomor_pendaftaran TEXT UNIQUE NOT NULL,
+  tanggal_daftar TEXT NOT NULL,
   catatan_admin TEXT,
-  data_diri JSONB DEFAULT '{}'::jsonb,
-  data_alamat JSONB DEFAULT '{}'::jsonb,
-  data_orang_tua JSONB DEFAULT '{}'::jsonb,
-  data_berkas JSONB DEFAULT '{}'::jsonb,
-  created_at TIMESTAMPTZ DEFAULT now()
+  data_diri JSONB DEFAULT '{}'::jsonb NOT NULL,
+  data_alamat JSONB DEFAULT '{}'::jsonb NOT NULL,
+  data_orang_tua JSONB DEFAULT '{}'::jsonb NOT NULL,
+  data_berkas JSONB DEFAULT '{}'::jsonb NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
--- 3. Tabel pembayaran (opsional)
+-- 3. Tabel pembayaran (Opsional)
 CREATE TABLE IF NOT EXISTS public.pembayaran (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id UUID REFERENCES public.students(id) ON DELETE CASCADE,
-  nik VARCHAR(20) NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  nik TEXT NOT NULL,
   nominal NUMERIC NOT NULL,
-  metode VARCHAR(50) NOT NULL,
+  metode TEXT NOT NULL,
   bukti_url TEXT,
-  status VARCHAR(30) DEFAULT 'Menunggu Verifikasi',
-  tanggal_bayar TIMESTAMPTZ DEFAULT now(),
-  keterangan TEXT
+  status TEXT DEFAULT 'Menunggu Verifikasi' NOT NULL 
+    CHECK (status IN ('Lunas', 'Menunggu Verifikasi', 'Belum Bayar')),
+  tanggal_bayar TIMESTAMPTZ DEFAULT now() NOT NULL,
+  keterangan TEXT,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
--- Enable Row Level Security
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+-- 4. Indeks Performa
+CREATE INDEX IF NOT EXISTS idx_students_user_id ON public.students(user_id);
+CREATE INDEX IF NOT EXISTS idx_students_nik ON public.students(nik);
+CREATE INDEX IF NOT EXISTS idx_students_status ON public.students(status_pendaftaran);
+CREATE INDEX IF NOT EXISTS idx_students_jurusan ON public.students(jurusan_pilihan);
+CREATE INDEX IF NOT EXISTS idx_students_nomor_pendaftaran ON public.students(nomor_pendaftaran);
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
+
+-- 5. Helper Function: is_admin() (SECURITY DEFINER untuk cegah recursive RLS)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+$$;
+
+-- 6. Trigger Auth: Otomatis sinkronisasi auth.users ke profiles
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, nik, full_name, role)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'nik', NEW.email),
+    COALESCE(NEW.raw_user_meta_data->>'full_name', 'Calon Siswa'),
+    COALESCE(NEW.raw_user_meta_data->>'role', 'student')
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET
+    nik = COALESCE(EXCLUDED.nik, profiles.nik),
+    full_name = COALESCE(EXCLUDED.full_name, profiles.full_name);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 7. Aktifkan ROW LEVEL SECURITY (RLS)
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pembayaran ENABLE ROW LEVEL SECURITY;
 
--- Policy sederhana untuk SPDB
-CREATE POLICY "Public Read/Write users" ON public.users FOR ALL USING (true);
-CREATE POLICY "Public Read/Write students" ON public.students FOR ALL USING (true);
-CREATE POLICY "Public Read/Write pembayaran" ON public.pembayaran FOR ALL USING (true);
+-- 8. Policies RLS
+DROP POLICY IF EXISTS "profiles_select_policy" ON public.profiles;
+CREATE POLICY "profiles_select_policy" ON public.profiles FOR SELECT TO authenticated
+  USING (auth.uid() = id OR public.is_admin());
+
+DROP POLICY IF EXISTS "profiles_update_policy" ON public.profiles;
+CREATE POLICY "profiles_update_policy" ON public.profiles FOR UPDATE TO authenticated
+  USING (auth.uid() = id OR public.is_admin())
+  WITH CHECK ((auth.uid() = id AND role = (SELECT p.role FROM public.profiles p WHERE p.id = auth.uid())) OR public.is_admin());
+
+DROP POLICY IF EXISTS "students_select_policy" ON public.students;
+CREATE POLICY "students_select_policy" ON public.students FOR SELECT TO authenticated
+  USING (auth.uid() = user_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "students_insert_policy" ON public.students;
+CREATE POLICY "students_insert_policy" ON public.students FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "students_update_policy" ON public.students;
+CREATE POLICY "students_update_policy" ON public.students FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id OR public.is_admin())
+  WITH CHECK (auth.uid() = user_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "students_delete_policy" ON public.students;
+CREATE POLICY "students_delete_policy" ON public.students FOR DELETE TO authenticated
+  USING (public.is_admin());
+
+DROP POLICY IF EXISTS "pembayaran_select_policy" ON public.pembayaran;
+CREATE POLICY "pembayaran_select_policy" ON public.pembayaran FOR SELECT TO authenticated
+  USING (auth.uid() = user_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "pembayaran_insert_policy" ON public.pembayaran;
+CREATE POLICY "pembayaran_insert_policy" ON public.pembayaran FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "pembayaran_update_policy" ON public.pembayaran;
+CREATE POLICY "pembayaran_update_policy" ON public.pembayaran FOR UPDATE TO authenticated
+  USING (public.is_admin());
 `;
 
 class DatabaseService {
   private supabase: SupabaseClient | null = null;
-  private usersKey = 'smk_muhiba_users';
-  private studentsKey = 'smk_muhiba_students';
   private configKey = 'smk_muhiba_supabase_config';
+  private studentDomain = 'siswa.smkmuhiba.sch.id';
+  private adminDomain = 'smkmuhiba.sch.id';
 
   constructor() {
-    this.initLocalData();
     this.initSupabaseFromEnvOrStorage();
   }
 
-  private initLocalData() {
-    if (typeof window === 'undefined') return;
-    if (!localStorage.getItem(this.usersKey)) {
-      localStorage.setItem(this.usersKey, JSON.stringify(SEED_USERS));
-    }
-    if (!localStorage.getItem(this.studentsKey)) {
-      localStorage.setItem(this.studentsKey, JSON.stringify(SEED_STUDENTS));
-    }
-  }
-
+  /**
+   * Initialize Supabase client strictly using public environment variables,
+   * with fallback to UI stored config for testing/preview environments.
+   */
   public initSupabaseFromEnvOrStorage() {
-    const envUrl = import.meta.env.VITE_SUPABASE_URL || '';
-    const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+    const envUrl = (
+      import.meta.env.VITE_SUPABASE_URL ||
+      import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
+      ''
+    ).trim();
+
+    const envKey = (
+      import.meta.env.VITE_SUPABASE_ANON_KEY ||
+      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+      import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      ''
+    ).trim();
 
     let url = envUrl;
     let key = envKey;
@@ -288,22 +193,31 @@ class DatabaseService {
         try {
           const parsed = JSON.parse(stored);
           if (parsed.url && parsed.key) {
-            url = parsed.url;
-            key = parsed.key;
+            url = parsed.url.trim();
+            key = parsed.key.trim();
           }
         } catch {
-          // ignore
+          // ignore parsing error
         }
       }
     }
 
     if (url && key) {
       try {
-        this.supabase = createClient(url, key);
+        this.supabase = createClient(url, key, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+          },
+        });
       } catch (err) {
-        console.error('Failed to init Supabase client:', err);
+        console.error('Inisialisasi Supabase Client gagal:', err);
         this.supabase = null;
       }
+    } else {
+      this.supabase = null;
     }
   }
 
@@ -317,7 +231,7 @@ class DatabaseService {
 
   public saveSupabaseConfig(url: string, key: string) {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(this.configKey, JSON.stringify({ url, key }));
+      localStorage.setItem(this.configKey, JSON.stringify({ url: url.trim(), key: key.trim() }));
       this.initSupabaseFromEnvOrStorage();
     }
   }
@@ -328,7 +242,7 @@ class DatabaseService {
     if (!stored) {
       return {
         url: import.meta.env.VITE_SUPABASE_URL || '',
-        key: import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+        key: import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
       };
     }
     try {
@@ -338,31 +252,24 @@ class DatabaseService {
     }
   }
 
-  // --- LOCAL REPOSITORY HELPERS ---
-  private getLocalUsers(): User[] {
-    if (typeof window === 'undefined') return SEED_USERS;
-    const str = localStorage.getItem(this.usersKey);
-    return str ? JSON.parse(str) : SEED_USERS;
+  /**
+   * Map NIK or Admin username to a standard Supabase Auth synthetic email
+   */
+  public toSyntheticEmail(identifier: string): string {
+    const clean = identifier.trim().toLowerCase();
+    if (clean.includes('@')) {
+      return clean;
+    }
+    if (clean === 'admin') {
+      return `admin@${this.adminDomain}`;
+    }
+    // Student NIK
+    return `${clean}@${this.studentDomain}`;
   }
 
-  private saveLocalUsers(users: User[]) {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(this.usersKey, JSON.stringify(users));
-  }
-
-  private getLocalStudents(): Student[] {
-    if (typeof window === 'undefined') return SEED_STUDENTS;
-    const str = localStorage.getItem(this.studentsKey);
-    return str ? JSON.parse(str) : SEED_STUDENTS;
-  }
-
-  private saveLocalStudents(students: Student[]) {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(this.studentsKey, JSON.stringify(students));
-  }
-
-  // --- CRUD API ---
-
+  /**
+   * User Registration with Supabase Auth & PostgreSQL students table
+   */
   public async register(payload: {
     nik: string;
     nama_lengkap: string;
@@ -371,171 +278,343 @@ class DatabaseService {
     password: string;
   }): Promise<{ user: User; student: Student }> {
     const cleanNik = payload.nik.trim();
-    const users = this.getLocalUsers();
-    const students = this.getLocalStudents();
+    const cleanNama = payload.nama_lengkap.trim();
+    const cleanNoWa = payload.no_wa.trim();
 
-    // Check if NIK already registered
-    const existingUser = users.find(u => u.nik === cleanNik);
-    if (existingUser) {
-      throw new Error(`NIK ${cleanNik} sudah terdaftar. Silakan login atau hubungi panitia.`);
+    if (!/^\d{16}$/.test(cleanNik)) {
+      throw new Error('NIK harus terdiri dari 16 digit angka sesuai KTP / Kartu Keluarga.');
     }
 
-    const userId = 'usr-' + Date.now();
-    const studentId = 'std-' + Date.now();
-    
-    // Generate consecutive-like registration number (e.g. 2026479)
-    const baseNumber = 2026470 + students.length + 1;
-    const nomorPendaftaran = baseNumber.toString();
+    if (!this.supabase) {
+      throw new Error(
+        'Koneksi Supabase belum terkonfigurasi. Pastikan VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY telah diatur di Vercel atau panel konfigurasi database.'
+      );
+    }
 
-    // Format Indonesian timestamp: DD-MM-YYYY HH:mm
+    // 1. Check if NIK already exists in Supabase
+    const { data: existingStudent, error: checkError } = await this.supabase
+      .from('students')
+      .select('nik')
+      .eq('nik', cleanNik)
+      .maybeSingle();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Supabase NIK check error:', checkError);
+    }
+
+    if (existingStudent) {
+      throw new Error(`NIK ${cleanNik} sudah terdaftar di sistem SPMB. Silakan masuk atau hubungi panitia.`);
+    }
+
+    // 2. Generate consecutive registration number
+    const { count } = await this.supabase
+      .from('students')
+      .select('*', { count: 'exact', head: true });
+
+    const nextSeq = (count || 0) + 1;
+    const nomorPendaftaran = (2026470 + nextSeq).toString();
+
     const now = new Date();
     const dateFormatted = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    const newUser: User = {
-      id: userId,
-      nik: cleanNik,
-      role: 'student',
-      password_hash: payload.password,
-      created_at: new Date().toISOString(),
-    };
+    const syntheticEmail = this.toSyntheticEmail(cleanNik);
 
-    const newStudent: Student = {
-      id: studentId,
+    // 3. Register user via Supabase Auth
+    const { data: authData, error: authError } = await this.supabase.auth.signUp({
+      email: syntheticEmail,
+      password: payload.password,
+      options: {
+        data: {
+          nik: cleanNik,
+          full_name: cleanNama,
+          role: 'student',
+        },
+      },
+    });
+
+    if (authError) {
+      if (authError.message.includes('User already registered')) {
+        throw new Error(`Akun dengan NIK ${cleanNik} sudah terdaftar. Silakan lakukan login.`);
+      }
+      throw new Error(`Pendaftaran akun gagal: ${authError.message}`);
+    }
+
+    if (!authData.user) {
+      throw new Error('Gagal membuat akun siswa di Supabase Auth.');
+    }
+
+    const userId = authData.user.id;
+
+    // 4. Create row in public.profiles (in case DB trigger is not yet installed)
+    try {
+      await this.supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          nik: cleanNik,
+          full_name: cleanNama,
+          role: 'student',
+        });
+    } catch (e) {
+      console.warn('Upsert profile notice:', e);
+    }
+
+    // 5. Insert student registration into public.students
+    const newStudentPayload = {
       user_id: userId,
       nik: cleanNik,
-      nama_lengkap: payload.nama_lengkap.trim(),
+      nama_lengkap: cleanNama,
       jurusan_pilihan: payload.jurusan_pilihan,
-      no_wa: payload.no_wa.trim(),
-      status_pendaftaran: 'Berkas Fisik',
+      no_wa: cleanNoWa,
+      status_pendaftaran: 'Berkas Fisik' as StatusPendaftaran,
       nomor_pendaftaran: nomorPendaftaran,
       tanggal_daftar: dateFormatted,
       data_diri: {
         nik: cleanNik,
-        nama_lengkap: payload.nama_lengkap.trim(),
-        no_hp: payload.no_wa.trim(),
+        nama_lengkap: cleanNama,
+        no_hp: cleanNoWa,
       },
       data_alamat: {},
       data_orang_tua: {},
       data_berkas: {},
     };
 
-    // Save locally
-    users.push(newUser);
-    students.push(newStudent);
-    this.saveLocalUsers(users);
-    this.saveLocalStudents(students);
+    const { data: insertedStudent, error: insertError } = await this.supabase
+      .from('students')
+      .insert(newStudentPayload)
+      .select()
+      .single();
 
-    // Sync to Supabase if connected
-    if (this.supabase) {
-      try {
-        await this.supabase.from('users').insert({
-          id: userId,
-          nik: cleanNik,
-          role: 'student',
-          password_hash: payload.password,
-        });
-        await this.supabase.from('students').insert({
-          id: studentId,
-          user_id: userId,
-          nik: cleanNik,
-          nama_lengkap: payload.nama_lengkap.trim(),
-          jurusan_pilihan: payload.jurusan_pilihan,
-          no_wa: payload.no_wa.trim(),
-          status_pendaftaran: 'Berkas Fisik',
-          nomor_pendaftaran: nomorPendaftaran,
-          tanggal_daftar: dateFormatted,
-          data_diri: newStudent.data_diri,
-          data_alamat: {},
-          data_orang_tua: {},
-          data_berkas: {},
-        });
-      } catch (err) {
-        console.warn('Supabase remote sync warning (using local fallback):', err);
-      }
+    if (insertError) {
+      console.error('Insert student error in Supabase:', insertError);
+      throw new Error(`Gagal menyimpan data pendaftaran ke database: ${insertError.message}`);
     }
 
-    return { user: newUser, student: newStudent };
+    const appUser: User = {
+      id: userId,
+      nik: cleanNik,
+      role: 'student',
+      full_name: cleanNama,
+      email: syntheticEmail,
+      created_at: new Date().toISOString(),
+    };
+
+    return { user: appUser, student: insertedStudent as Student };
   }
 
-  public async login(nik: string, password: string): Promise<{ user: User; student?: Student }> {
-    const cleanNik = nik.trim();
+  /**
+   * User & Admin Login via Supabase Auth
+   */
+  public async login(nikOrUsername: string, password: string): Promise<{ user: User; student?: Student }> {
+    const cleanIdentifier = nikOrUsername.trim();
     const cleanPassword = password.trim();
 
-    // Try Supabase if connected first
+    if (!cleanIdentifier) {
+      throw new Error('Username / NIK wajib diisi.');
+    }
+    if (!cleanPassword) {
+      throw new Error('Password wajib diisi.');
+    }
+
+    if (!this.supabase) {
+      throw new Error(
+        'Koneksi Supabase belum terkonfigurasi. Pastikan VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY telah diatur di Vercel atau panel database.'
+      );
+    }
+
+    const syntheticEmail = this.toSyntheticEmail(cleanIdentifier);
+
+    // 1. Supabase Auth Sign In
+    const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({
+      email: syntheticEmail,
+      password: cleanPassword,
+    });
+
+    if (authError) {
+      // Map error to user-friendly Indonesian explanation
+      if (
+        authError.message.includes('Invalid login credentials') ||
+        authError.message.includes('invalid_grant')
+      ) {
+        throw new Error(
+          'NIK / Username atau Password salah. Periksa kembali data Anda atau hubungi panitia PPDB jika lupa password.'
+        );
+      }
+      throw new Error(`Login gagal: ${authError.message}`);
+    }
+
+    if (!authData.user) {
+      throw new Error('Gagal memverifikasi akun pengguna.');
+    }
+
+    const authUser = authData.user;
+    return await this.fetchUserSessionDetails(authUser);
+  }
+
+  /**
+   * Fetch profile and (if applicable) student data for an authenticated Supabase user
+   */
+  private async fetchUserSessionDetails(authUser: SupabaseAuthUser): Promise<{ user: User; student?: Student }> {
+    if (!this.supabase) throw new Error('Supabase client tidak tersedia.');
+
+    // 1. Fetch Profile
+    const { data: profileData, error: profileErr } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authUser.id)
+      .maybeSingle();
+
+    let userRole: UserRole = 'student';
+    let userNik: string = authUser.user_metadata?.nik || authUser.email || '';
+    let fullName: string = authUser.user_metadata?.full_name || 'Pengguna';
+
+    if (profileData && !profileErr) {
+      userRole = profileData.role as UserRole;
+      if (profileData.nik) userNik = profileData.nik;
+      if (profileData.full_name) fullName = profileData.full_name;
+    } else {
+      // Fallback check metadata
+      if (authUser.user_metadata?.role === 'admin' || authUser.email?.startsWith('admin@')) {
+        userRole = 'admin';
+      }
+    }
+
+    const appUser: User = {
+      id: authUser.id,
+      nik: userNik,
+      role: userRole,
+      full_name: fullName,
+      email: authUser.email || '',
+      created_at: authUser.created_at,
+    };
+
+    // 2. If student, fetch their student record via user_id
+    let studentData: Student | undefined;
+    if (userRole === 'student') {
+      const { data: stdData, error: stdErr } = await this.supabase
+        .from('students')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+
+      if (stdData && !stdErr) {
+        studentData = stdData as Student;
+      } else if (userNik) {
+        // Fallback by NIK
+        const { data: stdByNik } = await this.supabase
+          .from('students')
+          .select('*')
+          .eq('nik', userNik)
+          .maybeSingle();
+        if (stdByNik) studentData = stdByNik as Student;
+      }
+    }
+
+    return { user: appUser, student: studentData };
+  }
+
+  /**
+   * Get active authenticated session from Supabase Auth
+   */
+  public async getCurrentSessionUser(): Promise<{ user: User; student?: Student } | null> {
+    if (!this.supabase) return null;
+
+    try {
+      const { data, error } = await this.supabase.auth.getSession();
+      if (error || !data.session?.user) {
+        return null;
+      }
+      return await this.fetchUserSessionDetails(data.session.user);
+    } catch (err) {
+      console.warn('Error reading Supabase session:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Logout user from Supabase
+   */
+  public async logout(): Promise<void> {
     if (this.supabase) {
       try {
-        const { data: userData, error: userErr } = await this.supabase
-          .from('users')
-          .select('*')
-          .eq('nik', cleanNik)
-          .single();
-
-        if (userData && !userErr) {
-          if (userData.password_hash === cleanPassword) {
-            let studentData: Student | undefined;
-            if (userData.role === 'student') {
-              const { data: sData } = await this.supabase
-                .from('students')
-                .select('*')
-                .eq('nik', cleanNik)
-                .single();
-              if (sData) studentData = sData as Student;
-            }
-            return { user: userData as User, student: studentData };
-          } else {
-            throw new Error('Password salah. Periksa kembali atau hubungi panitia PPDB.');
-          }
-        }
-      } catch (err: any) {
-        // Fallback to local if error wasn't invalid password
-        if (err.message && err.message.includes('Password salah')) {
-          throw err;
-        }
+        await this.supabase.auth.signOut();
+      } catch (err) {
+        console.warn('Supabase signOut error:', err);
       }
     }
-
-    // Local check
-    const users = this.getLocalUsers();
-    // Allow 'admin' or direct match
-    const user = users.find(u => u.nik.toLowerCase() === cleanNik.toLowerCase());
-
-    if (!user) {
-      // Special allowance for demo admin
-      if (cleanNik.toLowerCase() === 'admin' && (cleanPassword === 'admin123' || cleanPassword === 'admin')) {
-        const adminUser: User = {
-          id: 'admin-auto',
-          nik: 'admin',
-          role: 'admin',
-          password_hash: cleanPassword,
-          created_at: new Date().toISOString()
-        };
-        return { user: adminUser };
-      }
-      throw new Error(`NIK / Username "${cleanNik}" tidak ditemukan.`);
-    }
-
-    if (user.password_hash !== cleanPassword) {
-      throw new Error('Password yang Anda masukkan salah. Hubungi panitia jika lupa password.');
-    }
-
-    let student: Student | undefined;
-    if (user.role === 'student') {
-      const students = this.getLocalStudents();
-      student = students.find(s => s.nik === user.nik || s.nomor_pendaftaran === user.nik);
-    }
-
-    return { user, student };
   }
 
-  public getStudentByNik(nik: string): Student | undefined {
-    const students = this.getLocalStudents();
-    return students.find(s => s.nik === nik || s.nomor_pendaftaran === nik);
+  /**
+   * Get student record by user_id
+   */
+  public async getStudentByUserId(userId: string): Promise<Student | null> {
+    if (!this.supabase) return null;
+    const { data, error } = await this.supabase
+      .from('students')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error getStudentByUserId:', error);
+      return null;
+    }
+    return data ? (data as unknown as Student) : null;
   }
 
-  public getAllStudents(): Student[] {
-    return this.getLocalStudents();
+  /**
+   * Get student record by NIK
+   */
+  public async getStudentByNik(nik: string): Promise<Student | null> {
+    if (!this.supabase) return null;
+    const { data, error } = await this.supabase
+      .from('students')
+      .select('*')
+      .eq('nik', nik.trim())
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error getStudentByNik:', error);
+      return null;
+    }
+    return data ? (data as unknown as Student) : null;
   }
 
+  /**
+   * Admin: Get all students with optional filters
+   */
+  public async getAllStudents(filters?: {
+    jurusan?: string;
+    status?: string;
+    search?: string;
+  }): Promise<Student[]> {
+    if (!this.supabase) return [];
+
+    let query = this.supabase
+      .from('students')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (filters?.jurusan && filters.jurusan !== 'ALL') {
+      query = query.eq('jurusan_pilihan', filters.jurusan as JurusanType);
+    }
+
+    if (filters?.status && filters.status !== 'ALL') {
+      query = query.eq('status_pendaftaran', filters.status as StatusPendaftaran);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('Error getAllStudents:', error);
+      throw new Error(`Gagal memuat data pendaftar dari Supabase: ${error.message}`);
+    }
+
+    return (data as Student[]) || [];
+  }
+
+  /**
+   * Update Student Data Diri
+   */
   public async updateStudentDataDiri(
     nik: string,
     dataDiri: Partial<Student['data_diri']>,
@@ -543,172 +622,202 @@ class DatabaseService {
     ukuranBaju?: string,
     kodeReferal?: string
   ): Promise<Student> {
-    const students = this.getLocalStudents();
-    const idx = students.findIndex(s => s.nik === nik || s.nomor_pendaftaran === nik);
-    if (idx === -1) throw new Error('Data calon peserta didik tidak ditemukan.');
+    if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
 
-    const updated = { ...students[idx] };
-    updated.data_diri = {
-      ...updated.data_diri,
+    // Fetch existing student record
+    const existing = await this.getStudentByNik(nik);
+    if (!existing) throw new Error('Data calon peserta didik tidak ditemukan.');
+
+    const mergedDataDiri = {
+      ...existing.data_diri,
       ...dataDiri,
-      ukuran_baju: ukuranBaju || updated.data_diri?.ukuran_baju,
-      kode_referal: kodeReferal || updated.data_diri?.kode_referal,
+      ukuran_baju: ukuranBaju || existing.data_diri?.ukuran_baju,
+      kode_referal: kodeReferal || existing.data_diri?.kode_referal,
     };
-    if (jurusan) {
-      updated.jurusan_pilihan = jurusan;
-    }
-    if (dataDiri.nama_lengkap) {
-      updated.nama_lengkap = dataDiri.nama_lengkap;
-    }
-    if (dataDiri.no_hp) {
-      updated.no_wa = dataDiri.no_hp;
+
+    const updatePayload: Partial<Student> = {
+      data_diri: mergedDataDiri,
+    };
+
+    if (jurusan) updatePayload.jurusan_pilihan = jurusan;
+    if (dataDiri.nama_lengkap) updatePayload.nama_lengkap = dataDiri.nama_lengkap;
+    if (dataDiri.no_hp) updatePayload.no_wa = dataDiri.no_hp;
+
+    const { data, error } = await this.supabase
+      .from('students')
+      .update(updatePayload)
+      .eq('nik', nik.trim())
+      .select()
+      .single();
+
+    if (error) {
+      console.error('updateStudentDataDiri error:', error);
+      throw new Error(`Gagal memperbarui data diri ke Supabase: ${error.message}`);
     }
 
-    students[idx] = updated;
-    this.saveLocalStudents(students);
-
-    if (this.supabase) {
-      try {
-        await this.supabase
-          .from('students')
-          .update({
-            nama_lengkap: updated.nama_lengkap,
-            jurusan_pilihan: updated.jurusan_pilihan,
-            no_wa: updated.no_wa,
-            data_diri: updated.data_diri,
-          })
-          .eq('nik', updated.nik);
-      } catch (err) {
-        console.warn('Supabase update warning:', err);
-      }
-    }
-
-    return updated;
+    return data as Student;
   }
 
+  /**
+   * Update Student Data Alamat
+   */
   public async updateStudentDataAlamat(nik: string, dataAlamat: Student['data_alamat']): Promise<Student> {
-    const students = this.getLocalStudents();
-    const idx = students.findIndex(s => s.nik === nik || s.nomor_pendaftaran === nik);
-    if (idx === -1) throw new Error('Data calon peserta didik tidak ditemukan.');
+    if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
 
-    students[idx].data_alamat = { ...students[idx].data_alamat, ...dataAlamat };
-    this.saveLocalStudents(students);
+    const existing = await this.getStudentByNik(nik);
+    if (!existing) throw new Error('Data calon peserta didik tidak ditemukan.');
 
-    if (this.supabase) {
-      try {
-        await this.supabase
-          .from('students')
-          .update({ data_alamat: students[idx].data_alamat })
-          .eq('nik', students[idx].nik);
-      } catch (err) {
-        console.warn('Supabase update warning:', err);
-      }
+    const mergedAlamat = { ...existing.data_alamat, ...dataAlamat };
+
+    const { data, error } = await this.supabase
+      .from('students')
+      .update({ data_alamat: mergedAlamat })
+      .eq('nik', nik.trim())
+      .select()
+      .single();
+
+    if (error) {
+      console.error('updateStudentDataAlamat error:', error);
+      throw new Error(`Gagal memperbarui data alamat ke Supabase: ${error.message}`);
     }
 
-    return students[idx];
+    return data as Student;
   }
 
+  /**
+   * Update Student Data Orang Tua
+   */
   public async updateStudentDataOrangTua(nik: string, dataOrangTua: Student['data_orang_tua']): Promise<Student> {
-    const students = this.getLocalStudents();
-    const idx = students.findIndex(s => s.nik === nik || s.nomor_pendaftaran === nik);
-    if (idx === -1) throw new Error('Data calon peserta didik tidak ditemukan.');
+    if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
 
-    students[idx].data_orang_tua = { ...students[idx].data_orang_tua, ...dataOrangTua };
-    this.saveLocalStudents(students);
+    const existing = await this.getStudentByNik(nik);
+    if (!existing) throw new Error('Data calon peserta didik tidak ditemukan.');
 
-    if (this.supabase) {
-      try {
-        await this.supabase
-          .from('students')
-          .update({ data_orang_tua: students[idx].data_orang_tua })
-          .eq('nik', students[idx].nik);
-      } catch (err) {
-        console.warn('Supabase update warning:', err);
-      }
+    const mergedOrtu = { ...existing.data_orang_tua, ...dataOrangTua };
+
+    const { data, error } = await this.supabase
+      .from('students')
+      .update({ data_orang_tua: mergedOrtu })
+      .eq('nik', nik.trim())
+      .select()
+      .single();
+
+    if (error) {
+      console.error('updateStudentDataOrangTua error:', error);
+      throw new Error(`Gagal memperbarui data orang tua ke Supabase: ${error.message}`);
     }
 
-    return students[idx];
+    return data as Student;
   }
 
+  /**
+   * Update Student Data Berkas
+   */
   public async updateStudentDataBerkas(nik: string, dataBerkas: Student['data_berkas']): Promise<Student> {
-    const students = this.getLocalStudents();
-    const idx = students.findIndex(s => s.nik === nik || s.nomor_pendaftaran === nik);
-    if (idx === -1) throw new Error('Data calon peserta didik tidak ditemukan.');
+    if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
 
-    students[idx].data_berkas = { ...students[idx].data_berkas, ...dataBerkas };
-    
-    // Automatically promote status if all files/forms ready
-    if (students[idx].status_pendaftaran === 'Belum Lengkap' || students[idx].status_pendaftaran === 'Berkas Fisik') {
-      students[idx].status_pendaftaran = 'Menunggu Verifikasi';
+    const existing = await this.getStudentByNik(nik);
+    if (!existing) throw new Error('Data calon peserta didik tidak ditemukan.');
+
+    const mergedBerkas = { ...existing.data_berkas, ...dataBerkas };
+
+    let nextStatus = existing.status_pendaftaran;
+    if (nextStatus === 'Belum Lengkap' || nextStatus === 'Berkas Fisik') {
+      nextStatus = 'Menunggu Verifikasi';
     }
 
-    this.saveLocalStudents(students);
+    const { data, error } = await this.supabase
+      .from('students')
+      .update({
+        data_berkas: mergedBerkas,
+        status_pendaftaran: nextStatus,
+      })
+      .eq('nik', nik.trim())
+      .select()
+      .single();
 
-    if (this.supabase) {
-      try {
-        await this.supabase
-          .from('students')
-          .update({
-            data_berkas: students[idx].data_berkas,
-            status_pendaftaran: students[idx].status_pendaftaran,
-          })
-          .eq('nik', students[idx].nik);
-      } catch (err) {
-        console.warn('Supabase update warning:', err);
-      }
+    if (error) {
+      console.error('updateStudentDataBerkas error:', error);
+      throw new Error(`Gagal memperbarui berkas ke Supabase: ${error.message}`);
     }
 
-    return students[idx];
+    return data as Student;
   }
 
+  /**
+   * Admin: Update Student Status
+   */
   public async updateStudentStatus(nik: string, status: StatusPendaftaran, catatan?: string): Promise<Student> {
-    const students = this.getLocalStudents();
-    const idx = students.findIndex(s => s.nik === nik || s.nomor_pendaftaran === nik);
-    if (idx === -1) throw new Error('Data calon peserta didik tidak ditemukan.');
+    if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
 
-    students[idx].status_pendaftaran = status;
+    const payload: Partial<Student> = {
+      status_pendaftaran: status,
+    };
     if (catatan !== undefined) {
-      students[idx].catatan_admin = catatan;
-    }
-    this.saveLocalStudents(students);
-
-    if (this.supabase) {
-      try {
-        await this.supabase
-          .from('students')
-          .update({
-            status_pendaftaran: status,
-            catatan_admin: catatan,
-          })
-          .eq('nik', students[idx].nik);
-      } catch (err) {
-        console.warn('Supabase update warning:', err);
-      }
+      payload.catatan_admin = catatan;
     }
 
-    return students[idx];
+    const { data, error } = await this.supabase
+      .from('students')
+      .update(payload)
+      .eq('nik', nik.trim())
+      .select()
+      .single();
+
+    if (error) {
+      console.error('updateStudentStatus error:', error);
+      throw new Error(`Gagal memperbarui status pendaftar: ${error.message}`);
+    }
+
+    return data as Student;
   }
 
+  /**
+   * Admin: Delete Student
+   */
   public async deleteStudent(nik: string): Promise<void> {
-    const students = this.getLocalStudents().filter(s => s.nik !== nik && s.nomor_pendaftaran !== nik);
-    const users = this.getLocalUsers().filter(u => u.nik !== nik);
-    this.saveLocalStudents(students);
-    this.saveLocalUsers(users);
+    if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
 
-    if (this.supabase) {
-      try {
-        await this.supabase.from('students').delete().eq('nik', nik);
-        await this.supabase.from('users').delete().eq('nik', nik);
-      } catch (err) {
-        console.warn('Supabase delete warning:', err);
-      }
+    const { error } = await this.supabase
+      .from('students')
+      .delete()
+      .eq('nik', nik.trim());
+
+    if (error) {
+      console.error('deleteStudent error:', error);
+      throw new Error(`Gagal menghapus pendaftar dari Supabase: ${error.message}`);
     }
   }
 
-  public getPembayaran(nik: string): Pembayaran[] {
-    const key = `pembayaran_${nik}`;
-    const stored = localStorage.getItem(key);
-    if (!stored) {
+  /**
+   * Realtime Subscription: Subscribe to changes in students table
+   */
+  public subscribeToStudents(callback: () => void): () => void {
+    if (!this.supabase) return () => {};
+
+    const channel = this.supabase
+      .channel('public-students-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'students' },
+        () => {
+          callback();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (this.supabase) {
+        this.supabase.removeChannel(channel);
+      }
+    };
+  }
+
+  /**
+   * Pembayaran: Fetch payments for student
+   */
+  public async getPembayaran(nik: string): Promise<Pembayaran[]> {
+    if (!this.supabase) {
       return [
         {
           id: 'pay-1',
@@ -719,21 +828,52 @@ class DatabaseService {
           status: 'Lunas',
           tanggal_bayar: '25-09-2026',
           keterangan: 'Biaya Seragam & Atribut Sekolah (Gelombang 1 Bebas Formulir)',
-        }
+        },
       ];
     }
-    try {
-      return JSON.parse(stored);
-    } catch {
-      return [];
+
+    const { data, error } = await this.supabase
+      .from('pembayaran')
+      .select('*')
+      .eq('nik', nik.trim());
+
+    if (error || !data || data.length === 0) {
+      return [
+        {
+          id: 'pay-1',
+          student_id: nik,
+          nik: nik,
+          nominal: 350000,
+          metode: 'Transfer Bank Jateng / Loket Sekolah',
+          status: 'Lunas',
+          tanggal_bayar: '25-09-2026',
+          keterangan: 'Biaya Seragam & Atribut Sekolah (Gelombang 1 Bebas Formulir)',
+        },
+      ];
     }
+
+    return data as Pembayaran[];
   }
 
-  public savePembayaran(pembayaran: Pembayaran) {
-    const key = `pembayaran_${pembayaran.nik}`;
-    const existing = this.getPembayaran(pembayaran.nik);
-    existing.push(pembayaran);
-    localStorage.setItem(key, JSON.stringify(existing));
+  /**
+   * Pembayaran: Save payment record
+   */
+  public async savePembayaran(pembayaran: Omit<Pembayaran, 'id'>): Promise<Pembayaran> {
+    if (!this.supabase) {
+      throw new Error('Supabase client tidak terhubung.');
+    }
+
+    const { data, error } = await this.supabase
+      .from('pembayaran')
+      .insert(pembayaran)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Gagal menyimpan bukti pembayaran: ${error.message}`);
+    }
+
+    return data as Pembayaran;
   }
 }
 

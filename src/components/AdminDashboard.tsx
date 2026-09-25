@@ -55,11 +55,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const config = dbService.getStoredSupabaseConfig();
     setSupabaseUrl(config.url);
     setSupabaseKey(config.key);
+
+    // Subscribe to Supabase Realtime changes on students table
+    const unsubscribe = dbService.subscribeToStudents(() => {
+      loadStudents();
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
-  const loadStudents = () => {
-    const list = dbService.getAllStudents();
-    setStudents([...list]);
+  const loadStudents = async () => {
+    try {
+      const list = await dbService.getAllStudents();
+      setStudents(list);
+    } catch (err: any) {
+      console.error('Error loading students:', err);
+      showToast(err.message || 'Gagal memuat data pendaftar dari Supabase');
+    }
   };
 
   const showToast = (msg: string) => {
@@ -151,10 +165,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     document.body.removeChild(link);
   };
 
-  const handleSaveDbConfig = () => {
+  const handleSaveDbConfig = async () => {
     dbService.saveSupabaseConfig(supabaseUrl.trim(), supabaseKey.trim());
     showToast('Konfigurasi Supabase berhasil disimpan!');
     setShowDbModal(false);
+    await loadStudents();
   };
 
   const handleCopySchema = () => {
