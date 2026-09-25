@@ -545,6 +545,135 @@ class DatabaseService {
   }
 
   /**
+   * Subscribe to Supabase Auth state changes with proper cleanup
+   */
+  public onAuthStateChange(
+    callback: (sessionUser: { user: User; student?: Student } | null) => void
+  ): () => void {
+    if (!this.supabase) return () => {};
+
+    const {
+      data: { subscription },
+    } = this.supabase.auth.onAuthStateChange(async (_event, session) => {
+      try {
+        if (session?.user) {
+          const details = await this.fetchUserSessionDetails(session.user);
+          callback(details);
+        } else {
+          callback(null);
+        }
+      } catch (e) {
+        console.warn('Auth state change processing notice:', e);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }
+
+  /**
+   * Migrate / Import Legacy JSON Data into Supabase with duplicate check and validation
+   * Flow: JSON -> Validation -> Normalization -> Check duplicate NIK -> Supabase -> Report
+   */
+  public async importLegacyStudents(rawItems: any[]): Promise<{
+    total: number;
+    success: number;
+    skipped: number;
+    errors: string[];
+  }> {
+    if (!this.supabase) {
+      throw new Error('Supabase client tidak terhubung.');
+    }
+
+    const report = {
+      total: rawItems.length,
+      success: 0,
+      skipped: 0,
+      errors: [] as string[],
+    };
+
+    for (const item of rawItems) {
+      try {
+        const rawNik = String(item.nik || item.data_diri?.nik || '').trim();
+        if (!rawNik || rawNik.length < 10) {
+          report.errors.push(`Data dilewati: NIK "${rawNik}" tidak valid.`);
+          report.skipped++;
+          continue;
+        }
+
+        // Check duplicate
+        const { data: existing } = await this.supabase
+          .from('students')
+          .select('nik')
+          .eq('nik', rawNik)
+          .maybeSingle();
+
+        if (existing) {
+          report.skipped++;
+          continue;
+        }
+
+        const syntheticEmail = this.toSyntheticEmail(rawNik);
+        const namaLengkap = String(item.nama_lengkap || item.data_diri?.nama_lengkap || 'Calon Siswa').trim();
+
+        // 1. Create or ensure Auth user
+        let userId = item.user_id;
+        if (!userId) {
+          const { data: authData } = await this.supabase.auth.signUp({
+            email: syntheticEmail,
+            password: `Muhiba@${rawNik.slice(-6)}`,
+            options: {
+              data: {
+                nik: rawNik,
+                full_name: namaLengkap,
+                role: 'student',
+              },
+            },
+          });
+          userId = authData?.user?.id;
+        }
+
+        if (!userId) {
+          userId = '00000000-0000-0000-0000-' + rawNik.slice(-12).padStart(12, '0');
+        }
+
+        const nomorPendaftaran = item.nomor_pendaftaran || String(Date.now()).slice(-7);
+        const tanggalDaftar = item.tanggal_daftar || new Date().toISOString();
+
+        // 2. Insert into students table
+        const { error: insErr } = await this.supabase.from('students').insert({
+          user_id: userId,
+          nik: rawNik,
+          nama_lengkap: namaLengkap,
+          jurusan_pilihan: item.jurusan_pilihan || 'TO',
+          no_wa: String(item.no_wa || item.data_diri?.no_hp || '080000000000'),
+          status_pendaftaran: item.status_pendaftaran || 'Berkas Fisik',
+          nomor_pendaftaran: nomorPendaftaran,
+          tanggal_daftar: tanggalDaftar,
+          catatan_admin: item.catatan_admin || null,
+          data_diri: item.data_diri || {},
+          data_alamat: item.data_alamat || {},
+          data_orang_tua: item.data_orang_tua || {},
+          data_berkas: item.data_berkas || {},
+        });
+
+        if (insErr) {
+          report.errors.push(`NIK ${rawNik}: ${insErr.message}`);
+          report.skipped++;
+        } else {
+          report.success++;
+        }
+      } catch (err: any) {
+        report.errors.push(`Error parsing item: ${err.message}`);
+        report.skipped++;
+      }
+    }
+
+    return report;
+  }
+
+  /**
    * Get student record by user_id
    */
   public async getStudentByUserId(userId: string): Promise<Student | null> {

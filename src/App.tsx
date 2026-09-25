@@ -13,9 +13,11 @@ export default function App() {
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
   const [activeView, setActiveView] = useState<'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard'>('home');
 
-  // Check persisted Supabase Auth session
+  // Check persisted Supabase Auth session & listen to auth state changes
   useEffect(() => {
     let isMounted = true;
+
+    // 1. Initial session check on mount
     const restoreSession = async () => {
       try {
         const sessionData = await dbService.getCurrentSessionUser();
@@ -33,10 +35,29 @@ export default function App() {
         console.warn('Session restore warning:', err);
       }
     };
-
     restoreSession();
+
+    // 2. Realtime listener for Auth changes (login, logout, token refresh)
+    const unsubscribeAuth = dbService.onAuthStateChange((sessionData) => {
+      if (!isMounted) return;
+      if (sessionData) {
+        setCurrentUser(sessionData.user);
+        if (sessionData.student) {
+          setCurrentStudent(sessionData.student);
+          setActiveView((prev) => (prev === 'login' || prev === 'portal' ? 'student-dashboard' : prev));
+        } else if (sessionData.user.role === 'admin') {
+          setCurrentStudent(null);
+          setActiveView((prev) => (prev === 'login' || prev === 'portal' ? 'admin-dashboard' : prev));
+        }
+      } else {
+        setCurrentUser(null);
+        setCurrentStudent(null);
+      }
+    });
+
     return () => {
       isMounted = false;
+      unsubscribeAuth();
     };
   }, []);
 

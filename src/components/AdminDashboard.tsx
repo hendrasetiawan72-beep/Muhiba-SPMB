@@ -17,7 +17,8 @@ import {
   AlertCircle,
   ExternalLink,
   Save,
-  Printer
+  Printer,
+  Upload
 } from 'lucide-react';
 import { Student, User, StatusPendaftaran, JurusanType } from '../types/database';
 import { dbService, SUPABASE_SQL_SCHEMA } from '../services/supabase';
@@ -49,6 +50,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [supabaseKey, setSupabaseKey] = useState('');
   const [copiedSchema, setCopiedSchema] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
 
   useEffect(() => {
     loadStudents();
@@ -176,6 +178,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
     setCopiedSchema(true);
     setTimeout(() => setCopiedSchema(false), 2000);
+  };
+
+  const handleImportJsonFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportLoading(true);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+      const report = await dbService.importLegacyStudents(items);
+      await loadStudents();
+      showToast(`Migrasi Selesai: ${report.success} pendaftar baru tersimpan, ${report.skipped} dilewati.`);
+    } catch (err: any) {
+      alert(`Gagal membaca atau memproses berkas JSON: ${err.message}`);
+    } finally {
+      setImportLoading(false);
+      e.target.value = '';
+    }
   };
 
   return (
@@ -702,6 +724,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   Simpan Konfigurasi Supabase
                 </button>
               </div>
+            </div>
+
+            {/* Legacy Data Migration / Importer */}
+            <div className="pt-3 border-t">
+              <h4 className="text-xs font-bold text-slate-900 uppercase mb-1">
+                Migrasi / Import Data Siswa Lama (JSON)
+              </h4>
+              <p className="text-[11px] text-slate-500 mb-2">
+                Import berkas cadangan data siswa lama ke Supabase dengan validasi format dan filter pencegahan duplikasi NIK otomatis.
+              </p>
+              <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded border border-slate-300 cursor-pointer transition-colors">
+                <Upload className="w-3.5 h-3.5 text-blue-600" />
+                <span>{importLoading ? 'Memproses Migrasi...' : 'Pilih Berkas JSON Data Siswa'}</span>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportJsonFile}
+                  disabled={importLoading}
+                  className="hidden"
+                />
+              </label>
             </div>
 
             {/* SQL Script Viewer */}
