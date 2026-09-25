@@ -168,8 +168,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             }}
           />
 
-          {/* TikTok Dynamic Video Overlay Embed (or iframe with clean scrim) */}
-          <div className="absolute inset-0 w-full h-full opacity-60 mix-blend-luminosity scale-110 pointer-events-none overflow-hidden">
+          {/* TikTok Dynamic Video Overlay Embed with reduced opacity scrim */}
+          <div className="absolute inset-0 w-full h-full opacity-85 scale-105 pointer-events-none overflow-hidden">
             <iframe
               src="https://www.tiktok.com/player/v1/7462604408816225541?autoplay=1&muted=1&controls=0&loop=1"
               title="TikTok Video Background SMK Muhiba"
@@ -178,8 +178,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             />
           </div>
 
-          {/* Measured Scrim & Subtle Halftone Circles Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-900/85 to-blue-950/75 z-10" />
+          {/* Reduced Scrim: Much lighter opacity so video is clearly visible */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/45 to-blue-950/30 z-10" />
           
           {/* Halftone patterned decorative rings as seen in screenshot */}
           <div className="absolute right-0 bottom-0 w-[500px] h-[500px] pointer-events-none opacity-20 z-10">
@@ -197,12 +197,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
             {/* Left Column: Heading & Primary Action */}
-            <div className="lg:col-span-7 space-y-6 text-white">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-semibold tracking-wider uppercase">
-                <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                <span>Penerimaan Peserta Didik Baru (PPDB) 2026/2027</span>
-              </div>
-
+            <div className="lg:col-span-7 space-y-6 text-white drop-shadow-md">
               <div className="space-y-2">
                 <p className="text-lg sm:text-xl text-blue-200 font-medium tracking-wide">
                   Welcome To Our School
