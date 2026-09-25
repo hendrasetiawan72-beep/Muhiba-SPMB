@@ -43,18 +43,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     }
   };
 
-  const fillDemoStudent = () => {
-    setUsernameNik('3325028202892999');
-    setPassword('12345');
-    setErrorMessage('');
-  };
-
-  const fillDemoAdmin = () => {
-    setUsernameNik('admin');
-    setPassword('admin123');
-    setErrorMessage('');
-  };
-
   return (
     <div className="min-h-screen bg-slate-100 py-10 px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
       <div className="max-w-4xl mx-auto w-full space-y-6">
@@ -139,30 +127,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               </div>
             </form>
 
-            {/* Quick Demo Login Fillers */}
-            <div className="mt-8 pt-6 border-t border-slate-100">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                Tombol Uji Coba Cepat (Demo):
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={fillDemoStudent}
-                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-[11px] font-semibold transition-colors border border-blue-200"
-                >
-                  Demo Siswa: Eko Juniarto
-                </button>
-                <button
-                  type="button"
-                  onClick={fillDemoAdmin}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded text-[11px] font-semibold transition-colors border border-slate-300"
-                >
-                  Demo Admin PPDB: admin
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-5 text-center">
+            <div className="mt-8 text-center">
               <button
                 type="button"
                 onClick={onNavigateRegister}
