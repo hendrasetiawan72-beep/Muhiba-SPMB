@@ -1,0 +1,6 @@
+{
+  "name": "SPDB SMK Muhammadiyah Bawang",
+  "description": "Sistem Penerimaan Peserta Didik Baru (SPDB) SMK Muhammadiyah Bawang (SMK Muhiba) - Pendaftaran Online, Jurusan TO, TJKT, AKL, dan Dashboard Siswa & Admin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
