@@ -67,13 +67,18 @@ function getInternalAuthEmail(nik: string): string {
  */
 app.post('/api/auth/register', async (req: Request, res: Response) => {
   try {
-    const { nik, nama_lengkap, jurusan_pilihan, no_wa, password } = req.body;
+    const rawNik = req.body?.nik ?? '';
+    const rawNama = req.body?.nama ?? req.body?.nama_lengkap ?? '';
+    const rawJurusan = req.body?.jurusan ?? req.body?.jurusan_pilihan ?? '';
+    const rawWa = req.body?.whatsapp ?? req.body?.no_wa ?? '';
+    const rawPassword = req.body?.password ?? '';
 
     // 1. Validation
-    const cleanNik = String(nik || '').trim().replace(/\D/g, '');
-    const cleanNama = String(nama_lengkap || '').trim();
-    const cleanNoWa = String(no_wa || '').trim();
-    const cleanPassword = String(password || '').trim();
+    const cleanNik = String(rawNik || '').trim().replace(/\D/g, '');
+    const cleanNama = String(rawNama || '').trim();
+    const cleanJurusan = String(rawJurusan || '').trim().toUpperCase();
+    const cleanNoWa = String(rawWa || '').trim();
+    const cleanPassword = String(rawPassword || '').trim();
 
     if (!/^\d{16}$/.test(cleanNik)) {
       return res.status(400).json({ error: 'NIK harus terdiri dari 16 digit angka sesuai KTP / Kartu Keluarga.' });
@@ -81,7 +86,7 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
     if (!cleanNama) {
       return res.status(400).json({ error: 'Nama lengkap wajib diisi.' });
     }
-    if (!['TO', 'TJKT', 'AKL'].includes(jurusan_pilihan)) {
+    if (!['TO', 'TJKT', 'AKL'].includes(cleanJurusan)) {
       return res.status(400).json({ error: 'Pilihan jurusan tidak valid.' });
     }
     if (cleanPassword.length < 6) {
@@ -162,7 +167,7 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
         user_id: userId,
         nik: cleanNik,
         nama_lengkap: cleanNama,
-        jurusan_pilihan,
+        jurusan_pilihan: cleanJurusan,
         no_wa: cleanNoWa,
         status_pendaftaran: 'Berkas Fisik',
         nomor_pendaftaran: nomorPendaftaran,

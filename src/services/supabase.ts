@@ -300,143 +300,196 @@ class DatabaseService {
    * Enforces strict Content-Type verification, safe JSON parsing, and non-sensitive logging.
    * Completely avoids "Unexpected token <char>... is not valid JSON" errors.
    */
+  /**
+   * Safely invoke backend / Edge Function authentication endpoints.
+   * Handles:
+   * 1. supabase.functions.invoke('auth-nik', { body: { action, ... } })
+   * 2. Direct HTTP call to /api/auth/{action} (Vercel Serverless / Express dev server)
+   * 3. Clear differentiation of FunctionsHttpError, FunctionsFetchError, FunctionsRelayError, and 404s
+   * 4. Completely avoids "Unexpected token <char>... is not valid JSON" and bare "Failed to fetch"
+   */
   private async safePostAuthApi<T>(
     endpointPath: string,
     edgeAction: 'register' | 'login',
     payload: Record<string, any>
   ): Promise<T> {
-    // Endpoints to attempt in order:
-    // 1. Primary endpoint (Vercel Serverless Function or Express server, e.g. /api/auth/register)
-    // 2. Supabase Edge Function fallback (/functions/v1/auth-nik/register or /functions/v1/auth-nik)
-    const candidates: { url: string; isEdge: boolean }[] = [
-      { url: endpointPath, isEdge: false },
-    ];
+    const actionName = edgeAction;
+    console.info(`[AuthAPI] Initiating auth request for action: "${actionName}"`);
 
-    if (this.currentUrl) {
-      candidates.push({
-        url: `${this.currentUrl}/functions/v1/auth-nik/${edgeAction}`,
-        isEdge: true,
-      });
-      candidates.push({
-        url: `${this.currentUrl}/functions/v1/auth-nik`,
-        isEdge: true,
-      });
-    }
+    // Standardized payload format compatible with both Edge Function and Vercel route
+    const standardBody = {
+      action: actionName,
+      ...payload,
+      // Field aliases for compatibility
+      nik: payload.nik,
+      nama: payload.nama || payload.nama_lengkap,
+      nama_lengkap: payload.nama_lengkap || payload.nama,
+      jurusan: payload.jurusan || payload.jurusan_pilihan,
+      jurusan_pilihan: payload.jurusan_pilihan || payload.jurusan,
+      whatsapp: payload.whatsapp || payload.no_wa,
+      no_wa: payload.no_wa || payload.whatsapp,
+    };
 
-    let lastError: Error | null = null;
+    let edgeFunctionError: string | null = null;
 
-    for (let i = 0; i < candidates.length; i++) {
-      const candidate = candidates[i];
-      const targetUrl = candidate.url;
-
+    // ATTEMPT 1: Primary pattern with supabase.functions.invoke('auth-nik')
+    if (this.supabase && this.supabase.functions) {
       try {
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        };
-
-        if (candidate.isEdge && this.currentAnonKey) {
-          headers['apikey'] = this.currentAnonKey;
-          headers['Authorization'] = `Bearer ${this.currentAnonKey}`;
-        }
-
-        const bodyToSend = candidate.isEdge
-          ? { ...payload, action: edgeAction }
-          : payload;
-
-        // SAFE LOGGING (Instruction 12): Only log URL, method. NEVER log password or tokens!
-        console.info(`[AuthAPI] Calling endpoint: ${targetUrl} (action: ${edgeAction})`);
-
-        const response = await fetch(targetUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(bodyToSend),
+        console.info(`[AuthAPI] Attempting supabase.functions.invoke('auth-nik', { action: '${actionName}' })`);
+        const { data, error } = await this.supabase.functions.invoke('auth-nik', {
+          body: standardBody,
         });
 
-        const contentType = response.headers.get('content-type') || '';
-        const status = response.status;
+        if (error) {
+          console.warn('[AuthAPI] supabase.functions.invoke returned error object:', error);
+          const errName = error.name || '';
+          const errMsg = error.message || '';
 
-        // SAFE LOGGING: URL, HTTP status, and Content-Type
-        console.info(`[AuthAPI] Response ${targetUrl} -> status: ${status}, content-type: ${contentType}`);
-
-        if (!response.ok) {
-          const raw = await response.text();
-          let message = '';
-
-          if (contentType.includes('application/json')) {
+          // Differentiate Supabase Functions Error types:
+          // FunctionsHttpError: Server responded with status code 4xx/5xx
+          // FunctionsRelayError: Relay or proxy server error
+          // FunctionsFetchError: Network failure or Edge Function not deployed (Failed to fetch)
+          if (errName === 'FunctionsHttpError' || (error as any).context) {
+            let parsedMessage = errMsg;
             try {
-              const parsed = JSON.parse(raw);
-              message = parsed.error || parsed.message || '';
+              const ctx = (error as any).context;
+              if (ctx && typeof ctx.json === 'function') {
+                const bodyJson = await ctx.json();
+                parsedMessage = bodyJson.error || bodyJson.message || errMsg;
+              }
             } catch {
-              message = raw;
+              // keep parsedMessage as errMsg
             }
+
+            // If it's a definitive validation or business error from the function, throw immediately
+            if (
+              parsedMessage.includes('sudah terdaftar') ||
+              parsedMessage.includes('16 digit') ||
+              parsedMessage.includes('Password') ||
+              parsedMessage.includes('salah') ||
+              parsedMessage.includes('wajib')
+            ) {
+              throw new Error(parsedMessage);
+            }
+            edgeFunctionError = parsedMessage;
+          } else if (errName === 'FunctionsFetchError' || errMsg.includes('Failed to send a request') || errMsg.includes('Failed to fetch')) {
+            edgeFunctionError = 'Edge Function "auth-nik" belum aktif atau belum di-deploy di Supabase Dashboard.';
+            console.warn('[AuthAPI] Edge Function auth-nik appears not deployed or unreachable:', errMsg);
+          } else if (errName === 'FunctionsRelayError') {
+            edgeFunctionError = `Supabase Relay Error: ${errMsg}`;
           } else {
-            // Non-JSON response (e.g. HTML 404 or 502 from Vercel / CDN / proxy)
-            console.warn(`[AuthAPI] Non-JSON error body received from ${targetUrl} (status ${status}):`, raw.slice(0, 150));
-            if (status === 404) {
-              message = `Endpoint registrasi tidak ditemukan (${targetUrl} - HTTP 404).`;
-            } else if (status >= 500) {
-              message = `Server backend mengalami gangguan (HTTP ${status}).`;
-            } else {
-              message = `Request gagal dengan status ${status}.`;
-            }
+            edgeFunctionError = errMsg || 'Gagal memanggil Edge Function auth-nik.';
           }
-
-          // If this candidate returned 404 and we have more candidates, fallback to the next candidate
-          if (status === 404 && i < candidates.length - 1) {
-            console.info(`[AuthAPI] Candidate ${targetUrl} not available (404), falling back to alternative endpoint...`);
-            lastError = new Error(message);
-            continue;
+        } else if (data) {
+          if (data.success === false && data.error) {
+            throw new Error(data.error);
           }
-
-          throw new Error(message || `Request gagal (${status})`);
+          console.info(`[AuthAPI] supabase.functions.invoke('auth-nik') succeeded`);
+          return data as T;
         }
-
-        // Response status is 200/201 OK
-        const raw = await response.text();
-
-        // Check if content-type is HTML despite 200 OK (e.g. Vite SPA fallback routing to index.html)
-        if (!contentType.includes('application/json')) {
-          console.warn(`[AuthAPI] Expected application/json but received ${contentType} from ${targetUrl}:`, raw.slice(0, 150));
-          if (i < candidates.length - 1) {
-            console.info(`[AuthAPI] Endpoint returned HTML fallback, trying next candidate...`);
-            lastError = new Error(`Endpoint ${targetUrl} mengembalikan halaman HTML bukan data JSON.`);
-            continue;
-          }
-          throw new Error(
-            `Pendaftaran gagal: Endpoint ${targetUrl} mengembalikan format halaman web (${contentType}) bukan respons JSON server. Pastikan Vercel API Route atau Supabase Edge Function telah di-deploy.`
-          );
-        }
-
-        let data: any;
-        try {
-          data = raw ? JSON.parse(raw) : {};
-        } catch (parseErr) {
-          console.warn(`[AuthAPI] JSON.parse failed on response from ${targetUrl}:`, raw.slice(0, 150));
-          throw new Error('Server mengembalikan respons yang bukan JSON valid.');
-        }
-
-        if (data.success === false && data.error) {
-          throw new Error(data.error);
-        }
-
-        return data as T;
-      } catch (candidateErr: any) {
-        lastError = candidateErr;
-        // Do not fallback if the error is a definitive user/business error
+      } catch (invokeErr: any) {
+        // If it's already a clean business error thrown above, rethrow
         if (
-          candidateErr.message?.includes('sudah terdaftar') ||
-          candidateErr.message?.includes('16 digit') ||
-          candidateErr.message?.includes('Password') ||
-          candidateErr.message?.includes('salah') ||
-          candidateErr.message?.includes('wajib diisi')
+          invokeErr.message?.includes('sudah terdaftar') ||
+          invokeErr.message?.includes('16 digit') ||
+          invokeErr.message?.includes('Password') ||
+          invokeErr.message?.includes('salah') ||
+          invokeErr.message?.includes('wajib')
         ) {
-          throw candidateErr;
+          throw invokeErr;
         }
+        edgeFunctionError = invokeErr.message || 'Error saat invoke Edge Function auth-nik.';
       }
     }
 
-    throw lastError || new Error(`Gagal menghubungi server autentikasi (${endpointPath}).`);
+    // ATTEMPT 2: Fallback to direct HTTP endpoint (e.g. /api/auth/register or /api/auth/login on Vercel / Express)
+    console.info(`[AuthAPI] Attempting fallback HTTP route: ${endpointPath}`);
+    try {
+      const response = await fetch(endpointPath, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(standardBody),
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+      const status = response.status;
+      console.info(`[AuthAPI] Response from ${endpointPath} -> status: ${status}, content-type: ${contentType}`);
+
+      if (!response.ok) {
+        const raw = await response.text();
+        let message = '';
+
+        if (contentType.includes('application/json')) {
+          try {
+            const parsed = JSON.parse(raw);
+            message = parsed.error || parsed.message || '';
+          } catch {
+            message = raw;
+          }
+        } else {
+          console.warn(`[AuthAPI] Non-JSON error from ${endpointPath} (status ${status}):`, raw.slice(0, 150));
+          if (status === 404) {
+            message = `Endpoint server "${endpointPath}" tidak ditemukan (HTTP 404).`;
+          } else if (status >= 500) {
+            message = `Server backend mengalami gangguan (HTTP ${status}).`;
+          } else {
+            message = `Request gagal dengan status ${status}.`;
+          }
+        }
+
+        throw new Error(message || `Request gagal (${status})`);
+      }
+
+      // Check if response is JSON
+      const raw = await response.text();
+      if (!contentType.includes('application/json')) {
+        console.warn(`[AuthAPI] Expected JSON from ${endpointPath} but received ${contentType}:`, raw.slice(0, 150));
+        throw new Error(
+          `Pendaftaran gagal: Endpoint ${endpointPath} mengembalikan format halaman web bukan JSON.`
+        );
+      }
+
+      let data: any;
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        throw new Error('Server mengembalikan respons yang bukan JSON valid.');
+      }
+
+      if (data.success === false && data.error) {
+        throw new Error(data.error);
+      }
+
+      return data as T;
+    } catch (httpErr: any) {
+      // If it's a definitive validation or credential error, throw it directly
+      if (
+        httpErr.message?.includes('sudah terdaftar') ||
+        httpErr.message?.includes('16 digit') ||
+        httpErr.message?.includes('Password') ||
+        httpErr.message?.includes('salah') ||
+        httpErr.message?.includes('wajib')
+      ) {
+        throw httpErr;
+      }
+
+      // If both Edge Function and Vercel endpoint were unreachable, provide an actionable and clear message
+      console.error('[AuthAPI] Both Edge Function and Server API attempts failed:', {
+        edgeFunctionError,
+        httpError: httpErr.message,
+      });
+
+      if (edgeFunctionError?.includes('belum aktif') || httpErr.message?.includes('Failed to fetch')) {
+        throw new Error(
+          'Pendaftaran gagal: Edge Function "auth-nik" belum di-deploy di Supabase Dashboard, dan endpoint /api/auth belum tersedia di host web. Silakan deploy Edge Function "auth-nik" ke Supabase atau jalankan backend server.'
+        );
+      }
+
+      throw new Error(httpErr.message || edgeFunctionError || 'Gagal menghubungi server autentikasi.');
+    }
   }
 
   /**

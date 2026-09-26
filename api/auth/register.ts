@@ -50,12 +50,17 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    const { nik, nama_lengkap, jurusan_pilihan, no_wa, password } = body || {};
+    const rawNik = body?.nik ?? '';
+    const rawNama = body?.nama ?? body?.nama_lengkap ?? '';
+    const rawJurusan = body?.jurusan ?? body?.jurusan_pilihan ?? '';
+    const rawWa = body?.whatsapp ?? body?.no_wa ?? '';
+    const rawPassword = body?.password ?? '';
 
-    const cleanNik = String(nik || '').trim().replace(/\D/g, '');
-    const cleanNama = String(nama_lengkap || '').trim();
-    const cleanNoWa = String(no_wa || '').trim();
-    const cleanPassword = String(password || '').trim();
+    const cleanNik = String(rawNik || '').trim().replace(/\D/g, '');
+    const cleanNama = String(rawNama || '').trim();
+    const cleanJurusan = String(rawJurusan || '').trim().toUpperCase();
+    const cleanNoWa = String(rawWa || '').trim();
+    const cleanPassword = String(rawPassword || '').trim();
 
     if (!/^\d{16}$/.test(cleanNik)) {
       return res.status(400).json({ success: false, error: 'NIK harus terdiri dari 16 digit angka sesuai KTP / Kartu Keluarga.' });
@@ -63,7 +68,7 @@ export default async function handler(req: any, res: any) {
     if (!cleanNama) {
       return res.status(400).json({ success: false, error: 'Nama lengkap wajib diisi.' });
     }
-    if (!['TO', 'TJKT', 'AKL'].includes(jurusan_pilihan)) {
+    if (!['TO', 'TJKT', 'AKL'].includes(cleanJurusan)) {
       return res.status(400).json({ success: false, error: 'Pilihan kompetensi keahlian / jurusan tidak valid.' });
     }
     if (cleanPassword.length < 6) {
@@ -138,7 +143,7 @@ export default async function handler(req: any, res: any) {
         user_id: userId,
         nik: cleanNik,
         nama_lengkap: cleanNama,
-        jurusan_pilihan,
+        jurusan_pilihan: cleanJurusan,
         no_wa: cleanNoWa,
         status_pendaftaran: 'Berkas Fisik',
         nomor_pendaftaran: nomorPendaftaran,

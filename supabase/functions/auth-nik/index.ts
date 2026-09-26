@@ -1,21 +1,32 @@
 // Supabase Edge Function: auth-nik
-// Deploy with: supabase functions deploy auth-nik --no-verify-jwt
-// Serves: POST /register and POST /login (or action: 'register' | 'login')
+// Deploy command: supabase functions deploy auth-nik --no-verify-jwt
+// Handled actions: "register" | "login"
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
+const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, prefer",
+  "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
 };
 
+function jsonResponse(data: Record<string, any>, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+    },
+  });
+}
+
 serve(async (req: Request) => {
+  // 1. Handle CORS Preflight
   if (req.method === "OPTIONS") {
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response("ok", {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: corsHeaders,
     });
   }
 
@@ -25,12 +36,12 @@ serve(async (req: Request) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           success: false,
           error: "Edge Function configuration missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.",
-        }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        },
+        500
       );
     }
 
@@ -47,99 +58,158 @@ serve(async (req: Request) => {
       try {
         body = await req.json();
       } catch {
-        return new Response(
-          JSON.stringify({ success: false, error: "Request body is not valid JSON." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        return jsonResponse(
+          {
+            success: false,
+            error: "Format request body tidak valid (harus JSON).",
+          },
+          400
         );
       }
     }
 
-    const isRegister = pathname.endsWith("/register") || body?.action === "register";
-    const isLogin = pathname.endsWith("/login") || body?.action === "login";
+    const isRegister =
+      pathname.endsWith("/register") ||
+      body?.action === "register" ||
+      (!pathname.endsWith("/login") && body?.action !== "login" && (body?.nama || body?.nama_lengkap));
 
-    // 1. REGISTER: NIK + Password
-    if (isRegister && req.method === "POST") {
-      const { nik, nama_lengkap, jurusan_pilihan, no_wa, password } = body;
+    const isLogin =
+      pathname.endsWith("/login") ||
+      body?.action === "login" ||
+      (!isRegister && (body?.identifier || body?.nik) && body?.password);
 
-      const cleanNik = String(nik || "").trim().replace(/\D/g, "");
-      const cleanNama = String(nama_lengkap || "").trim();
-      const cleanNoWa = String(no_wa || "").trim();
-      const cleanPassword = String(password || "").trim();
+    // =========================================================================
+    // ACTION: REGISTER
+    // =========================================================================
+    if (isRegister) {
+      const rawNik = body?.nik ?? "";
+      const rawNama = body?.nama ?? body?.nama_lengkap ?? "";
+      const rawJurusan = body?.jurusan ?? body?.jurusan_pilihan ?? "";
+      const rawWa = body?.whatsapp ?? body?.no_wa ?? "";
+      const rawPassword = body?.password ?? "";
 
+      const cleanNik = String(rawNik).trim().replace(/\D/g, "");
+      const cleanNama = String(rawNama).trim();
+      const cleanJurusan = String(rawJurusan).trim().toUpperCase();
+      const cleanWa = String(rawWa).trim();
+      const cleanPassword = String(rawPassword).trim();
+
+      // Validasi 1: NIK wajib 16 digit
       if (!/^\d{16}$/.test(cleanNik)) {
-        return new Response(
-          JSON.stringify({ success: false, error: "NIK harus terdiri dari 16 digit angka." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (!cleanNama) {
-        return new Response(
-          JSON.stringify({ success: false, error: "Nama lengkap wajib diisi." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (!["TO", "TJKT", "AKL"].includes(jurusan_pilihan)) {
-        return new Response(
-          JSON.stringify({ success: false, error: "Jurusan pilihan tidak valid." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (cleanPassword.length < 6) {
-        return new Response(
-          JSON.stringify({ success: false, error: "Password minimal 6 karakter." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        return jsonResponse(
+          {
+            success: false,
+            error: "NIK wajib terdiri dari 16 digit angka sesuai KTP / Kartu Keluarga.",
+          },
+          400
         );
       }
 
-      // Check duplicate in students
-      const { data: existing } = await supabaseAdmin
+      // Validasi 2: Nama wajib
+      if (!cleanNama) {
+        return jsonResponse(
+          {
+            success: false,
+            error: "Nama lengkap calon siswa wajib diisi.",
+          },
+          400
+        );
+      }
+
+      // Validasi 3: Jurusan wajib & valid
+      if (!["TO", "TJKT", "AKL"].includes(cleanJurusan)) {
+        return jsonResponse(
+          {
+            success: false,
+            error: "Pilihan jurusan tidak valid. Pilihan yang tersedia: TO, TJKT, AKL.",
+          },
+          400
+        );
+      }
+
+      // Validasi 4: WhatsApp wajib
+      if (!cleanWa) {
+        return jsonResponse(
+          {
+            success: false,
+            error: "Nomor WhatsApp aktif wajib diisi.",
+          },
+          400
+        );
+      }
+
+      // Validasi 5: Password minimal 6 karakter
+      if (cleanPassword.length < 6) {
+        return jsonResponse(
+          {
+            success: false,
+            error: "Password minimal 6 karakter untuk menjaga keamanan akun siswa.",
+          },
+          400
+        );
+      }
+
+      // Validasi 6: NIK tidak boleh sudah terdaftar di public.students
+      const { data: existingStudent, error: checkErr } = await supabaseAdmin
         .from("students")
         .select("nik")
         .eq("nik", cleanNik)
         .maybeSingle();
 
-      if (existing) {
-        return new Response(
-          JSON.stringify({
+      if (checkErr && checkErr.code !== "PGRST116") {
+        console.error("Database check error:", checkErr);
+      }
+
+      if (existingStudent) {
+        return jsonResponse(
+          {
             success: false,
-            error: `NIK ${cleanNik} sudah terdaftar di sistem SPMB. Silakan login.`,
-          }),
-          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            error: `NIK ${cleanNik} sudah terdaftar di sistem SPMB SMK Muhammadiyah 1 Baturetno. Silakan langsung login menggunakan NIK dan password Anda.`,
+          },
+          409
         );
       }
 
-      const internalEmail = `nik_${cleanNik}@auth.smkmuhiba.sch.id`;
+      // Identifier Auth: Menggunakan domain internal aman di server
+      // Bukan NIK@siswa.smkmuhiba.sch.id
+      const authEmail = `nik_${cleanNik}@auth.smkmuhiba.sch.id`;
 
-      // Provision user with email_confirm: true (bypass MX check)
+      // Provision user via Supabase Auth Admin API dengan email_confirm: true
+      // Menghindari email rejection / MX check GoTrue
       const { data: authCreated, error: createAuthErr } = await supabaseAdmin.auth.admin.createUser({
-        email: internalEmail,
+        email: authEmail,
         password: cleanPassword,
         email_confirm: true,
-        user_metadata: { nik: cleanNik, full_name: cleanNama, role: "student" },
+        user_metadata: {
+          nik: cleanNik,
+          full_name: cleanNama,
+          role: "student",
+        },
       });
 
       if (createAuthErr || !authCreated?.user) {
-        if (createAuthErr?.message?.includes("already been registered") || createAuthErr?.message?.includes("exists")) {
-          return new Response(
-            JSON.stringify({
+        const errMsg = createAuthErr?.message || "";
+        if (errMsg.includes("already been registered") || errMsg.includes("exists")) {
+          return jsonResponse(
+            {
               success: false,
-              error: `Akun Auth untuk NIK ${cleanNik} sudah ada. Silakan langsung login.`,
-            }),
-            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              error: `Akun autentikasi untuk NIK ${cleanNik} sudah dibuat sebelumnya. Silakan langsung login.`,
+            },
+            409
           );
         }
-        return new Response(
-          JSON.stringify({
+        return jsonResponse(
+          {
             success: false,
-            error: createAuthErr?.message || "Gagal membuat akun autentikasi.",
-          }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            error: `Gagal membuat akun autentikasi: ${errMsg}`,
+          },
+          500
         );
       }
 
       const userId = authCreated.user.id;
 
-      // Consecutive registration number
+      // Nomor Pendaftaran Berurutan
       const { count } = await supabaseAdmin.from("students").select("*", { count: "exact", head: true });
       const nextSeq = (count || 0) + 1;
       const nomorPendaftaran = (2026470 + nextSeq).toString();
@@ -148,7 +218,7 @@ serve(async (req: Request) => {
       const dateFormatted = `${String(now.getDate()).padStart(2, "0")}-${String(now.getMonth() + 1).padStart(2, "0")}-${now.getFullYear()} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
       try {
-        // Upsert profile
+        // Upsert ke public.profiles
         await supabaseAdmin.from("profiles").upsert({
           id: userId,
           nik: cleanNik,
@@ -156,19 +226,23 @@ serve(async (req: Request) => {
           role: "student",
         });
 
-        // Insert student record
+        // Insert ke public.students dengan kolom JSONB
         const { data: student, error: stdErr } = await supabaseAdmin
           .from("students")
           .insert({
             user_id: userId,
             nik: cleanNik,
             nama_lengkap: cleanNama,
-            jurusan_pilihan,
-            no_wa: cleanNoWa,
+            jurusan_pilihan: cleanJurusan,
+            no_wa: cleanWa,
             status_pendaftaran: "Berkas Fisik",
             nomor_pendaftaran: nomorPendaftaran,
             tanggal_daftar: dateFormatted,
-            data_diri: { nik: cleanNik, nama_lengkap: cleanNama, no_hp: cleanNoWa },
+            data_diri: {
+              nik: cleanNik,
+              nama_lengkap: cleanNama,
+              no_hp: cleanWa,
+            },
             data_alamat: {},
             data_orang_tua: {},
             data_berkas: {},
@@ -176,52 +250,64 @@ serve(async (req: Request) => {
           .select()
           .single();
 
-        if (stdErr) throw stdErr;
+        if (stdErr) {
+          throw stdErr;
+        }
 
-        // Sign in to return JWT session
+        // Login kembali untuk menerbitkan session JWT ke client
         const { data: sessionData } = await supabaseAnon.auth.signInWithPassword({
-          email: internalEmail,
+          email: authEmail,
           password: cleanPassword,
         });
 
-        return new Response(
-          JSON.stringify({
+        return jsonResponse(
+          {
             success: true,
+            message: "Pendaftaran berhasil disimpan.",
+            user_id: userId,
             session: sessionData?.session || null,
             user: {
               id: userId,
               nik: cleanNik,
               full_name: cleanNama,
               role: "student",
-              email: internalEmail,
+              email: authEmail,
             },
             student,
-          }),
-          { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          },
+          201
         );
       } catch (insertErr: any) {
-        // Atomic Rollback: delete auth user if DB insert fails
+        console.error("Transaction failed, rolling back auth user:", insertErr);
+        // ATOMIC CLEANUP: Hapus auth user jika database gagal untuk mencegah orphan user
         await supabaseAdmin.auth.admin.deleteUser(userId);
-        return new Response(
-          JSON.stringify({
+        return jsonResponse(
+          {
             success: false,
-            error: insertErr?.message || "Gagal menyimpan data pendaftaran ke database.",
-          }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            error: insertErr?.message || "Gagal menyimpan data siswa ke database.",
+          },
+          500
         );
       }
     }
 
-    // 2. LOGIN: NIK or Admin + Password
-    if (isLogin && req.method === "POST") {
-      const { identifier, password } = body;
-      const cleanIdentifier = String(identifier || "").trim();
-      const cleanPassword = String(password || "").trim();
+    // =========================================================================
+    // ACTION: LOGIN
+    // =========================================================================
+    if (isLogin) {
+      const rawIdentifier = body?.identifier ?? body?.nik ?? body?.username ?? "";
+      const rawPassword = body?.password ?? "";
+
+      const cleanIdentifier = String(rawIdentifier).trim();
+      const cleanPassword = String(rawPassword).trim();
 
       if (!cleanIdentifier || !cleanPassword) {
-        return new Response(
-          JSON.stringify({ success: false, error: "Username / NIK dan password wajib diisi." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        return jsonResponse(
+          {
+            success: false,
+            error: "Username / NIK dan password wajib diisi.",
+          },
+          400
         );
       }
 
@@ -241,18 +327,18 @@ serve(async (req: Request) => {
       });
 
       if (signInErr || !signInData?.user) {
-        return new Response(
-          JSON.stringify({
+        return jsonResponse(
+          {
             success: false,
             error: isNik
-              ? "NIK atau password salah. Pastikan 16 digit NIK dan password sesuai saat pendaftaran."
+              ? "NIK atau password salah. Pastikan 16 digit NIK dan password sudah sesuai."
               : "Username atau password admin salah.",
-          }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          },
+          401
         );
       }
 
-      // Check role strictly from database profiles table
+      // Verifikasi role langsung dari database profiles
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("*")
@@ -261,12 +347,12 @@ serve(async (req: Request) => {
 
       const userRole = profile?.role === "admin" ? "admin" : "student";
       if (isAdmin && userRole !== "admin") {
-        return new Response(
-          JSON.stringify({
+        return jsonResponse(
+          {
             success: false,
-            error: "Akses ditolak: Akun ini tidak memiliki hak akses administrator.",
-          }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            error: "Akses ditolak: Akun ini tidak memiliki hak akses administrator di database.",
+          },
+          403
         );
       }
 
@@ -280,9 +366,11 @@ serve(async (req: Request) => {
         student = std;
       }
 
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           success: true,
+          message: "Login berhasil.",
+          user_id: signInData.user.id,
           session: signInData.session,
           user: {
             id: signInData.user.id,
@@ -292,22 +380,26 @@ serve(async (req: Request) => {
             email: signInData.user.email || authEmail,
           },
           student,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        },
+        200
       );
     }
 
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      {
         success: false,
-        error: `Endpoint '${pathname}' tidak ditemukan pada Edge Function auth-nik.`,
-      }),
-      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        error: `Action tidak dikenal pada Edge Function auth-nik: '${body?.action || pathname}'`,
+      },
+      404
     );
   } catch (err: any) {
-    return new Response(
-      JSON.stringify({ success: false, error: err.message || "Internal server error in Edge Function." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    console.error("Unhandled error in auth-nik function:", err);
+    return jsonResponse(
+      {
+        success: false,
+        error: err?.message || "Internal server error in Edge Function auth-nik.",
+      },
+      500
     );
   }
 });
