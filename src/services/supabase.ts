@@ -198,6 +198,8 @@ GRANT EXECUTE ON FUNCTION public.promote_to_admin(TEXT) TO service_role;
 
 class DatabaseService {
   private supabase: SupabaseClient | null = null;
+  private currentUrl: string = '';
+  private currentAnonKey: string = '';
   private configKey = 'smk_muhiba_supabase_config';
 
   constructor() {
@@ -239,6 +241,9 @@ class DatabaseService {
         }
       }
     }
+
+    this.currentUrl = url;
+    this.currentAnonKey = key;
 
     if (url && key) {
       try {
@@ -291,6 +296,150 @@ class DatabaseService {
   }
 
   /**
+   * Safely invoke backend / Edge Function authentication endpoints.
+   * Enforces strict Content-Type verification, safe JSON parsing, and non-sensitive logging.
+   * Completely avoids "Unexpected token <char>... is not valid JSON" errors.
+   */
+  private async safePostAuthApi<T>(
+    endpointPath: string,
+    edgeAction: 'register' | 'login',
+    payload: Record<string, any>
+  ): Promise<T> {
+    // Endpoints to attempt in order:
+    // 1. Primary endpoint (Vercel Serverless Function or Express server, e.g. /api/auth/register)
+    // 2. Supabase Edge Function fallback (/functions/v1/auth-nik/register or /functions/v1/auth-nik)
+    const candidates: { url: string; isEdge: boolean }[] = [
+      { url: endpointPath, isEdge: false },
+    ];
+
+    if (this.currentUrl) {
+      candidates.push({
+        url: `${this.currentUrl}/functions/v1/auth-nik/${edgeAction}`,
+        isEdge: true,
+      });
+      candidates.push({
+        url: `${this.currentUrl}/functions/v1/auth-nik`,
+        isEdge: true,
+      });
+    }
+
+    let lastError: Error | null = null;
+
+    for (let i = 0; i < candidates.length; i++) {
+      const candidate = candidates[i];
+      const targetUrl = candidate.url;
+
+      try {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        };
+
+        if (candidate.isEdge && this.currentAnonKey) {
+          headers['apikey'] = this.currentAnonKey;
+          headers['Authorization'] = `Bearer ${this.currentAnonKey}`;
+        }
+
+        const bodyToSend = candidate.isEdge
+          ? { ...payload, action: edgeAction }
+          : payload;
+
+        // SAFE LOGGING (Instruction 12): Only log URL, method. NEVER log password or tokens!
+        console.info(`[AuthAPI] Calling endpoint: ${targetUrl} (action: ${edgeAction})`);
+
+        const response = await fetch(targetUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(bodyToSend),
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        const status = response.status;
+
+        // SAFE LOGGING: URL, HTTP status, and Content-Type
+        console.info(`[AuthAPI] Response ${targetUrl} -> status: ${status}, content-type: ${contentType}`);
+
+        if (!response.ok) {
+          const raw = await response.text();
+          let message = '';
+
+          if (contentType.includes('application/json')) {
+            try {
+              const parsed = JSON.parse(raw);
+              message = parsed.error || parsed.message || '';
+            } catch {
+              message = raw;
+            }
+          } else {
+            // Non-JSON response (e.g. HTML 404 or 502 from Vercel / CDN / proxy)
+            console.warn(`[AuthAPI] Non-JSON error body received from ${targetUrl} (status ${status}):`, raw.slice(0, 150));
+            if (status === 404) {
+              message = `Endpoint registrasi tidak ditemukan (${targetUrl} - HTTP 404).`;
+            } else if (status >= 500) {
+              message = `Server backend mengalami gangguan (HTTP ${status}).`;
+            } else {
+              message = `Request gagal dengan status ${status}.`;
+            }
+          }
+
+          // If this candidate returned 404 and we have more candidates, fallback to the next candidate
+          if (status === 404 && i < candidates.length - 1) {
+            console.info(`[AuthAPI] Candidate ${targetUrl} not available (404), falling back to alternative endpoint...`);
+            lastError = new Error(message);
+            continue;
+          }
+
+          throw new Error(message || `Request gagal (${status})`);
+        }
+
+        // Response status is 200/201 OK
+        const raw = await response.text();
+
+        // Check if content-type is HTML despite 200 OK (e.g. Vite SPA fallback routing to index.html)
+        if (!contentType.includes('application/json')) {
+          console.warn(`[AuthAPI] Expected application/json but received ${contentType} from ${targetUrl}:`, raw.slice(0, 150));
+          if (i < candidates.length - 1) {
+            console.info(`[AuthAPI] Endpoint returned HTML fallback, trying next candidate...`);
+            lastError = new Error(`Endpoint ${targetUrl} mengembalikan halaman HTML bukan data JSON.`);
+            continue;
+          }
+          throw new Error(
+            `Pendaftaran gagal: Endpoint ${targetUrl} mengembalikan format halaman web (${contentType}) bukan respons JSON server. Pastikan Vercel API Route atau Supabase Edge Function telah di-deploy.`
+          );
+        }
+
+        let data: any;
+        try {
+          data = raw ? JSON.parse(raw) : {};
+        } catch (parseErr) {
+          console.warn(`[AuthAPI] JSON.parse failed on response from ${targetUrl}:`, raw.slice(0, 150));
+          throw new Error('Server mengembalikan respons yang bukan JSON valid.');
+        }
+
+        if (data.success === false && data.error) {
+          throw new Error(data.error);
+        }
+
+        return data as T;
+      } catch (candidateErr: any) {
+        lastError = candidateErr;
+        // Do not fallback if the error is a definitive user/business error
+        if (
+          candidateErr.message?.includes('sudah terdaftar') ||
+          candidateErr.message?.includes('16 digit') ||
+          candidateErr.message?.includes('Password') ||
+          candidateErr.message?.includes('salah') ||
+          candidateErr.message?.includes('wajib diisi')
+        ) {
+          throw candidateErr;
+        }
+      }
+    }
+
+    throw lastError || new Error(`Gagal menghubungi server autentikasi (${endpointPath}).`);
+  }
+
+  /**
    * User Registration: Communicates with backend / Edge Function provisioning endpoint.
    * Supabase Admin API provisions the user with email_confirm: true on the server,
    * completely avoiding GoTrue client-side MX record checks and synthetic email rejections.
@@ -308,16 +457,13 @@ class DatabaseService {
     }
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'Pendaftaran gagal.');
-      }
+      const result = await this.safePostAuthApi<{
+        success: boolean;
+        session?: any;
+        user: User;
+        student: Student;
+        error?: string;
+      }>('/api/auth/register', 'register', payload);
 
       // If session tokens returned, set session in client SDK so auth.uid() is active
       if (result.session && this.supabase) {
@@ -329,8 +475,8 @@ class DatabaseService {
 
       return { user: result.user, student: result.student };
     } catch (err: any) {
-      console.error('Registration error:', err);
-      throw new Error(err.message || 'Gagal melakukan pendaftaran.');
+      console.error('[Registration] Registration process error:', err.message);
+      throw new Error(err.message || 'Gagal melakukan pendaftaran. Silakan coba kembali.');
     }
   }
 
@@ -351,16 +497,16 @@ class DatabaseService {
     }
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: cleanIdentifier, password: cleanPassword }),
+      const result = await this.safePostAuthApi<{
+        success: boolean;
+        session?: any;
+        user: User;
+        student?: Student;
+        error?: string;
+      }>('/api/auth/login', 'login', {
+        identifier: cleanIdentifier,
+        password: cleanPassword,
       });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'Login gagal.');
-      }
 
       // Set active Supabase session in client SDK
       if (result.session && this.supabase) {
@@ -372,7 +518,7 @@ class DatabaseService {
 
       return { user: result.user, student: result.student };
     } catch (err: any) {
-      console.error('Login error:', err);
+      console.error('[Login] Login process error:', err.message);
       throw new Error(err.message || 'Login gagal. Periksa kembali NIK / Username dan Password.');
     }
   }

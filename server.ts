@@ -341,6 +341,14 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
   }
 });
 
+// Explicit JSON 404 handler for unmatched /api/* requests (never return HTML for API calls)
+app.all('/api/*', (req: Request, res: Response) => {
+  res.status(404).json({
+    success: false,
+    error: `Endpoint API ${req.method} ${req.path} tidak ditemukan pada server.`,
+  });
+});
+
 // Setup Vite middleware in dev or static files in production
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
