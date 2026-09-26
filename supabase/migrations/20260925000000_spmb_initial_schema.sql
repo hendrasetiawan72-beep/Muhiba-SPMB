@@ -2,7 +2,7 @@
 -- SPMB SMK MUHAMMADIYAH BAWANG - SUPABASE DATABASE MIGRATION
 -- File: supabase/migrations/20260925000000_spmb_initial_schema.sql
 -- Description: Core schema, Row Level Security (RLS) policies, triggers,
---              indexes, storage security, and admin authorization functions.
+--              indexes, storage security, and hardened admin authorization functions.
 -- ============================================================================
 
 -- Enable pgcrypto if not already enabled (for UUID generation)
@@ -105,7 +105,8 @@ CREATE TRIGGER set_pembayaran_updated_at
 
 -- ============================================================================
 -- 6. SECURITY DEFINER HELPER: is_admin()
--- Bypasses RLS to prevent recursive policy evaluations on public.profiles.
+-- Bypasses RLS safely to prevent recursive policy evaluations on public.profiles.
+-- Fixed search_path prevents search_path hijacking attacks.
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
@@ -119,6 +120,11 @@ AS $$
     WHERE id = auth.uid() AND role = 'admin'
   );
 $$;
+
+-- Revoke default execute from public and grant explicitly
+REVOKE EXECUTE ON FUNCTION public.is_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO service_role;
 
 -- ============================================================================
 -- 7. AUTH TRIGGER: Automatically populate profiles when auth.users is created
@@ -139,7 +145,7 @@ BEGIN
     full_name = COALESCE(EXCLUDED.full_name, profiles.full_name);
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
@@ -147,7 +153,8 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================================================
--- 8. ENABLE ROW LEVEL SECURITY (RLS)
+-- 8. ENABLE ROW LEVEL SECURITY (RLS) ON ALL PUBLIC TABLES
+-- Denies all actions by default unless explicitly granted by policy.
 -- ============================================================================
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
@@ -155,6 +162,9 @@ ALTER TABLE public.pembayaran ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- 9. RLS POLICIES: PROFILES
+-- - anon: DENIED (all operations)
+-- - student: SELECT own profile only, UPDATE own profile (cannot escalate role or change id)
+-- - admin: SELECT & UPDATE all profiles
 -- ============================================================================
 DROP POLICY IF EXISTS "profiles_select_policy" ON public.profiles;
 CREATE POLICY "profiles_select_policy"
@@ -183,13 +193,25 @@ CREATE POLICY "profiles_update_policy"
     auth.uid() = id OR public.is_admin()
   )
   WITH CHECK (
-    -- Normal users cannot self-escalate their role to 'admin'
+    -- Normal users cannot self-escalate their role to 'admin' and cannot modify user id
     (auth.uid() = id AND role = (SELECT p.role FROM public.profiles p WHERE p.id = auth.uid()))
     OR public.is_admin()
   );
 
+DROP POLICY IF EXISTS "profiles_delete_policy" ON public.profiles;
+CREATE POLICY "profiles_delete_policy"
+  ON public.profiles
+  FOR DELETE
+  TO authenticated
+  USING (
+    public.is_admin()
+  );
+
 -- ============================================================================
 -- 10. RLS POLICIES: STUDENTS
+-- - anon: DENIED (all operations)
+-- - student: SELECT own row only, UPDATE own editable fields, CANNOT change user_id
+-- - admin: SELECT all, UPDATE all, DELETE allowed
 -- ============================================================================
 DROP POLICY IF EXISTS "students_select_policy" ON public.students;
 CREATE POLICY "students_select_policy"
@@ -218,7 +240,9 @@ CREATE POLICY "students_update_policy"
     auth.uid() = user_id OR public.is_admin()
   )
   WITH CHECK (
-    auth.uid() = user_id OR public.is_admin()
+    -- Student can only update their own row and CANNOT reassign user_id
+    (auth.uid() = user_id AND user_id = (SELECT s.user_id FROM public.students s WHERE s.id = students.id))
+    OR public.is_admin()
   );
 
 DROP POLICY IF EXISTS "students_delete_policy" ON public.students;
@@ -270,7 +294,7 @@ CREATE POLICY "pembayaran_delete_policy"
   );
 
 -- ============================================================================
--- 12. STORAGE BUCKET FOR DOKUMEN PPDB (Optional & Protected)
+-- 12. STORAGE BUCKET FOR DOKUMEN PPDB
 -- ============================================================================
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('dokumen-ppdb', 'dokumen-ppdb', false)
@@ -297,13 +321,16 @@ CREATE POLICY "storage_student_admin_select"
   );
 
 -- ============================================================================
--- 13. SEEDING & ADMIN PROMOTION HELPER (Execute in Supabase SQL Editor)
+-- 13. HARDENED ADMIN PROMOTION FUNCTION (RESTRICTED EXECUTION)
+-- SECURITY DEFINER with fixed search_path = public.
+-- REVOKED from PUBLIC, anon, and authenticated to prevent unauthorized execution.
+-- Only database superuser (postgres) or service_role can execute this function.
 -- ============================================================================
--- Function to safely promote an existing user to admin
 CREATE OR REPLACE FUNCTION public.promote_to_admin(target_identifier TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_count INT;
@@ -314,9 +341,16 @@ BEGIN
   
   GET DIAGNOSTICS v_count = ROW_COUNT;
   IF v_count > 0 THEN
-    RETURN 'SUCCESS: User ' || target_identifier || ' is now an admin.';
+    RETURN 'SUCCESS: Akun ' || target_identifier || ' sekarang memiliki hak akses admin.';
   ELSE
-    RETURN 'NOT_FOUND: No user found matching identifier ' || target_identifier;
+    RETURN 'NOT_FOUND: Akun dengan identifier ' || target_identifier || ' tidak ditemukan.';
   END IF;
 END;
 $$;
+
+-- CRITICAL PRIVILEGE HARDENING:
+REVOKE EXECUTE ON FUNCTION public.promote_to_admin(TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.promote_to_admin(TEXT) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.promote_to_admin(TEXT) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.promote_to_admin(TEXT) TO postgres;
+GRANT EXECUTE ON FUNCTION public.promote_to_admin(TEXT) TO service_role;

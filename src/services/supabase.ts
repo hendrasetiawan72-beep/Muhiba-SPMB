@@ -73,7 +73,7 @@ CREATE INDEX IF NOT EXISTS idx_students_jurusan ON public.students(jurusan_pilih
 CREATE INDEX IF NOT EXISTS idx_students_nomor_pendaftaran ON public.students(nomor_pendaftaran);
 CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
 
--- 5. Helper Function: is_admin() (SECURITY DEFINER untuk cegah recursive RLS)
+-- 5. Helper Function: is_admin() (SECURITY DEFINER dengan search_path tetap)
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -86,6 +86,10 @@ AS $$
     WHERE id = auth.uid() AND role = 'admin'
   );
 $$;
+
+REVOKE EXECUTE ON FUNCTION public.is_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO service_role;
 
 -- 6. Trigger Auth: Otomatis sinkronisasi auth.users ke profiles
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -104,7 +108,7 @@ BEGIN
     full_name = COALESCE(EXCLUDED.full_name, profiles.full_name);
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
@@ -137,7 +141,10 @@ CREATE POLICY "students_insert_policy" ON public.students FOR INSERT TO authenti
 DROP POLICY IF EXISTS "students_update_policy" ON public.students;
 CREATE POLICY "students_update_policy" ON public.students FOR UPDATE TO authenticated
   USING (auth.uid() = user_id OR public.is_admin())
-  WITH CHECK (auth.uid() = user_id OR public.is_admin());
+  WITH CHECK (
+    (auth.uid() = user_id AND user_id = (SELECT s.user_id FROM public.students s WHERE s.id = students.id))
+    OR public.is_admin()
+  );
 
 DROP POLICY IF EXISTS "students_delete_policy" ON public.students;
 CREATE POLICY "students_delete_policy" ON public.students FOR DELETE TO authenticated
@@ -154,13 +161,44 @@ CREATE POLICY "pembayaran_insert_policy" ON public.pembayaran FOR INSERT TO auth
 DROP POLICY IF EXISTS "pembayaran_update_policy" ON public.pembayaran;
 CREATE POLICY "pembayaran_update_policy" ON public.pembayaran FOR UPDATE TO authenticated
   USING (public.is_admin());
+
+DROP POLICY IF EXISTS "pembayaran_delete_policy" ON public.pembayaran;
+CREATE POLICY "pembayaran_delete_policy" ON public.pembayaran FOR DELETE TO authenticated
+  USING (public.is_admin());
+
+-- 9. Hardened promote_to_admin function
+CREATE OR REPLACE FUNCTION public.promote_to_admin(target_identifier TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INT;
+BEGIN
+  UPDATE public.profiles
+  SET role = 'admin'
+  WHERE nik = target_identifier OR id::text = target_identifier;
+  
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  IF v_count > 0 THEN
+    RETURN 'SUCCESS: Akun ' || target_identifier || ' sekarang menjadi admin.';
+  ELSE
+    RETURN 'NOT_FOUND: Akun ' || target_identifier || ' tidak ditemukan.';
+  END IF;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.promote_to_admin(TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.promote_to_admin(TEXT) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.promote_to_admin(TEXT) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.promote_to_admin(TEXT) TO postgres;
+GRANT EXECUTE ON FUNCTION public.promote_to_admin(TEXT) TO service_role;
 `;
 
 class DatabaseService {
   private supabase: SupabaseClient | null = null;
   private configKey = 'smk_muhiba_supabase_config';
-  private studentDomain = 'siswa.smkmuhiba.sch.id';
-  private adminDomain = 'smkmuhiba.sch.id';
 
   constructor() {
     this.initSupabaseFromEnvOrStorage();
@@ -253,22 +291,9 @@ class DatabaseService {
   }
 
   /**
-   * Map NIK or Admin username to a standard Supabase Auth synthetic email
-   */
-  public toSyntheticEmail(identifier: string): string {
-    const clean = identifier.trim().toLowerCase();
-    if (clean.includes('@')) {
-      return clean;
-    }
-    if (clean === 'admin') {
-      return `admin@${this.adminDomain}`;
-    }
-    // Student NIK
-    return `${clean}@${this.studentDomain}`;
-  }
-
-  /**
-   * User Registration with Supabase Auth & PostgreSQL students table
+   * User Registration: Communicates with backend / Edge Function provisioning endpoint.
+   * Supabase Admin API provisions the user with email_confirm: true on the server,
+   * completely avoiding GoTrue client-side MX record checks and synthetic email rejections.
    */
   public async register(payload: {
     nik: string;
@@ -278,132 +303,41 @@ class DatabaseService {
     password: string;
   }): Promise<{ user: User; student: Student }> {
     const cleanNik = payload.nik.trim();
-    const cleanNama = payload.nama_lengkap.trim();
-    const cleanNoWa = payload.no_wa.trim();
-
     if (!/^\d{16}$/.test(cleanNik)) {
       throw new Error('NIK harus terdiri dari 16 digit angka sesuai KTP / Kartu Keluarga.');
     }
 
-    if (!this.supabase) {
-      throw new Error(
-        'Koneksi Supabase belum terkonfigurasi. Pastikan VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY telah diatur di Vercel atau panel konfigurasi database.'
-      );
-    }
-
-    // 1. Check if NIK already exists in Supabase
-    const { data: existingStudent, error: checkError } = await this.supabase
-      .from('students')
-      .select('nik')
-      .eq('nik', cleanNik)
-      .maybeSingle();
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('Supabase NIK check error:', checkError);
-    }
-
-    if (existingStudent) {
-      throw new Error(`NIK ${cleanNik} sudah terdaftar di sistem SPMB. Silakan masuk atau hubungi panitia.`);
-    }
-
-    // 2. Generate consecutive registration number
-    const { count } = await this.supabase
-      .from('students')
-      .select('*', { count: 'exact', head: true });
-
-    const nextSeq = (count || 0) + 1;
-    const nomorPendaftaran = (2026470 + nextSeq).toString();
-
-    const now = new Date();
-    const dateFormatted = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-    const syntheticEmail = this.toSyntheticEmail(cleanNik);
-
-    // 3. Register user via Supabase Auth
-    const { data: authData, error: authError } = await this.supabase.auth.signUp({
-      email: syntheticEmail,
-      password: payload.password,
-      options: {
-        data: {
-          nik: cleanNik,
-          full_name: cleanNama,
-          role: 'student',
-        },
-      },
-    });
-
-    if (authError) {
-      if (authError.message.includes('User already registered')) {
-        throw new Error(`Akun dengan NIK ${cleanNik} sudah terdaftar. Silakan lakukan login.`);
-      }
-      throw new Error(`Pendaftaran akun gagal: ${authError.message}`);
-    }
-
-    if (!authData.user) {
-      throw new Error('Gagal membuat akun siswa di Supabase Auth.');
-    }
-
-    const userId = authData.user.id;
-
-    // 4. Create row in public.profiles (in case DB trigger is not yet installed)
     try {
-      await this.supabase
-        .from('profiles')
-        .upsert({
-          id: userId,
-          nik: cleanNik,
-          full_name: cleanNama,
-          role: 'student',
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Pendaftaran gagal.');
+      }
+
+      // If session tokens returned, set session in client SDK so auth.uid() is active
+      if (result.session && this.supabase) {
+        await this.supabase.auth.setSession({
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
         });
-    } catch (e) {
-      console.warn('Upsert profile notice:', e);
+      }
+
+      return { user: result.user, student: result.student };
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      throw new Error(err.message || 'Gagal melakukan pendaftaran.');
     }
-
-    // 5. Insert student registration into public.students
-    const newStudentPayload = {
-      user_id: userId,
-      nik: cleanNik,
-      nama_lengkap: cleanNama,
-      jurusan_pilihan: payload.jurusan_pilihan,
-      no_wa: cleanNoWa,
-      status_pendaftaran: 'Berkas Fisik' as StatusPendaftaran,
-      nomor_pendaftaran: nomorPendaftaran,
-      tanggal_daftar: dateFormatted,
-      data_diri: {
-        nik: cleanNik,
-        nama_lengkap: cleanNama,
-        no_hp: cleanNoWa,
-      },
-      data_alamat: {},
-      data_orang_tua: {},
-      data_berkas: {},
-    };
-
-    const { data: insertedStudent, error: insertError } = await this.supabase
-      .from('students')
-      .insert(newStudentPayload)
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Insert student error in Supabase:', insertError);
-      throw new Error(`Gagal menyimpan data pendaftaran ke database: ${insertError.message}`);
-    }
-
-    const appUser: User = {
-      id: userId,
-      nik: cleanNik,
-      role: 'student',
-      full_name: cleanNama,
-      email: syntheticEmail,
-      created_at: new Date().toISOString(),
-    };
-
-    return { user: appUser, student: insertedStudent as Student };
   }
 
   /**
-   * User & Admin Login via Supabase Auth
+   * User & Admin Login: Communicates with backend authentication layer.
+   * Client sets active Supabase session with tokens, ensuring RLS auth.uid() is enforced.
+   * Role is strictly validated from public.profiles database table.
    */
   public async login(nikOrUsername: string, password: string): Promise<{ user: User; student?: Student }> {
     const cleanIdentifier = nikOrUsername.trim();
@@ -416,68 +350,55 @@ class DatabaseService {
       throw new Error('Password wajib diisi.');
     }
 
-    if (!this.supabase) {
-      throw new Error(
-        'Koneksi Supabase belum terkonfigurasi. Pastikan VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY telah diatur di Vercel atau panel database.'
-      );
-    }
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: cleanIdentifier, password: cleanPassword }),
+      });
 
-    const syntheticEmail = this.toSyntheticEmail(cleanIdentifier);
-
-    // 1. Supabase Auth Sign In
-    const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({
-      email: syntheticEmail,
-      password: cleanPassword,
-    });
-
-    if (authError) {
-      // Map error to user-friendly Indonesian explanation
-      if (
-        authError.message.includes('Invalid login credentials') ||
-        authError.message.includes('invalid_grant')
-      ) {
-        throw new Error(
-          'NIK / Username atau Password salah. Periksa kembali data Anda atau hubungi panitia PPDB jika lupa password.'
-        );
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Login gagal.');
       }
-      throw new Error(`Login gagal: ${authError.message}`);
-    }
 
-    if (!authData.user) {
-      throw new Error('Gagal memverifikasi akun pengguna.');
-    }
+      // Set active Supabase session in client SDK
+      if (result.session && this.supabase) {
+        await this.supabase.auth.setSession({
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
+        });
+      }
 
-    const authUser = authData.user;
-    return await this.fetchUserSessionDetails(authUser);
+      return { user: result.user, student: result.student };
+    } catch (err: any) {
+      console.error('Login error:', err);
+      throw new Error(err.message || 'Login gagal. Periksa kembali NIK / Username dan Password.');
+    }
   }
 
   /**
-   * Fetch profile and (if applicable) student data for an authenticated Supabase user
+   * Fetch profile and student data for an authenticated Supabase user.
+   * Role is strictly verified from public.profiles in database.
    */
   private async fetchUserSessionDetails(authUser: SupabaseAuthUser): Promise<{ user: User; student?: Student }> {
     if (!this.supabase) throw new Error('Supabase client tidak tersedia.');
 
-    // 1. Fetch Profile
+    // 1. Fetch Profile directly from database (source of truth for role)
     const { data: profileData, error: profileErr } = await this.supabase
       .from('profiles')
       .select('*')
       .eq('id', authUser.id)
       .maybeSingle();
 
-    let userRole: UserRole = 'student';
-    let userNik: string = authUser.user_metadata?.nik || authUser.email || '';
-    let fullName: string = authUser.user_metadata?.full_name || 'Pengguna';
-
-    if (profileData && !profileErr) {
-      userRole = profileData.role as UserRole;
-      if (profileData.nik) userNik = profileData.nik;
-      if (profileData.full_name) fullName = profileData.full_name;
-    } else {
-      // Fallback check metadata
-      if (authUser.user_metadata?.role === 'admin' || authUser.email?.startsWith('admin@')) {
-        userRole = 'admin';
-      }
+    if (profileErr) {
+      console.warn('Error reading profile in session restore:', profileErr);
     }
+
+    // Role MUST come from public.profiles table in database
+    const userRole: UserRole = (profileData?.role === 'admin') ? 'admin' : 'student';
+    const userNik: string = profileData?.nik || authUser.user_metadata?.nik || '';
+    const fullName: string = profileData?.full_name || authUser.user_metadata?.full_name || 'Pengguna';
 
     const appUser: User = {
       id: authUser.id,
@@ -491,22 +412,14 @@ class DatabaseService {
     // 2. If student, fetch their student record via user_id
     let studentData: Student | undefined;
     if (userRole === 'student') {
-      const { data: stdData, error: stdErr } = await this.supabase
+      const { data: stdData } = await this.supabase
         .from('students')
         .select('*')
         .eq('user_id', authUser.id)
         .maybeSingle();
 
-      if (stdData && !stdErr) {
+      if (stdData) {
         studentData = stdData as Student;
-      } else if (userNik) {
-        // Fallback by NIK
-        const { data: stdByNik } = await this.supabase
-          .from('students')
-          .select('*')
-          .eq('nik', userNik)
-          .maybeSingle();
-        if (stdByNik) studentData = stdByNik as Student;
       }
     }
 
@@ -614,14 +527,14 @@ class DatabaseService {
           continue;
         }
 
-        const syntheticEmail = this.toSyntheticEmail(rawNik);
+        const authEmail = `nik_${rawNik}@auth.smkmuhiba.sch.id`;
         const namaLengkap = String(item.nama_lengkap || item.data_diri?.nama_lengkap || 'Calon Siswa').trim();
 
         // 1. Create or ensure Auth user
         let userId = item.user_id;
         if (!userId) {
           const { data: authData } = await this.supabase.auth.signUp({
-            email: syntheticEmail,
+            email: authEmail,
             password: `Muhiba@${rawNik.slice(-6)}`,
             options: {
               data: {

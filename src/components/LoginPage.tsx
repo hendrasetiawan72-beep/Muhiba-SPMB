@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { dbService } from '../services/supabase';
+import { dbService, SUPABASE_SQL_SCHEMA } from '../services/supabase';
 import { User, Student } from '../types/database';
-import { AlertCircle, Lock, User as UserIcon, Phone, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { AlertCircle, Lock, User as UserIcon, Phone, ArrowLeft, ShieldAlert, Database, X, Check, Copy } from 'lucide-react';
 
 interface LoginPageProps {
   onSuccessLogin: (user: User, student?: Student) => void;
@@ -18,6 +18,29 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Supabase connection modal
+  const [showDbModal, setShowDbModal] = useState(false);
+  const [supabaseUrl, setSupabaseUrl] = useState(() => dbService.getStoredSupabaseConfig().url);
+  const [supabaseKey, setSupabaseKey] = useState(() => dbService.getStoredSupabaseConfig().key);
+  const [copiedSchema, setCopiedSchema] = useState(false);
+  const [saveToast, setSaveToast] = useState(false);
+
+  const handleSaveDbConfig = () => {
+    dbService.saveSupabaseConfig(supabaseUrl.trim(), supabaseKey.trim());
+    setSaveToast(true);
+    setErrorMessage('');
+    setTimeout(() => {
+      setSaveToast(false);
+      setShowDbModal(false);
+    }, 1200);
+  };
+
+  const handleCopySchema = () => {
+    navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
+    setCopiedSchema(true);
+    setTimeout(() => setCopiedSchema(false), 2000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,12 +75,29 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           <h1 className="text-base sm:text-lg font-bold text-slate-800">
             SELAMAT DATANG CALON PESERTA DIDIK
           </h1>
-          <button
-            onClick={onNavigateHome}
-            className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors uppercase tracking-wider"
-          >
-            MASUK KE WEB
-          </button>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setShowDbModal(true)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                dbService.isSupabaseConnected()
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                  : 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100'
+              }`}
+              title="Konfigurasi Database Supabase"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">
+                {dbService.isSupabaseConnected() ? 'Supabase Terhubung' : 'Setup Supabase'}
+              </span>
+            </button>
+            <button
+              onClick={onNavigateHome}
+              className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors uppercase tracking-wider"
+            >
+              MASUK KE WEB
+            </button>
+          </div>
         </div>
 
         {/* Login Cards Grid (Exact match to Screenshot 8) */}
@@ -72,7 +112,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             {errorMessage && (
               <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-xs text-red-700">
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
-                <div className="flex-1">{errorMessage}</div>
+                <div className="flex-1 space-y-2">
+                  <div>{errorMessage}</div>
+                  {errorMessage.includes('Supabase') && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDbModal(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                    >
+                      <Database className="w-3.5 h-3.5" />
+                      <span>Hubungkan Supabase Sekarang</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
@@ -214,6 +266,103 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         </div>
 
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODAL SETUP KONEKSI SUPABASE LANGSUNG DARI HALAMAN LOGIN */}
+      {/* ========================================================================= */}
+      {showDbModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 sm:p-8 relative my-8 animate-in fade-in duration-200 space-y-5">
+            <div className="flex items-start justify-between border-b pb-4">
+              <div>
+                <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
+                  Database & Autentikasi Cloud
+                </span>
+                <h3 className="text-lg font-black text-slate-900">
+                  Konfigurasi Koneksi Supabase
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDbModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Masukkan <strong>Project URL</strong> dan <strong>Anon Key / Publishable Key</strong> dari dashboard project Supabase Anda (Settings &gt; API).
+            </p>
+
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Supabase Project URL
+                </label>
+                <input
+                  type="text"
+                  value={supabaseUrl}
+                  onChange={(e) => setSupabaseUrl(e.target.value)}
+                  placeholder="https://xyzcompany.supabase.co"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded font-mono text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Supabase Anon Key / Publishable Key
+                </label>
+                <input
+                  type="password"
+                  value={supabaseKey}
+                  onChange={(e) => setSupabaseKey(e.target.value)}
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded font-mono text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleSaveDbConfig}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-md shadow-sm transition-colors cursor-pointer"
+                >
+                  {saveToast ? 'Tersimpan & Terhubung!' : 'Simpan & Hubungkan'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDbModal(false)}
+                  className="px-4 py-2 text-xs text-slate-600 hover:text-slate-800 cursor-pointer"
+                >
+                  Batal
+                </button>
+              </div>
+            </div>
+
+            {/* SQL Script Viewer */}
+            <div className="pt-3 border-t">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-bold text-slate-900 uppercase">
+                  Skema SQL (Jalankan di Supabase SQL Editor)
+                </h4>
+                <button
+                  type="button"
+                  onClick={handleCopySchema}
+                  className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedSchema ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedSchema ? 'Tersalin!' : 'Salin SQL'}</span>
+                </button>
+              </div>
+
+              <pre className="bg-slate-900 text-emerald-400 p-3.5 rounded-lg text-[10px] font-mono overflow-x-auto max-h-40 leading-relaxed">
+                {SUPABASE_SQL_SCHEMA}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
