@@ -129,9 +129,15 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
         {/* TOP WELCOME BAR (Matches Screenshot 4, 5, 6) */}
         {/* ========================================================================= */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <h1 className="text-base sm:text-lg font-bold text-slate-800 tracking-wide">
-            SELAMAT DATANG CALON PESERTA DIDIK
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-base sm:text-lg font-bold text-slate-800 tracking-wide">
+              SELAMAT DATANG CALON PESERTA DIDIK
+            </h1>
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded-full text-[10px] font-bold text-emerald-700">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span>Terhubung</span>
+            </div>
+          </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => {

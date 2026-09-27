@@ -8,20 +8,17 @@ import {
   XCircle, 
   Clock, 
   Download, 
-  Database, 
   Trash2, 
   ShieldCheck, 
   Check, 
   X, 
-  Copy, 
   AlertCircle,
   ExternalLink,
   Save,
-  Printer,
-  Upload
+  Printer
 } from 'lucide-react';
 import { Student, User, StatusPendaftaran, JurusanType } from '../types/database';
-import { dbService, SUPABASE_SQL_SCHEMA } from '../services/supabase';
+import { dbService } from '../services/supabase';
 
 interface AdminDashboardProps {
   currentUser: User;
@@ -43,20 +40,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [modalStatus, setModalStatus] = useState<StatusPendaftaran>('Berkas Fisik');
   const [adminNotes, setAdminNotes] = useState('');
-
-  // Supabase config modal
-  const [showDbModal, setShowDbModal] = useState(false);
-  const [supabaseUrl, setSupabaseUrl] = useState('');
-  const [supabaseKey, setSupabaseKey] = useState('');
-  const [copiedSchema, setCopiedSchema] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
-  const [importLoading, setImportLoading] = useState(false);
 
   useEffect(() => {
     loadStudents();
-    const config = dbService.getStoredSupabaseConfig();
-    setSupabaseUrl(config.url);
-    setSupabaseKey(config.key);
 
     // Subscribe to Supabase Realtime changes on students table
     const unsubscribe = dbService.subscribeToStudents(() => {
@@ -167,37 +154,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     document.body.removeChild(link);
   };
 
-  const handleSaveDbConfig = async () => {
-    dbService.saveSupabaseConfig(supabaseUrl.trim(), supabaseKey.trim());
-    showToast('Konfigurasi Supabase berhasil disimpan!');
-    setShowDbModal(false);
-    await loadStudents();
-  };
-
-  const handleCopySchema = () => {
-    navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
-    setCopiedSchema(true);
-    setTimeout(() => setCopiedSchema(false), 2000);
-  };
-
-  const handleImportJsonFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setImportLoading(true);
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      const items = Array.isArray(parsed) ? parsed : [parsed];
-      const report = await dbService.importLegacyStudents(items);
-      await loadStudents();
-      showToast(`Migrasi Selesai: ${report.success} pendaftar baru tersimpan, ${report.skipped} dilewati.`);
-    } catch (err: any) {
-      alert(`Gagal membaca atau memproses berkas JSON: ${err.message}`);
-    } finally {
-      setImportLoading(false);
-      e.target.value = '';
-    }
+  const handleExportJSON = () => {
+    const jsonContent = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filteredStudents, null, 2));
+    const link = document.createElement('a');
+    link.setAttribute('href', jsonContent);
+    link.setAttribute('download', `DATA_PPDB_SMK_MUHIBA_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`Berhasil mengunduh ${filteredStudents.length} data pendaftar dalam format JSON.`);
   };
 
   return (
@@ -228,13 +193,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowDbModal(true)}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-blue-300 rounded-md border border-slate-700 transition-colors flex items-center gap-1.5"
-          >
-            <Database className="w-3.5 h-3.5" />
-            <span>Supabase Sync</span>
-          </button>
+          {/* Status Koneksi Hijau */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-950/80 border border-emerald-500/40 rounded-full text-xs font-bold text-emerald-400">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="text-[11px] tracking-wide">Terhubung</span>
+          </div>
 
           <a
             href="https://www.smkmuhiba.sch.id"
@@ -351,10 +314,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             <button
               onClick={handleExportCSV}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
+              className="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-md text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
+              title="Unduh data pendaftar format CSV/Excel"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Export CSV</span>
+            </button>
+
+            <button
+              onClick={handleExportJSON}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
+              title="Unduh berkas cadangan data pendaftar format JSON"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download Data JSON</span>
             </button>
           </div>
 
@@ -720,117 +693,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   Tutup
                 </button>
               </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* SUPABASE CONFIG & SQL SCHEMA MODAL */}
-      {/* ========================================================================= */}
-      {showDbModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 sm:p-8 relative my-8 animate-in fade-in duration-200 space-y-5">
-            
-            <div className="flex items-start justify-between border-b pb-4">
-              <div>
-                <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
-                  Database & Authentication Setup
-                </span>
-                <h3 className="text-lg font-black text-slate-900">
-                  Integrasi Backend Supabase
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowDbModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Aplikasi ini memiliki sistem dual-sync: berjalan langsung dengan penyimpanan lokal reaktif, serta mendukung koneksi live ke <strong>Supabase</strong> untuk tabel <code>users</code> dan <code>students</code>.
-            </p>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Supabase Project URL
-                </label>
-                <input
-                  type="text"
-                  value={supabaseUrl}
-                  onChange={(e) => setSupabaseUrl(e.target.value)}
-                  placeholder="https://xyzcompany.supabase.co"
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Supabase Anon Key
-                </label>
-                <input
-                  type="password"
-                  value={supabaseKey}
-                  onChange={(e) => setSupabaseKey(e.target.value)}
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded font-mono"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleSaveDbConfig}
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-md shadow-sm transition-colors"
-                >
-                  Simpan Konfigurasi Supabase
-                </button>
-              </div>
-            </div>
-
-            {/* Legacy Data Migration / Importer */}
-            <div className="pt-3 border-t">
-              <h4 className="text-xs font-bold text-slate-900 uppercase mb-1">
-                Migrasi / Import Data Siswa Lama (JSON)
-              </h4>
-              <p className="text-[11px] text-slate-500 mb-2">
-                Import berkas cadangan data siswa lama ke Supabase dengan validasi format dan filter pencegahan duplikasi NIK otomatis.
-              </p>
-              <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded border border-slate-300 cursor-pointer transition-colors">
-                <Upload className="w-3.5 h-3.5 text-blue-600" />
-                <span>{importLoading ? 'Memproses Migrasi...' : 'Pilih Berkas JSON Data Siswa'}</span>
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleImportJsonFile}
-                  disabled={importLoading}
-                  className="hidden"
-                />
-              </label>
-            </div>
-
-            {/* SQL Script Viewer */}
-            <div className="pt-3 border-t">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-bold text-slate-900 uppercase">
-                  Skema SQL Supabase (Copy & Paste ke SQL Editor)
-                </h4>
-                <button
-                  onClick={handleCopySchema}
-                  className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
-                >
-                  {copiedSchema ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedSchema ? 'Tersalin!' : 'Salin SQL'}</span>
-                </button>
-              </div>
-
-              <pre className="bg-slate-900 text-emerald-400 p-4 rounded-lg text-[11px] font-mono overflow-x-auto max-h-56 leading-relaxed">
-                {SUPABASE_SQL_SCHEMA}
-              </pre>
             </div>
 
           </div>

@@ -306,6 +306,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     student.data_berkas?.kartu_keluarga?.nama_file || berkasKK
   );
 
+  // Semua formulir lengkap (Diri, Alamat, Ortu, Berkas)
+  const isSemuaFormLengkap = Boolean(
+    isDiriLengkap && isAlamatLengkap && isOrtuLengkap && isBerkasLengkap
+  );
+
   // Form Tab Step Guard (Urutan Wajib: 1. Data Diri -> 2. Data Alamat -> 3. Data Ortu -> 4. Data Berkas)
   const isTabAccessible = (targetTab: 'diri' | 'alamat' | 'ortu' | 'berkas'): boolean => {
     if (targetTab === 'diri') return true;
@@ -603,17 +608,27 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                 <button
                   onClick={() => {
+                    if (!isSemuaFormLengkap) {
+                      showNotification('Lengkapi seluruh formulir pendaftaran & berkas terlebih dahulu untuk melihat rincian biaya pembayaran.');
+                      return;
+                    }
                     setActiveMenu('pembayaran');
                     setMobileSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
                     activeMenu === 'pembayaran'
                       ? 'bg-blue-50 text-blue-700 font-bold'
+                      : !isSemuaFormLengkap
+                      ? 'text-slate-400 hover:bg-slate-50 cursor-not-allowed opacity-60'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`}
+                  title={!isSemuaFormLengkap ? 'Selesaikan semua formulir terlebih dahulu' : ''}
                 >
-                  <CreditCard className="w-4 h-4 text-slate-400" />
-                  <span>Pembayaran</span>
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="w-4 h-4 text-slate-400" />
+                    <span>Pembayaran</span>
+                  </div>
+                  {!isSemuaFormLengkap && <Lock className="w-3.5 h-3.5 text-slate-400" />}
                 </button>
 
                 <button
@@ -681,6 +696,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Indikator Status Terhubung Hijau */}
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[10px] font-bold text-emerald-700">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span>Terhubung</span>
+              </div>
+
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
                 {student.nama_lengkap?.charAt(0) || 'S'}
               </div>
@@ -2060,69 +2081,92 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             )}
 
             {/* ===================================================================== */}
-            {/* VIEW 3: PEMBAYARAN */}
+            {/* VIEW 3: PEMBAYARAN (Terkunci & Tersembunyi sebelum semua formulir lengkap) */}
             {/* ===================================================================== */}
             {activeMenu === 'pembayaran' && (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
-                <div className="flex items-center justify-between pb-4 border-b">
-                  <div>
-                    <h2 className="text-base font-bold text-slate-900">Rincian Pembayaran & Cetak Formulir</h2>
-                    <p className="text-xs text-slate-500">Informasi administrasi pendaftaran siswa baru SMK Muhammadiyah Bawang</p>
+              !isSemuaFormLengkap ? (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-8 text-center space-y-4 max-w-xl mx-auto my-8">
+                  <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+                    <Lock className="w-7 h-7" />
                   </div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Menu Pembayaran & Biaya Terkunci
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Informasi rincian biaya dan cetak formulir pendaftaran hanya dapat diakses setelah seluruh data (Data Diri, Data Alamat, Data Orang Tua, dan Data Berkas) telah diisi lengkap oleh calon murid.
+                  </p>
                   <button
-                    onClick={handlePrintFormulir}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm transition-colors flex items-center gap-1.5"
+                    onClick={() => {
+                      setActiveMenu('formulir');
+                      handleSelectTab('diri');
+                    }}
+                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm transition-colors"
                   >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>Cetak Formulir Lengkap</span>
+                    Buka Formulir Pendaftaran
                   </button>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
-                    <p className="text-xs text-emerald-800 font-semibold">Biaya Pendaftaran / Formulir</p>
-                    <p className="text-2xl font-black text-emerald-700 mt-1">GRATIS (Rp 0,-)</p>
-                    <p className="text-[11px] text-emerald-600 mt-0.5">Program Bebas Biaya Gelombang 1 Sekolah SMART</p>
+              ) : (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
+                  <div className="flex items-center justify-between pb-4 border-b">
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900">Rincian Pembayaran & Cetak Formulir</h2>
+                      <p className="text-xs text-slate-500">Informasi administrasi pendaftaran siswa baru SMK Muhammadiyah Bawang</p>
+                    </div>
+                    <button
+                      onClick={handlePrintFormulir}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm transition-colors flex items-center gap-1.5"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Cetak Formulir Lengkap</span>
+                    </button>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
-                    <p className="text-xs text-blue-800 font-semibold">Biaya Seragam & Atribut Sekolah</p>
-                    <p className="text-2xl font-black text-blue-700 mt-1">Rp 350.000,-</p>
-                    <p className="text-[11px] text-blue-600 mt-0.5">3 Stel Seragam Praktik, Pramuka, Hizbul Wathan & Jas</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                      <p className="text-xs text-emerald-800 font-semibold">Biaya Pendaftaran / Formulir</p>
+                      <p className="text-2xl font-black text-emerald-700 mt-1">GRATIS (Rp 0,-)</p>
+                      <p className="text-[11px] text-emerald-600 mt-0.5">Program Bebas Biaya Gelombang 1 Sekolah SMART</p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
+                      <p className="text-xs text-blue-800 font-semibold">Biaya Seragam & Atribut Sekolah</p>
+                      <p className="text-2xl font-black text-blue-700 mt-1">Rp 350.000,-</p>
+                      <p className="text-[11px] text-blue-600 mt-0.5">3 Stel Seragam Praktik, Pramuka, Hizbul Wathan & Jas</p>
+                    </div>
+                  </div>
+
+                  {/* Printable Official Receipt preview */}
+                  <div className="border border-slate-200 rounded-xl p-6 bg-slate-50/50 space-y-4">
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Status Pembayaran Siswa
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-200/70 text-slate-700 font-bold">
+                          <tr>
+                            <th className="px-4 py-2 text-left">Keterangan</th>
+                            <th className="px-4 py-2 text-left">Metode</th>
+                            <th className="px-4 py-2 text-right">Nominal</th>
+                            <th className="px-4 py-2 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 bg-white">
+                          <tr>
+                            <td className="px-4 py-3 font-medium">Biaya Seragam & Administrasi PPDB</td>
+                            <td className="px-4 py-3">Loket SMK Muhiba / Bank Jateng</td>
+                            <td className="px-4 py-3 text-right font-mono font-bold">Rp 350.000</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold text-[10px]">
+                                Lunas / Bebas Formulir
+                              </span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
-
-                {/* Printable Official Receipt preview */}
-                <div className="border border-slate-200 rounded-xl p-6 bg-slate-50/50 space-y-4">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    Status Pembayaran Siswa
-                  </h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead className="bg-slate-200/70 text-slate-700 font-bold">
-                        <tr>
-                          <th className="px-4 py-2 text-left">Keterangan</th>
-                          <th className="px-4 py-2 text-left">Metode</th>
-                          <th className="px-4 py-2 text-right">Nominal</th>
-                          <th className="px-4 py-2 text-center">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 bg-white">
-                        <tr>
-                          <td className="px-4 py-3 font-medium">Biaya Seragam & Administrasi PPDB</td>
-                          <td className="px-4 py-3">Loket SMK Muhiba / Bank Jateng</td>
-                          <td className="px-4 py-3 text-right font-mono font-bold">Rp 350.000</td>
-                          <td className="px-4 py-3 text-center">
-                            <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold text-[10px]">
-                              Lunas / Bebas Formulir
-                            </span>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+              )
             )}
 
             {/* ===================================================================== */}
