@@ -457,7 +457,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </main>
       
       <footer className="px-4 sm:px-8 py-4 border-t border-slate-200 bg-white text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2 max-w-7xl mx-auto w-full">
-        <span>Copyright © 2026 SPMB SMK MUHIBA by @hndx07</span>
+        <span>Copyright © 2026 SPMB SMK MUHIBA | by @hndx07</span>
         <a
           href="https://www.smkmuhiba.sch.id"
           target="_blank"
@@ -574,25 +574,91 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* Block 4: Berkas & Dokumen */}
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                 <h4 className="font-bold text-slate-800 uppercase pb-1 border-b">Berkas Terunggah</h4>
-                <div className="space-y-1.5">
-                  <p className="flex items-center justify-between">
-                    <span className="text-slate-500">Kartu Keluarga:</span>
-                    <span className="font-medium text-slate-800">
-                      {selectedStudent.data_berkas?.kartu_keluarga?.nama_file || 'Belum upload'}
+                <div className="space-y-2 text-xs">
+                  {/* Kartu Keluarga */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500 shrink-0">Kartu Keluarga:</span>
+                    <span className="font-medium text-slate-800 text-right truncate">
+                      {selectedStudent.data_berkas?.kartu_keluarga?.url ? (
+                        <a
+                          href={selectedStudent.data_berkas.kartu_keluarga.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline font-semibold flex items-center gap-1 justify-end"
+                          title="Klik untuk membuka/unduh berkas"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span className="truncate max-w-[200px]">{selectedStudent.data_berkas.kartu_keluarga.nama_file}</span>
+                        </a>
+                      ) : (
+                        selectedStudent.data_berkas?.kartu_keluarga?.nama_file || <span className="text-slate-400 italic">Belum upload</span>
+                      )}
                     </span>
-                  </p>
-                  <p className="flex items-center justify-between">
-                    <span className="text-slate-500">Ijazah / SKL:</span>
-                    <span className="font-medium text-slate-800">
-                      {selectedStudent.data_berkas?.ijazah_skl?.nama_file || 'Belum upload'}
+                  </div>
+
+                  {/* Ijazah / SKL */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500 shrink-0">Ijazah / SKL:</span>
+                    <span className="font-medium text-slate-800 text-right truncate">
+                      {selectedStudent.data_berkas?.ijazah_skl?.url ? (
+                        <a
+                          href={selectedStudent.data_berkas.ijazah_skl.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline font-semibold flex items-center gap-1 justify-end"
+                          title="Klik untuk membuka/unduh berkas"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span className="truncate max-w-[200px]">{selectedStudent.data_berkas.ijazah_skl.nama_file}</span>
+                        </a>
+                      ) : (
+                        selectedStudent.data_berkas?.ijazah_skl?.nama_file || <span className="text-slate-400 italic">Belum upload</span>
+                      )}
                     </span>
-                  </p>
-                  <p className="flex items-center justify-between">
-                    <span className="text-slate-500">Akta Lahir:</span>
-                    <span className="font-medium text-slate-800">
-                      {selectedStudent.data_berkas?.akta_kelahiran?.nama_file || 'Belum upload'}
+                  </div>
+
+                  {/* Akta Lahir */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500 shrink-0">Akta Lahir:</span>
+                    <span className="font-medium text-slate-800 text-right truncate">
+                      {selectedStudent.data_berkas?.akta_kelahiran?.url ? (
+                        <a
+                          href={selectedStudent.data_berkas.akta_kelahiran.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline font-semibold flex items-center gap-1 justify-end"
+                          title="Klik untuk membuka/unduh berkas"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span className="truncate max-w-[200px]">{selectedStudent.data_berkas.akta_kelahiran.nama_file}</span>
+                        </a>
+                      ) : (
+                        selectedStudent.data_berkas?.akta_kelahiran?.nama_file || <span className="text-slate-400 italic">Belum upload</span>
+                      )}
                     </span>
-                  </p>
+                  </div>
+
+                  {/* KIP */}
+                  {selectedStudent.data_berkas?.kartu_kip && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-slate-500 shrink-0">Kartu KIP:</span>
+                      <span className="font-medium text-slate-800 text-right truncate">
+                        {selectedStudent.data_berkas.kartu_kip.url ? (
+                          <a
+                            href={selectedStudent.data_berkas.kartu_kip.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline font-semibold flex items-center gap-1 justify-end"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span className="truncate max-w-[200px]">{selectedStudent.data_berkas.kartu_kip.nama_file}</span>
+                          </a>
+                        ) : (
+                          selectedStudent.data_berkas.kartu_kip.nama_file
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 

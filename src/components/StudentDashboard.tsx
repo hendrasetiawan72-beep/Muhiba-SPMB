@@ -21,8 +21,12 @@ import {
   HelpCircle,
   Clock,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Lock,
+  Download,
+  Copy
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import { Student, User as UserType, JurusanType } from '../types/database';
 import { dbService } from '../services/supabase';
 
@@ -128,12 +132,159 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [pekerjaanWali, setPekerjaanWali] = useState(student.data_orang_tua?.pekerjaan_wali || '');
   const [noHpWali, setNoHpWali] = useState(student.data_orang_tua?.no_hp_wali || '');
 
-  // Berkas Upload States
+  // Berkas Upload States (File objects & metadata)
   const [berkasKK, setBerkasKK] = useState<string>(student.data_berkas?.kartu_keluarga?.nama_file || '');
   const [berkasSKL, setBerkasSKL] = useState<string>(student.data_berkas?.ijazah_skl?.nama_file || '');
   const [berkasAkta, setBerkasAkta] = useState<string>(student.data_berkas?.akta_kelahiran?.nama_file || '');
   const [berkasKIP, setBerkasKIP] = useState<string>(student.data_berkas?.kartu_kip?.nama_file || '');
   const [berkasFoto, setBerkasFoto] = useState<string>(student.data_berkas?.pas_foto?.nama_file || '');
+  const [isUploadingBerkas, setIsUploadingBerkas] = useState(false);
+
+  // New credentials warning banner & PDF state
+  const [newCredentials, setNewCredentials] = useState<{
+    nik: string;
+    password: string;
+    nama: string;
+    nomor_pendaftaran: string;
+    tanggal_daftar?: string;
+  } | null>(null);
+  const [copiedField, setCopiedField] = useState<'username' | 'password' | null>(null);
+
+  // Read new credentials from sessionStorage on mount (once)
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('spmb_new_credentials');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.nik && parsed.password) {
+          setNewCredentials(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading sessionStorage for credentials:', e);
+    }
+  }, []);
+
+  const handleCloseCredentialsWarning = () => {
+    try {
+      sessionStorage.removeItem('spmb_new_credentials');
+    } catch (e) {
+      console.warn('Error clearing sessionStorage:', e);
+    }
+    setNewCredentials(null);
+  };
+
+  const handleCopyText = (text: string, type: 'username' | 'password') => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(type);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const handleDownloadCredentialsPDF = () => {
+    if (!newCredentials) return;
+    try {
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFillColor(30, 64, 175); // #1e40af
+      doc.rect(0, 0, 210, 40, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('SPMB SMK MUHAMMADIYAH BAWANG', 105, 18, { align: 'center' });
+      
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Bukti Akun & Kredensial Login Calon Peserta Didik Baru 2026/2027', 105, 27, { align: 'center' });
+      doc.text('Website Resmi: www.smkmuhiba.sch.id', 105, 34, { align: 'center' });
+
+      // Body box
+      doc.setDrawColor(203, 213, 225);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(15, 50, 180, 85, 4, 4, 'FD');
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DATA AKUN LOGIN SISWA', 25, 62);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+
+      doc.text('Nama Lengkap', 25, 73);
+      doc.text(':', 68, 73);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(newCredentials.nama || student.nama_lengkap, 73, 73);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text('No. Pendaftaran', 25, 83);
+      doc.text(':', 68, 83);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 64, 175);
+      doc.text(newCredentials.nomor_pendaftaran || student.nomor_pendaftaran, 73, 83);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text('Username (NIK)', 25, 95);
+      doc.text(':', 68, 95);
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(185, 28, 28); // red-700
+      doc.text(newCredentials.nik, 73, 95);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(71, 85, 105);
+      doc.text('Password', 25, 107);
+      doc.text(':', 68, 107);
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+      doc.text(newCredentials.password, 73, 107);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(71, 85, 105);
+      doc.text('Tanggal Daftar', 25, 119);
+      doc.text(':', 68, 119);
+      doc.setTextColor(15, 23, 42);
+      doc.text(newCredentials.tanggal_daftar || student.tanggal_daftar, 73, 119);
+
+      // Warning Box
+      doc.setFillColor(254, 243, 199); // amber-100
+      doc.setDrawColor(245, 158, 11); // amber-500
+      doc.roundedRect(15, 145, 180, 42, 3, 3, 'FD');
+
+      doc.setTextColor(146, 64, 14); // amber-800
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('PENTING / PERHATIAN:', 22, 155);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(120, 53, 15);
+      const note1 = '1. Username untuk login siswa adalah 16 digit NIK yang Anda daftarkan.';
+      const note2 = '2. Simpan dokumen PDF ini atau catat Username & Password Anda di tempat yang aman.';
+      const note3 = '3. Gunakan akun ini untuk melengkapi formulir bertahap & melihat pengumuman kelulusan.';
+      doc.text(note1, 22, 163);
+      doc.text(note2, 22, 171);
+      doc.text(note3, 22, 179);
+
+      // Footer
+      doc.setFontSize(8.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text('Dicetak otomatis oleh Sistem SPMB SMK Muhammadiyah Bawang | by @hndx07', 105, 280, { align: 'center' });
+
+      doc.save(`AKUN_SPMB_MUHIBA_${newCredentials.nik}.pdf`);
+    } catch (pdfErr) {
+      console.error('Error generating PDF:', pdfErr);
+      alert('Gagal mengunduh PDF. Silakan catat Username & Password Anda.');
+    }
+  };
 
   // Helper calculation for checklist completeness
   const isDiriLengkap = Boolean(
@@ -154,6 +305,58 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const isBerkasLengkap = Boolean(
     student.data_berkas?.kartu_keluarga?.nama_file || berkasKK
   );
+
+  // Form Tab Step Guard (Urutan Wajib: 1. Data Diri -> 2. Data Alamat -> 3. Data Ortu -> 4. Data Berkas)
+  const isTabAccessible = (targetTab: 'diri' | 'alamat' | 'ortu' | 'berkas'): boolean => {
+    if (targetTab === 'diri') return true;
+    if (targetTab === 'alamat') return isDiriLengkap;
+    if (targetTab === 'ortu') return isDiriLengkap && isAlamatLengkap;
+    if (targetTab === 'berkas') return isDiriLengkap && isAlamatLengkap && isOrtuLengkap;
+    return false;
+  };
+
+  const handleSelectTab = (targetTab: 'diri' | 'alamat' | 'ortu' | 'berkas') => {
+    if (targetTab === 'diri') {
+      setActiveFormTab('diri');
+      return;
+    }
+    if (targetTab === 'alamat') {
+      if (!isDiriLengkap) {
+        showNotification('Lengkapi Data Diri terlebih dahulu.');
+        return;
+      }
+      setActiveFormTab('alamat');
+      return;
+    }
+    if (targetTab === 'ortu') {
+      if (!isDiriLengkap) {
+        showNotification('Lengkapi Data Diri terlebih dahulu.');
+        return;
+      }
+      if (!isAlamatLengkap) {
+        showNotification('Lengkapi Data Alamat terlebih dahulu.');
+        return;
+      }
+      setActiveFormTab('ortu');
+      return;
+    }
+    if (targetTab === 'berkas') {
+      if (!isDiriLengkap) {
+        showNotification('Lengkapi Data Diri terlebih dahulu.');
+        return;
+      }
+      if (!isAlamatLengkap) {
+        showNotification('Lengkapi Data Alamat terlebih dahulu.');
+        return;
+      }
+      if (!isOrtuLengkap) {
+        showNotification('Lengkapi Data Orang Tua terlebih dahulu.');
+        return;
+      }
+      setActiveFormTab('berkas');
+      return;
+    }
+  };
 
   const showNotification = (msg: string) => {
     setSaveToast(msg);
@@ -256,16 +459,62 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     }
   };
 
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    jenis: 'kartu_keluarga' | 'ijazah_skl' | 'akta_kelahiran' | 'kartu_kip' | 'pas_foto'
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ukuran file maksimal adalah 2MB.');
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      setIsUploadingBerkas(true);
+      showNotification(`Mengunggah ${file.name}...`);
+      const res = await dbService.uploadBerkasFile(student.nik, jenis, file);
+      
+      const nowStr = new Date().toLocaleDateString('id-ID');
+      const item = {
+        nama_file: res.nama_file,
+        url: res.url,
+        ukuran: res.ukuran,
+        uploaded_at: nowStr,
+      };
+
+      if (jenis === 'kartu_keluarga') setBerkasKK(res.nama_file);
+      if (jenis === 'ijazah_skl') setBerkasSKL(res.nama_file);
+      if (jenis === 'akta_kelahiran') setBerkasAkta(res.nama_file);
+      if (jenis === 'kartu_kip') setBerkasKIP(res.nama_file);
+      if (jenis === 'pas_foto') setBerkasFoto(res.nama_file);
+
+      // Save directly to student data_berkas
+      const updated = await dbService.updateStudentDataBerkas(student.nik, {
+        [jenis]: item,
+      });
+      setStudent(updated);
+      showNotification(`Berkas ${file.name} berhasil diunggah!`);
+    } catch (err: any) {
+      console.error('Error upload file:', err);
+      alert(err.message || 'Gagal mengunggah berkas.');
+    } finally {
+      setIsUploadingBerkas(false);
+    }
+  };
+
   const handleSaveDataBerkas = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const nowStr = new Date().toLocaleDateString('id-ID');
       const updated = await dbService.updateStudentDataBerkas(student.nik, {
-        kartu_keluarga: berkasKK ? { nama_file: berkasKK, ukuran: '1.2 MB', uploaded_at: nowStr } : undefined,
-        ijazah_skl: berkasSKL ? { nama_file: berkasSKL, ukuran: '900 KB', uploaded_at: nowStr } : undefined,
-        akta_kelahiran: berkasAkta ? { nama_file: berkasAkta, ukuran: '850 KB', uploaded_at: nowStr } : undefined,
-        kartu_kip: berkasKIP ? { nama_file: berkasKIP, ukuran: '750 KB', uploaded_at: nowStr } : undefined,
-        pas_foto: berkasFoto ? { nama_file: berkasFoto, ukuran: '450 KB', uploaded_at: nowStr } : undefined,
+        kartu_keluarga: berkasKK ? { nama_file: berkasKK, ukuran: '1.2 MB', uploaded_at: nowStr, url: student.data_berkas?.kartu_keluarga?.url } : undefined,
+        ijazah_skl: berkasSKL ? { nama_file: berkasSKL, ukuran: '900 KB', uploaded_at: nowStr, url: student.data_berkas?.ijazah_skl?.url } : undefined,
+        akta_kelahiran: berkasAkta ? { nama_file: berkasAkta, ukuran: '850 KB', uploaded_at: nowStr, url: student.data_berkas?.akta_kelahiran?.url } : undefined,
+        kartu_kip: berkasKIP ? { nama_file: berkasKIP, ukuran: '750 KB', uploaded_at: nowStr, url: student.data_berkas?.kartu_kip?.url } : undefined,
+        pas_foto: berkasFoto ? { nama_file: berkasFoto, ukuran: '450 KB', uploaded_at: nowStr, url: student.data_berkas?.pas_foto?.url } : undefined,
       });
       setStudent(updated);
       showNotification('Berkas pendaftaran berhasil disimpan & diserahkan untuk verifikasi!');
@@ -449,6 +698,101 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           <div className="p-4 sm:p-8 space-y-6">
 
             {/* ===================================================================== */}
+            {/* FITUR C: PERINGATAN USERNAME & PASSWORD BARU DAFTAR + UNDUH PDF */}
+            {/* ===================================================================== */}
+            {newCredentials && (
+              <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white rounded-2xl p-5 sm:p-6 shadow-xl border border-amber-400/50 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/20">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white text-amber-600 flex items-center justify-center font-black shadow">
+                      <AlertCircle className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black tracking-wide uppercase">
+                        PENTING: Simpan Username & Password Anda
+                      </h3>
+                      <p className="text-xs text-amber-100 font-medium">
+                        Kredensial ini digunakan untuk masuk kembali ke dashboard siswa & mengecek status pengumuman.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleCloseCredentialsWarning}
+                    className="self-end sm:self-center px-3 py-1.5 bg-black/20 hover:bg-black/40 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                    title="Tutup peringatan"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>Tutup</span>
+                  </button>
+                </div>
+
+                {/* Credentials Display Box */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
+                  <div className="bg-white/95 rounded-lg p-3.5 text-slate-800 shadow-sm flex items-center justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
+                        Username (NIK 16 Digit)
+                      </span>
+                      <span className="text-lg sm:text-xl font-mono font-black text-rose-700 tracking-wide select-all">
+                        {newCredentials.nik}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleCopyText(newCredentials.nik, 'username')}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-xs font-bold transition-colors flex items-center gap-1 shrink-0"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>{copiedField === 'username' ? 'Tersalin!' : 'Salin'}</span>
+                    </button>
+                  </div>
+
+                  <div className="bg-white/95 rounded-lg p-3.5 text-slate-800 shadow-sm flex items-center justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
+                        Password Pendaftaran
+                      </span>
+                      <span className="text-lg sm:text-xl font-mono font-black text-slate-900 tracking-wide select-all">
+                        {newCredentials.password}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleCopyText(newCredentials.password, 'password')}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-xs font-bold transition-colors flex items-center gap-1 shrink-0"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>{copiedField === 'password' ? 'Tersalin!' : 'Salin'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                  <p className="text-[11px] text-amber-100">
+                    *Username login siswa selalu berupa <strong>16 digit NIK</strong>. Jangan berikan password Anda kepada siapapun.
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                    <button
+                      onClick={handleDownloadCredentialsPDF}
+                      className="w-full sm:w-auto px-5 py-2.5 bg-white hover:bg-amber-50 text-slate-900 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                    >
+                      <Download className="w-4 h-4 text-amber-600" />
+                      <span>Unduh PDF Username & Password</span>
+                    </button>
+
+                    <button
+                      onClick={handleCloseCredentialsWarning}
+                      className="w-full sm:w-auto px-4 py-2.5 bg-amber-700/80 hover:bg-amber-800 text-white font-bold text-xs rounded-xl transition-colors text-center"
+                    >
+                      Saya sudah menyimpan / Tutup
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ===================================================================== */}
             {/* VIEW 1: BERANDA (Screenshot 9) */}
             {/* ===================================================================== */}
             {activeMenu === 'beranda' && (
@@ -480,7 +824,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <div 
                     onClick={() => {
                       setActiveMenu('formulir');
-                      setActiveFormTab('diri');
+                      handleSelectTab('diri');
                     }}
                     className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 flex items-center gap-4 cursor-pointer hover:border-blue-400 transition-all"
                   >
@@ -507,12 +851,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <div 
                     onClick={() => {
                       setActiveMenu('formulir');
-                      setActiveFormTab('alamat');
+                      handleSelectTab('alamat');
                     }}
-                    className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 flex items-center gap-4 cursor-pointer hover:border-cyan-400 transition-all"
+                    className={`bg-white rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all ${
+                      isTabAccessible('alamat')
+                        ? 'cursor-pointer hover:border-cyan-400 border-slate-200/80'
+                        : 'opacity-70 border-slate-200 cursor-not-allowed bg-slate-50/70'
+                    }`}
                   >
-                    <div className="w-12 h-12 rounded-xl bg-cyan-500 text-white flex items-center justify-center shrink-0">
-                      <MapPin className="w-6 h-6" />
+                    <div className={`w-12 h-12 rounded-xl text-white flex items-center justify-center shrink-0 ${
+                      isTabAccessible('alamat') ? 'bg-cyan-500' : 'bg-slate-400'
+                    }`}>
+                      {isTabAccessible('alamat') ? <MapPin className="w-6 h-6" /> : <Lock className="w-5 h-5" />}
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">Data Alamat</p>
@@ -520,6 +870,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         {isAlamatLengkap ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-emerald-500 px-2.5 py-0.5 rounded-full">
                             <Check className="w-3 h-3" /> Lengkap
+                          </span>
+                        ) : !isTabAccessible('alamat') ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-200 px-2.5 py-0.5 rounded-full">
+                            <Lock className="w-3 h-3" /> Terkunci
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-rose-500 px-2.5 py-0.5 rounded-full">
@@ -534,12 +888,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <div 
                     onClick={() => {
                       setActiveMenu('formulir');
-                      setActiveFormTab('ortu');
+                      handleSelectTab('ortu');
                     }}
-                    className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 flex items-center gap-4 cursor-pointer hover:border-amber-400 transition-all"
+                    className={`bg-white rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all ${
+                      isTabAccessible('ortu')
+                        ? 'cursor-pointer hover:border-amber-400 border-slate-200/80'
+                        : 'opacity-70 border-slate-200 cursor-not-allowed bg-slate-50/70'
+                    }`}
                   >
-                    <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
-                      <Users className="w-6 h-6" />
+                    <div className={`w-12 h-12 rounded-xl text-white flex items-center justify-center shrink-0 ${
+                      isTabAccessible('ortu') ? 'bg-amber-500' : 'bg-slate-400'
+                    }`}>
+                      {isTabAccessible('ortu') ? <Users className="w-6 h-6" /> : <Lock className="w-5 h-5" />}
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">Data Orang Tua</p>
@@ -547,6 +907,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         {isOrtuLengkap ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-emerald-500 px-2.5 py-0.5 rounded-full">
                             <Check className="w-3 h-3" /> Lengkap
+                          </span>
+                        ) : !isTabAccessible('ortu') ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-200 px-2.5 py-0.5 rounded-full">
+                            <Lock className="w-3 h-3" /> Terkunci
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-rose-500 px-2.5 py-0.5 rounded-full">
@@ -652,7 +1016,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       {/* 4 Form Tabs */}
                       <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-lg">
                         <button
-                          onClick={() => setActiveFormTab('diri')}
+                          type="button"
+                          onClick={() => handleSelectTab('diri')}
                           className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1.5 ${
                             activeFormTab === 'diri'
                               ? 'bg-blue-600 text-white shadow-sm'
@@ -664,38 +1029,50 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </button>
 
                         <button
-                          onClick={() => setActiveFormTab('alamat')}
+                          type="button"
+                          onClick={() => handleSelectTab('alamat')}
                           className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1.5 ${
                             activeFormTab === 'alamat'
                               ? 'bg-blue-600 text-white shadow-sm'
-                              : 'text-slate-600 hover:text-slate-900'
+                              : isTabAccessible('alamat')
+                              ? 'text-slate-600 hover:text-slate-900'
+                              : 'text-slate-400 bg-slate-200/50 cursor-not-allowed'
                           }`}
+                          title={!isTabAccessible('alamat') ? 'Lengkapi Data Diri terlebih dahulu' : ''}
                         >
-                          <MapPin className="w-3.5 h-3.5" />
+                          {isTabAccessible('alamat') ? <MapPin className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                           <span>Data Alamat</span>
                         </button>
 
                         <button
-                          onClick={() => setActiveFormTab('ortu')}
+                          type="button"
+                          onClick={() => handleSelectTab('ortu')}
                           className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1.5 ${
                             activeFormTab === 'ortu'
                               ? 'bg-blue-600 text-white shadow-sm'
-                              : 'text-slate-600 hover:text-slate-900'
+                              : isTabAccessible('ortu')
+                              ? 'text-slate-600 hover:text-slate-900'
+                              : 'text-slate-400 bg-slate-200/50 cursor-not-allowed'
                           }`}
+                          title={!isTabAccessible('ortu') ? 'Lengkapi Data Diri & Alamat terlebih dahulu' : ''}
                         >
-                          <Users className="w-3.5 h-3.5" />
+                          {isTabAccessible('ortu') ? <Users className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                           <span>Orang Tua</span>
                         </button>
 
                         <button
-                          onClick={() => setActiveFormTab('berkas')}
+                          type="button"
+                          onClick={() => handleSelectTab('berkas')}
                           className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1.5 ${
                             activeFormTab === 'berkas'
                               ? 'bg-blue-600 text-white shadow-sm'
-                              : 'text-slate-600 hover:text-slate-900'
+                              : isTabAccessible('berkas')
+                              ? 'text-slate-600 hover:text-slate-900'
+                              : 'text-slate-400 bg-slate-200/50 cursor-not-allowed'
                           }`}
+                          title={!isTabAccessible('berkas') ? 'Lengkapi Data Diri, Alamat & Orang Tua terlebih dahulu' : ''}
                         >
-                          <FolderCheck className="w-3.5 h-3.5" />
+                          {isTabAccessible('berkas') ? <FolderCheck className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                           <span>Data Berkas</span>
                         </button>
                       </div>
@@ -1383,14 +1760,30 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <div className="flex items-center gap-2">
                               <input
                                 type="file"
-                                onChange={(e) => {
-                                  if (e.target.files?.[0]) setBerkasKK(e.target.files[0].name);
-                                }}
+                                disabled={isUploadingBerkas}
+                                onChange={(e) => handleFileUpload(e, 'kartu_keluarga')}
                                 className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                               />
                             </div>
-                            {berkasKK && <p className="text-[11px] text-emerald-600 font-semibold mt-1">✓ File: {berkasKK}</p>}
-                            <p className="text-[10px] text-slate-400 mt-0.5">Upload yang diperbolehkan ukuran maksimun 2Mb (PDF/JPG/PNG)</p>
+                            {student.data_berkas?.kartu_keluarga?.nama_file && (
+                              <div className="mt-1 flex items-center gap-2">
+                                <span className="text-[11px] text-emerald-600 font-semibold">
+                                  ✓ File: {student.data_berkas.kartu_keluarga.nama_file}
+                                </span>
+                                {student.data_berkas.kartu_keluarga.url && (
+                                  <a
+                                    href={student.data_berkas.kartu_keluarga.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5"
+                                  >
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                    <span>Lihat</span>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                            <p className="text-[10px] text-slate-400 mt-0.5">Upload yang diperbolehkan ukuran maksimum 2Mb (PDF/JPG/PNG)</p>
                           </div>
 
                           {/* 2. Ijazah / SKL */}
@@ -1399,14 +1792,30 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <div className="flex items-center gap-2">
                               <input
                                 type="file"
-                                onChange={(e) => {
-                                  if (e.target.files?.[0]) setBerkasSKL(e.target.files[0].name);
-                                }}
+                                disabled={isUploadingBerkas}
+                                onChange={(e) => handleFileUpload(e, 'ijazah_skl')}
                                 className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                               />
                             </div>
-                            {berkasSKL && <p className="text-[11px] text-emerald-600 font-semibold mt-1">✓ File: {berkasSKL}</p>}
-                            <p className="text-[10px] text-slate-400 mt-0.5">Upload yang diperbolehkan ukuran maksimun 2Mb</p>
+                            {student.data_berkas?.ijazah_skl?.nama_file && (
+                              <div className="mt-1 flex items-center gap-2">
+                                <span className="text-[11px] text-emerald-600 font-semibold">
+                                  ✓ File: {student.data_berkas.ijazah_skl.nama_file}
+                                </span>
+                                {student.data_berkas.ijazah_skl.url && (
+                                  <a
+                                    href={student.data_berkas.ijazah_skl.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5"
+                                  >
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                    <span>Lihat</span>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                            <p className="text-[10px] text-slate-400 mt-0.5">Upload yang diperbolehkan ukuran maksimum 2Mb</p>
                           </div>
 
                           {/* 3. Akta Kelahiran */}
@@ -1415,14 +1824,30 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <div className="flex items-center gap-2">
                               <input
                                 type="file"
-                                onChange={(e) => {
-                                  if (e.target.files?.[0]) setBerkasAkta(e.target.files[0].name);
-                                }}
+                                disabled={isUploadingBerkas}
+                                onChange={(e) => handleFileUpload(e, 'akta_kelahiran')}
                                 className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                               />
                             </div>
-                            {berkasAkta && <p className="text-[11px] text-emerald-600 font-semibold mt-1">✓ File: {berkasAkta}</p>}
-                            <p className="text-[10px] text-slate-400 mt-0.5">Upload yang diperbolehkan ukuran maksimun 2Mb</p>
+                            {student.data_berkas?.akta_kelahiran?.nama_file && (
+                              <div className="mt-1 flex items-center gap-2">
+                                <span className="text-[11px] text-emerald-600 font-semibold">
+                                  ✓ File: {student.data_berkas.akta_kelahiran.nama_file}
+                                </span>
+                                {student.data_berkas.akta_kelahiran.url && (
+                                  <a
+                                    href={student.data_berkas.akta_kelahiran.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5"
+                                  >
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                    <span>Lihat</span>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                            <p className="text-[10px] text-slate-400 mt-0.5">Upload yang diperbolehkan ukuran maksimum 2Mb</p>
                           </div>
 
                           {/* 4. Kartu KIP (jika punya) */}
@@ -1431,28 +1856,45 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <div className="flex items-center gap-2">
                               <input
                                 type="file"
-                                onChange={(e) => {
-                                  if (e.target.files?.[0]) setBerkasKIP(e.target.files[0].name);
-                                }}
+                                disabled={isUploadingBerkas}
+                                onChange={(e) => handleFileUpload(e, 'kartu_kip')}
                                 className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                               />
                             </div>
-                            {berkasKIP && <p className="text-[11px] text-emerald-600 font-semibold mt-1">✓ File: {berkasKIP}</p>}
-                            <p className="text-[10px] text-slate-400 mt-0.5">Upload yang diperbolehkan ukuran maksimun 2Mb</p>
+                            {student.data_berkas?.kartu_kip?.nama_file && (
+                              <div className="mt-1 flex items-center gap-2">
+                                <span className="text-[11px] text-emerald-600 font-semibold">
+                                  ✓ File: {student.data_berkas.kartu_kip.nama_file}
+                                </span>
+                                {student.data_berkas.kartu_kip.url && (
+                                  <a
+                                    href={student.data_berkas.kartu_kip.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5"
+                                  >
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                    <span>Lihat</span>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                            <p className="text-[10px] text-slate-400 mt-0.5">Upload yang diperbolehkan ukuran maksimum 2Mb</p>
                           </div>
                         </div>
 
                         <p className="text-[11px] text-slate-500 italic">
-                          *Harap isi data berkas dengan sebenarnya
+                          *Harap isi data berkas dengan sebenarnya. Setelah data berkas disimpan, status pendaftaran berubah menjadi Menunggu Verifikasi.
                         </p>
 
                         <div className="pt-2">
                           <button
                             type="submit"
-                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm transition-colors flex items-center gap-2"
+                            disabled={isUploadingBerkas}
+                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold text-xs rounded-md shadow-sm transition-colors flex items-center gap-2"
                           >
                             <Save className="w-4 h-4" />
-                            <span>Simpan Data Berkas</span>
+                            <span>{isUploadingBerkas ? 'Mengunggah Berkas...' : 'Simpan Data Berkas'}</span>
                           </button>
                         </div>
                       </form>
@@ -1469,7 +1911,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     <div className="space-y-4">
                       {/* Step 1: Data Diri */}
                       <div 
-                        onClick={() => setActiveFormTab('diri')}
+                        onClick={() => handleSelectTab('diri')}
                         className={`p-3.5 rounded-xl border flex items-center gap-3.5 cursor-pointer transition-all ${
                           activeFormTab === 'diri' ? 'border-blue-500 bg-blue-50/40 shadow-sm' : 'border-slate-100 hover:bg-slate-50'
                         }`}
@@ -1495,13 +1937,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                       {/* Step 2: Data Alamat */}
                       <div 
-                        onClick={() => setActiveFormTab('alamat')}
-                        className={`p-3.5 rounded-xl border flex items-center gap-3.5 cursor-pointer transition-all ${
-                          activeFormTab === 'alamat' ? 'border-blue-500 bg-blue-50/40 shadow-sm' : 'border-slate-100 hover:bg-slate-50'
+                        onClick={() => handleSelectTab('alamat')}
+                        className={`p-3.5 rounded-xl border flex items-center gap-3.5 transition-all ${
+                          activeFormTab === 'alamat' 
+                            ? 'border-blue-500 bg-blue-50/40 shadow-sm' 
+                            : isTabAccessible('alamat')
+                            ? 'border-slate-100 hover:bg-slate-50 cursor-pointer'
+                            : 'border-slate-100 bg-slate-50/70 opacity-60 cursor-not-allowed'
                         }`}
                       >
-                        <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center shrink-0 text-sm">
-                          2
+                        <div className={`w-10 h-10 rounded-full text-white font-extrabold flex items-center justify-center shrink-0 text-sm ${
+                          isTabAccessible('alamat') ? 'bg-blue-600' : 'bg-slate-400'
+                        }`}>
+                          {isTabAccessible('alamat') ? '2' : <Lock className="w-4 h-4" />}
                         </div>
                         <div className="flex-1">
                           <p className="text-xs font-bold text-slate-900">Data Alamat</p>
@@ -1509,6 +1957,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             {isAlamatLengkap ? (
                               <span className="text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                 <Check className="w-2.5 h-2.5" /> Lengkap
+                              </span>
+                            ) : !isTabAccessible('alamat') ? (
+                              <span className="text-[10px] font-bold text-slate-600 bg-slate-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <Lock className="w-2.5 h-2.5" /> Terkunci
                               </span>
                             ) : (
                               <span className="text-[10px] font-bold text-white bg-rose-500 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
@@ -1521,20 +1973,66 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                       {/* Step 3: Data Orang Tua */}
                       <div 
-                        onClick={() => setActiveFormTab('ortu')}
-                        className={`p-3.5 rounded-xl border flex items-center gap-3.5 cursor-pointer transition-all ${
-                          activeFormTab === 'ortu' ? 'border-blue-500 bg-blue-50/40 shadow-sm' : 'border-slate-100 hover:bg-slate-50'
+                        onClick={() => handleSelectTab('ortu')}
+                        className={`p-3.5 rounded-xl border flex items-center gap-3.5 transition-all ${
+                          activeFormTab === 'ortu' 
+                            ? 'border-blue-500 bg-blue-50/40 shadow-sm' 
+                            : isTabAccessible('ortu')
+                            ? 'border-slate-100 hover:bg-slate-50 cursor-pointer'
+                            : 'border-slate-100 bg-slate-50/70 opacity-60 cursor-not-allowed'
                         }`}
                       >
-                        <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center shrink-0 text-sm">
-                          3
+                        <div className={`w-10 h-10 rounded-full text-white font-extrabold flex items-center justify-center shrink-0 text-sm ${
+                          isTabAccessible('ortu') ? 'bg-blue-600' : 'bg-slate-400'
+                        }`}>
+                          {isTabAccessible('ortu') ? '3' : <Lock className="w-4 h-4" />}
                         </div>
                         <div className="flex-1">
-                          <p className="text-xs font-bold text-slate-900">Data Orang</p>
+                          <p className="text-xs font-bold text-slate-900">Data Orang Tua</p>
                           <div className="mt-0.5">
                             {isOrtuLengkap ? (
                               <span className="text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                 <Check className="w-2.5 h-2.5" /> Lengkap
+                              </span>
+                            ) : !isTabAccessible('ortu') ? (
+                              <span className="text-[10px] font-bold text-slate-600 bg-slate-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <Lock className="w-2.5 h-2.5" /> Terkunci
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-white bg-rose-500 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <X className="w-2.5 h-2.5" /> Belum Lengkap
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Step 4: Data Berkas */}
+                      <div 
+                        onClick={() => handleSelectTab('berkas')}
+                        className={`p-3.5 rounded-xl border flex items-center gap-3.5 transition-all ${
+                          activeFormTab === 'berkas' 
+                            ? 'border-blue-500 bg-blue-50/40 shadow-sm' 
+                            : isTabAccessible('berkas')
+                            ? 'border-slate-100 hover:bg-slate-50 cursor-pointer'
+                            : 'border-slate-100 bg-slate-50/70 opacity-60 cursor-not-allowed'
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-full text-white font-extrabold flex items-center justify-center shrink-0 text-sm ${
+                          isTabAccessible('berkas') ? 'bg-blue-600' : 'bg-slate-400'
+                        }`}>
+                          {isTabAccessible('berkas') ? '4' : <Lock className="w-4 h-4" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-slate-900">Data Berkas</p>
+                          <div className="mt-0.5">
+                            {isBerkasLengkap ? (
+                              <span className="text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <Check className="w-2.5 h-2.5" /> Lengkap
+                              </span>
+                            ) : !isTabAccessible('berkas') ? (
+                              <span className="text-[10px] font-bold text-slate-600 bg-slate-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <Lock className="w-2.5 h-2.5" /> Terkunci
                               </span>
                             ) : (
                               <span className="text-[10px] font-bold text-white bg-rose-500 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
@@ -1628,7 +2126,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             )}
 
             {/* ===================================================================== */}
-            {/* VIEW 4: PENGUMUMAN */}
+            {/* VIEW 4: PENGUMUMAN (Conditional Status: Diterima / Terverifikasi / Cadangan / Menunggu Verifikasi / Berkas Fisik) */}
             {/* ===================================================================== */}
             {activeMenu === 'pengumuman' && (
               <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
@@ -1637,25 +2135,99 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <p className="text-xs text-slate-500">Status kelulusan penerimaan peserta didik baru tahun ajaran 2026/2027</p>
                 </div>
 
-                <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-center space-y-3 max-w-xl mx-auto">
-                  <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-                    <CheckCircle2 className="w-8 h-8" />
+                {/* Kondisi 1: Diterima / Terverifikasi -> Hijau */}
+                {(student.status_pendaftaran === 'Diterima' || student.status_pendaftaran === 'Terverifikasi') && (
+                  <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
+                    <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+                      <CheckCircle2 className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-lg font-black text-emerald-950 uppercase tracking-wide">
+                      SELAMAT! ANDA DINYATAKAN DITERIMA
+                    </h3>
+                    <p className="text-xs text-slate-700 leading-relaxed">
+                      Peserta Didik atas nama <strong>{student.nama_lengkap}</strong> dengan nomor pendaftaran <strong>{student.nomor_pendaftaran}</strong> resmi dinyatakan <span className="text-emerald-700 font-bold uppercase">DITERIMA</span> sebagai siswa baru di SMK Muhammadiyah Bawang pada kompetensi keahlian:
+                    </p>
+                    <div className="inline-block px-4 py-1.5 bg-emerald-600 text-white rounded-full text-xs font-bold shadow-sm">
+                      {student.jurusan_pilihan === 'TO' && 'TEKNIK OTOMOTIF (TO)'}
+                      {student.jurusan_pilihan === 'TJKT' && 'TEKNIK JARINGAN KOMPUTER & TELEKOMUNIKASI (TJKT)'}
+                      {student.jurusan_pilihan === 'AKL' && 'AKUNTANSI DAN KEUANGAN LEMBAGA (AKL)'}
+                    </div>
+                    <p className="text-[11px] text-slate-500 pt-2">
+                      Silakan ikuti instruksi panitia untuk pengambilan seragam, daftar ulang, dan masa orientasi (MPLS).
+                    </p>
                   </div>
-                  <h3 className="text-lg font-black text-slate-900">
-                    SELAMAT! ANDA DINYATAKAN DITERIMA
-                  </h3>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Peserta Didik atas nama <strong>{student.nama_lengkap}</strong> dengan nomor pendaftaran <strong>{student.nomor_pendaftaran}</strong> resmi diterima di kompetensi keahlian:
-                  </p>
-                  <div className="inline-block px-4 py-1.5 bg-blue-600 text-white rounded-full text-xs font-bold shadow-sm">
-                    {student.jurusan_pilihan === 'TO' && 'TEKNIK OTOMOTIF (TO)'}
-                    {student.jurusan_pilihan === 'TJKT' && 'TEKNIK JARINGAN KOMPUTER & TELEKOMUNIKASI (TJKT)'}
-                    {student.jurusan_pilihan === 'AKL' && 'AKUNTANSI DAN KEUANGAN LEMBAGA (AKL)'}
+                )}
+
+                {/* Kondisi 2: Cadangan -> Kuning */}
+                {student.status_pendaftaran === 'Cadangan' && (
+                  <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
+                    <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+                      <Clock className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-lg font-black text-amber-950 uppercase tracking-wide">
+                      ANDA MASUK DAFTAR CADANGAN
+                    </h3>
+                    <p className="text-xs text-slate-700 leading-relaxed">
+                      Peserta Didik atas nama <strong>{student.nama_lengkap}</strong> dengan nomor pendaftaran <strong>{student.nomor_pendaftaran}</strong> saat ini berada pada status <strong>CADANGAN</strong> untuk jurusan pilihan <strong>{student.jurusan_pilihan}</strong>.
+                    </p>
+                    <p className="text-[11px] text-amber-800 bg-amber-100/70 p-3 rounded-lg border border-amber-200">
+                      Panitia SPMB akan menghubungi nomor WhatsApp Anda (<strong>{student.no_wa}</strong>) apabila terdapat kuota tambahan atau pembukaan gelombang susulan.
+                    </p>
                   </div>
-                  <p className="text-[11px] text-slate-500 pt-2">
-                    Silakan ikuti instruksi panitia untuk pengambilan seragam dan masa orientasi (MPLS).
-                  </p>
-                </div>
+                )}
+
+                {/* Kondisi 3: Menunggu Verifikasi -> Biru */}
+                {student.status_pendaftaran === 'Menunggu Verifikasi' && (
+                  <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
+                    <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto shadow-inner">
+                      <Clock className="w-8 h-8 animate-spin" />
+                    </div>
+                    <h3 className="text-lg font-black text-blue-950 uppercase tracking-wide">
+                      SEDANG DALAM PROSES VERIFIKASI
+                    </h3>
+                    <p className="text-xs text-slate-700 leading-relaxed">
+                      Data pendaftaran dan berkas peserta didik atas nama <strong>{student.nama_lengkap}</strong> (No. Pendaftaran: <strong>{student.nomor_pendaftaran}</strong>) telah diterima oleh sistem dan sedang diperiksa oleh tim panitia verifikator PPDB.
+                    </p>
+                    <div className="inline-block px-4 py-1.5 bg-blue-600 text-white rounded-full text-xs font-bold shadow-sm">
+                      Menunggu Validasi Dokumen
+                    </div>
+                    <p className="text-[11px] text-slate-500 pt-2">
+                      Hasil seleksi resmi akan diperbarui secara berkala pada menu ini.
+                    </p>
+                  </div>
+                )}
+
+                {/* Kondisi 4: Berkas Fisik / Belum Lengkap / Default -> Orange */}
+                {student.status_pendaftaran !== 'Diterima' && 
+                 student.status_pendaftaran !== 'Terverifikasi' && 
+                 student.status_pendaftaran !== 'Cadangan' && 
+                 student.status_pendaftaran !== 'Menunggu Verifikasi' && (
+                  <div className="p-6 rounded-2xl bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
+                    <div className="w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto shadow-inner">
+                      <AlertCircle className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-lg font-black text-orange-950 uppercase tracking-wide">
+                      LENGKAPI BERKAS TERLEBIH DAHULU
+                    </h3>
+                    <p className="text-xs text-slate-700 leading-relaxed">
+                      Status pendaftaran Anda saat ini adalah <strong>{student.status_pendaftaran || 'Berkas Fisik'}</strong>. Data formulir dan berkas belum lengkap atau belum diserahkan.
+                    </p>
+                    <div className="pt-2">
+                      <button
+                        onClick={() => {
+                          setActiveMenu('formulir');
+                          handleSelectTab('diri');
+                        }}
+                        className="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg shadow-md transition-colors"
+                      >
+                        Lengkapi Formulir Sekarang
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-500 pt-1">
+                      Pengumuman hasil seleksi hanya akan diproses setelah semua tahapan formulir dan berkas terpenuhi.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1663,7 +2235,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
           {/* Footer inside Dashboard matching screenshot */}
           <footer className="mt-auto px-4 sm:px-8 py-4 border-t border-slate-200 bg-white text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span>Copyright © 2026 SPMB SMK MUHIBA | GARUDANET by @hndx07</span>
+            <span>Copyright © 2026 SPMB SMK MUHIBA | by @hndx07</span>
             <a
               href="https://www.smkmuhiba.sch.id"
               target="_blank"

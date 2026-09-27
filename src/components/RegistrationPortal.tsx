@@ -90,6 +90,20 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
         password: password,
       });
 
+      // Save credentials temporarily in sessionStorage for StudentDashboard warning & PDF
+      try {
+        sessionStorage.setItem('spmb_new_credentials', JSON.stringify({
+          nik: res.student.nik,
+          password: password,
+          nama: res.student.nama_lengkap,
+          nomor_pendaftaran: res.student.nomor_pendaftaran,
+          tanggal_daftar: res.student.tanggal_daftar,
+          jurusan_pilihan: res.student.jurusan_pilihan
+        }));
+      } catch (storageErr) {
+        console.warn('Failed saving credentials to sessionStorage:', storageErr);
+      }
+
       // Show proof modal matching screenshot 7
       setBuktiPendaftaran({
         student: res.student,
@@ -435,7 +449,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
               Kunjungi Web Sekolah (smkmuhiba.sch.id)
             </a>
             <span className="text-[11px] text-slate-400">
-              Copyright © 2026 by @hndx07
+              Copyright © 2026 SPMB SMK MUHIBA | by @hndx07
             </span>
           </div>
         </div>

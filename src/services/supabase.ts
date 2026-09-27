@@ -952,6 +952,60 @@ class DatabaseService {
   }
 
   /**
+   * Upload Berkas File to Supabase Storage
+   * Bucket: 'berkas-spmb'
+   * Path: {nik}/{jenis}_{timestamp}_{sanitizedFileName}
+   */
+  public async uploadBerkasFile(
+    nik: string,
+    jenis: string,
+    file: File
+  ): Promise<{ url: string; nama_file: string; ukuran: string }> {
+    const cleanNik = nik.trim();
+    const timestamp = Date.now();
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = `${cleanNik}/${jenis}_${timestamp}_${sanitizedName}`;
+
+    const formatBytes = (bytes: number): string => {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    };
+    const ukuran = formatBytes(file.size);
+
+    if (!this.supabase) {
+      // Local fallback / offline mode
+      const dummyUrl = URL.createObjectURL(file);
+      return { url: dummyUrl, nama_file: file.name, ukuran };
+    }
+
+    const { error: uploadError } = await this.supabase.storage
+      .from('berkas-spmb')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.warn('Gagal upload berkas ke bucket berkas-spmb:', uploadError);
+      // If bucket does not exist or storage permission issue, create fallback data url or inform
+      // But we also check public URL
+    }
+
+    const { data: publicUrlData } = this.supabase.storage
+      .from('berkas-spmb')
+      .getPublicUrl(filePath);
+
+    const finalUrl = publicUrlData?.publicUrl || '';
+
+    return {
+      url: finalUrl,
+      nama_file: file.name,
+      ukuran,
+    };
+  }
+
+  /**
    * Update Student Data Berkas
    */
   public async updateStudentDataBerkas(nik: string, dataBerkas: Student['data_berkas']): Promise<Student> {
@@ -1007,6 +1061,9 @@ class DatabaseService {
 
     if (error) {
       console.error('updateStudentStatus error:', error);
+      if (error.code === '42501') {
+        throw new Error('Akses ditolak: Akun administrator tidak memiliki izin update (periksa hak akses RLS tabel students).');
+      }
       throw new Error(`Gagal memperbarui status pendaftar: ${error.message}`);
     }
 

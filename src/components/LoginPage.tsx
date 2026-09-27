@@ -260,7 +260,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               Kunjungi Web Sekolah (smkmuhiba.sch.id)
             </a>
             <span className="text-[11px] text-slate-400">
-              Copyright © 2026 by @hndx07
+              Copyright © 2026 SPMB SMK MUHIBA | by @hndx07
             </span>
           </div>
         </div>
