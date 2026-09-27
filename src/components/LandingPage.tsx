@@ -42,6 +42,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(true);
   const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState<boolean>(false);
 
+  // States & refs for Profile Video (YouTube)
+  const [isYtMuted, setIsYtMuted] = useState<boolean>(true);
+  const ytIframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  const toggleYtAudio = () => {
+    if (ytIframeRef.current && ytIframeRef.current.contentWindow) {
+      const command = isYtMuted ? 'unMute' : 'mute';
+      ytIframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: command, args: [] }),
+        '*'
+      );
+      setIsYtMuted(!isYtMuted);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -85,10 +100,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const facilities = [
     {
       title: 'Workshop Teknik Otomotif',
-      subtitle: 'Standar Industri & Bengkel Resmi',
+      subtitle: 'Standar Industri & Bengkel Resmi (TSM & TKR)',
       description:
         'Workshop Teknik Otomotif SMK Muhammadiyah dirancang sebagai sarana praktik siswa dalam mempelajari perawatan, perbaikan, dan teknologi kendaraan bermotor. Dilengkapi dengan peralatan standar industri, workshop ini membekali siswa dengan keterampilan teknis, kedisiplinan kerja, serta etos profesional sesuai nilai-nilai SOP Perusahaan.',
-      tags: ['TEKNIK OTOMOTIF', 'TBSM', 'UNGGUL'],
+      tags: ['TEKNIK OTOMOTIF', 'TSM & TKR', 'UNGGUL'],
       completionRate: '100%',
       image: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=900&q=80',
       isVideo: true,
@@ -280,6 +295,92 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             </div>
 
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 2. PROFIL SEKOLAH & VIDEO PROFIL RESMI (AUTOPLAY LOOP YOUTUBE) */}
+      {/* ========================================================================= */}
+      <section className="py-16 sm:py-20 bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 text-white relative overflow-hidden border-b border-indigo-900/50">
+        {/* Subtle decorative background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600/20 text-blue-300 border border-blue-400/30 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
+              <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+              <span>Profil Sekolah Pusat Keunggulan</span>
+            </span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
+              Mengenal Lebih Dekat <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400">SMK MUHIBA</span>
+            </h2>
+            <div className="w-20 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mt-4 rounded-full" />
+            <p className="text-sm sm:text-base text-slate-200 mt-6 leading-relaxed font-medium">
+              “SMK Muhammadiyah Bawang (MUHIBA) adalah Sekolah Pusat Keunggulan yang mencetak generasi tangguh, terampil, dan berakhlak mulia. Dengan kurikulum link and match industri, kami mempersiapkan siswa siap kerja dan siap kuliah melalui program unggulan Teknik Otomotif, Teknik Jaringan Komputer & Telekomunikasi, serta Akuntansi dan Keuangan Lembaga.”
+            </p>
+          </div>
+
+          {/* YouTube Video Player in Modern Rounded Blue-Purple Gradient Card Frame */}
+          <div className="max-w-4xl mx-auto">
+            <div className="p-2 sm:p-3 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 shadow-2xl ring-1 ring-white/20">
+              <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-black shadow-inner aspect-video">
+                
+                {/* Embedded YouTube Video with Autoplay, Loop, No Controls, and Enable JS API for Custom Mute */}
+                <iframe
+                  ref={ytIframeRef}
+                  src="https://www.youtube-nocookie.com/embed/MjqT0ORLm1w?autoplay=1&mute=1&loop=1&playlist=MjqT0ORLm1w&controls=0&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&enablejsapi=1"
+                  title="Profil SMK Muhammadiyah Bawang"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  className="w-full h-full object-cover scale-[1.03] pointer-events-none select-none"
+                />
+
+                {/* Minimalist Top Badge */}
+                <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 pointer-events-none flex items-center gap-2 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 text-white text-[11px] font-bold shadow-lg">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span>OFFICIAL VIDEO PROFIL MUHIBA</span>
+                </div>
+
+                {/* Custom Minimalist Sound Toggle Button (Bottom-Right) */}
+                <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20">
+                  <button
+                    type="button"
+                    onClick={toggleYtAudio}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-white rounded-full backdrop-blur-md border border-white/20 text-xs font-semibold shadow-xl transition-all transform hover:scale-105 active:scale-95"
+                    title={isYtMuted ? 'Nyalakan Audio Video' : 'Bisukan Audio Video'}
+                  >
+                    {isYtMuted ? (
+                      <>
+                        <VolumeX className="w-4 h-4 text-rose-400" />
+                        <span>Nyalakan Suara</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-4 h-4 text-emerald-400 animate-pulse" />
+                        <span>Suara Aktif</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-300 px-2">
+              <span className="font-semibold flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>Sekolah Pusat Keunggulan (SMK PK) Kemendikbudristek</span>
+              </span>
+              <a
+                href="https://youtu.be/MjqT0ORLm1w?si=LMWN7mZdpKYSBu6R"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-300 hover:text-white transition-colors flex items-center gap-1 font-bold underline"
+              >
+                <span>Buka di YouTube</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           </div>
         </div>
       </section>

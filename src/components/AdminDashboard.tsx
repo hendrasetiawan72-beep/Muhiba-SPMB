@@ -177,16 +177,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {/* Top Admin Header */}
-      <header className="bg-slate-900 text-white border-b border-slate-800 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30">
+      {/* Header Admin with Modern Gradient */}
+      <header className="bg-gradient-to-r from-blue-800 via-indigo-800 to-purple-900 text-white border-b border-indigo-950 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-md">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-extrabold shadow">
+          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-extrabold shadow ring-2 ring-white/20">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-sm font-extrabold tracking-wide uppercase">
+            <h1 className="text-sm font-extrabold tracking-wide uppercase text-white drop-shadow-xs">
               PANEL ADMINISTRATOR PPDB
             </h1>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-blue-200 font-medium">
               SMK Muhammadiyah Bawang (SMK Muhiba)
             </p>
           </div>
@@ -194,8 +195,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         <div className="flex items-center gap-3">
           {/* Status Koneksi Hijau */}
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-950/80 border border-emerald-500/40 rounded-full text-xs font-bold text-emerald-400">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 border border-emerald-400/40 rounded-full text-xs font-bold text-emerald-200 backdrop-blur-xs">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
             <span className="text-[11px] tracking-wide">Terhubung</span>
           </div>
 
@@ -203,7 +204,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             href="https://www.smkmuhiba.sch.id"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1.5 text-xs text-slate-300 hover:text-yellow-300 transition-colors hidden sm:inline-flex items-center gap-1 font-semibold"
+            className="px-3 py-1.5 text-xs text-blue-100 hover:text-white transition-colors hidden sm:inline-flex items-center gap-1 font-bold"
           >
             <span>Web Sekolah</span>
             <ExternalLink className="w-3 h-3" />
@@ -211,16 +212,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={onNavigateHome}
-            className="px-3 py-1.5 text-xs text-slate-300 hover:text-white transition-colors hidden sm:inline"
+            className="px-3 py-1.5 text-xs text-blue-100 hover:text-white font-semibold transition-colors hidden sm:inline"
           >
             Beranda PPDB
           </button>
 
+          {/* Solid prominent red logout button */}
           <button
             onClick={onLogout}
-            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-md transition-colors"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-black rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
+            title="Keluar dari Panel Admin"
           >
-            Logout
+            <LogOut className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>LOGOUT</span>
           </button>
         </div>
       </header>

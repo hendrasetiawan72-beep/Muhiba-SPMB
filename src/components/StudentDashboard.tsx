@@ -47,6 +47,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [activeMenu, setActiveMenu] = useState<'beranda' | 'formulir' | 'pembayaran' | 'pengumuman'>('beranda');
   const [activeFormTab, setActiveFormTab] = useState<'diri' | 'alamat' | 'ortu' | 'berkas'>('diri');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Desktop & tablet sidebar toggle
   const [showWarningBanner, setShowWarningBanner] = useState(true);
   const [saveToast, setSaveToast] = useState<string | null>(null);
 
@@ -546,25 +547,52 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       <div className="flex-1 flex flex-col md:flex-row">
         
         {/* ========================================================================= */}
-        {/* LEFT SIDEBAR (Exact Match to Screenshots 9, 10, 11, 12, 13) */}
         {/* ========================================================================= */}
-        <aside className={`w-64 bg-white border-r border-slate-200/90 flex flex-col justify-between shrink-0 ${
-          mobileSidebarOpen ? 'block fixed inset-y-0 left-0 z-50 shadow-2xl' : 'hidden md:flex'
-        }`}>
+        {/* LEFT SIDEBAR (Collapsible Desktop & Mobile with Smooth Slide Transition) */}
+        {/* ========================================================================= */}
+        
+        {/* Mobile backdrop */}
+        {mobileSidebarOpen && (
+          <div 
+            onClick={() => setMobileSidebarOpen(false)}
+            className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs md:hidden animate-in fade-in"
+          />
+        )}
+
+        <aside className={`
+          fixed md:static inset-y-0 left-0 z-50
+          w-64 bg-white border-r border-slate-200 shadow-xl md:shadow-none flex flex-col justify-between shrink-0
+          transition-all duration-300 ease-in-out
+          ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          ${!isSidebarOpen ? 'md:-ml-64' : 'md:ml-0'}
+        `}>
           <div>
-            {/* Logo SPMB SMK MUHIBA */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-black tracking-wider text-slate-800 uppercase">
-                  SPMB SMK MUHIBA
-                </h2>
-                <p className="text-[10px] text-slate-400 font-medium tracking-tight">
-                  Sistem Penerimaan Siswa Baru
-                </p>
+            {/* Logo SPMB SMK MUHIBA with Close / Collapse Toggle */}
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+              <div className="flex items-center gap-2.5">
+                <img
+                  src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgzWdtCjCcX2chJuhLX_26N5MmkVK-1SkyO7kgXznQQJPQa6_TB_EJzD1WWpztg7yX9RBRE7rGn0t2Z3FdG06mwwT6pQix8t6vnlcOBm_EgGl9z0jeJemJkppP0KIIjkXGksQvaCLh2dz-gOF6a2H213VQBL6Am8Elhmd76OOnphogk-EoTTbkYbg0TQJhv/s512/34690.png"
+                  alt="Logo"
+                  className="w-8 h-8 object-contain"
+                />
+                <div>
+                  <h2 className="text-xs font-black tracking-wider text-slate-900 uppercase">
+                    SPMB SMK MUHIBA
+                  </h2>
+                  <p className="text-[10px] text-slate-500 font-semibold tracking-tight">
+                    Sistem Penerimaan Siswa Baru
+                  </p>
+                </div>
               </div>
+              
+              {/* Close Button for mobile or collapse on desktop */}
               <button 
-                onClick={() => setMobileSidebarOpen(false)}
-                className="md:hidden text-slate-400 p-1"
+                onClick={() => {
+                  setMobileSidebarOpen(false);
+                  setIsSidebarOpen(false);
+                }}
+                className="text-slate-500 hover:text-slate-900 p-1.5 rounded-lg hover:bg-slate-200 transition-colors"
+                title="Sembunyikan Bilah Samping"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -572,22 +600,22 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
             {/* Menu List */}
             <div className="py-4">
-              <p className="px-5 text-[10px] font-extrabold text-slate-400 tracking-wider uppercase mb-2">
+              <p className="px-5 text-[10px] font-black text-slate-500 tracking-wider uppercase mb-2">
                 MAIN MENU
               </p>
-              <nav className="space-y-1 px-3">
+              <nav className="space-y-1.5 px-3">
                 <button
                   onClick={() => {
                     setActiveMenu('beranda');
                     setMobileSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
                     activeMenu === 'beranda'
-                      ? 'bg-blue-50 text-blue-700 font-bold'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-slate-800 hover:bg-slate-100 hover:text-blue-700'
                   }`}
                 >
-                  <Home className="w-4 h-4 text-slate-400" />
+                  <Home className="w-4 h-4 shrink-0" />
                   <span>Beranda</span>
                 </button>
 
@@ -596,14 +624,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     setActiveMenu('formulir');
                     setMobileSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
                     activeMenu === 'formulir'
-                      ? 'bg-blue-50 text-blue-700 font-bold'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-slate-800 hover:bg-slate-100 hover:text-blue-700'
                   }`}
                 >
-                  <FileText className="w-4 h-4 text-slate-400" />
-                  <span>Formulir</span>
+                  <FileText className="w-4 h-4 shrink-0" />
+                  <span>Formulir Pendaftaran</span>
                 </button>
 
                 <button
@@ -615,18 +643,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     setActiveMenu('pembayaran');
                     setMobileSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
                     activeMenu === 'pembayaran'
-                      ? 'bg-blue-50 text-blue-700 font-bold'
+                      ? 'bg-blue-600 text-white shadow-md'
                       : !isSemuaFormLengkap
-                      ? 'text-slate-400 hover:bg-slate-50 cursor-not-allowed opacity-60'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'text-slate-400 bg-slate-50 cursor-not-allowed border border-dashed border-slate-200'
+                      : 'text-slate-800 hover:bg-slate-100 hover:text-blue-700'
                   }`}
                   title={!isSemuaFormLengkap ? 'Selesaikan semua formulir terlebih dahulu' : ''}
                 >
                   <div className="flex items-center gap-3">
-                    <CreditCard className="w-4 h-4 text-slate-400" />
-                    <span>Pembayaran</span>
+                    <CreditCard className="w-4 h-4 shrink-0" />
+                    <span>Biaya & Pembayaran</span>
                   </div>
                   {!isSemuaFormLengkap && <Lock className="w-3.5 h-3.5 text-slate-400" />}
                 </button>
@@ -636,42 +664,45 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     setActiveMenu('pengumuman');
                     setMobileSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
                     activeMenu === 'pengumuman'
-                      ? 'bg-blue-50 text-blue-700 font-bold'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-slate-800 hover:bg-slate-100 hover:text-blue-700'
                   }`}
                 >
-                  <Megaphone className="w-4 h-4 text-slate-400" />
-                  <span>Pengumuman</span>
+                  <Megaphone className="w-4 h-4 shrink-0" />
+                  <span>Pengumuman Hasil</span>
                 </button>
               </nav>
             </div>
           </div>
 
-          {/* Bottom user / logout card */}
-          <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-2">
+          {/* Bottom user / solid red logout card */}
+          <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-2.5">
             <a
               href="https://www.smkmuhiba.sch.id"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full text-left text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center justify-between py-1.5 px-2 rounded hover:bg-blue-50 transition-colors"
+              className="w-full text-left text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center justify-between py-2 px-3 rounded-lg bg-blue-50 border border-blue-200 transition-colors"
             >
-              <span>Web Sekolah</span>
+              <span>Website Sekolah</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
+
             <button
               onClick={onNavigateHome}
-              className="w-full text-left text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center gap-2 py-1.5 px-2 rounded hover:bg-slate-100 transition-colors"
+              className="w-full text-left text-xs font-bold text-slate-700 hover:text-blue-700 flex items-center gap-2 py-2 px-3 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
             >
               <span>← Beranda PPDB</span>
             </button>
+
+            {/* Poin 2: Tombol Logout merah solid tegas mencolok */}
             <button
               onClick={onLogout}
-              className="w-full flex items-center justify-between text-xs font-bold text-rose-600 hover:text-rose-700 p-2 rounded-lg hover:bg-rose-50 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
             >
-              <span>Keluar / Logout</span>
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-4 h-4 stroke-[2.5]" />
+              <span>KELUAR / LOGOUT</span>
             </button>
           </div>
         </aside>
@@ -681,35 +712,62 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         {/* ========================================================================= */}
         <main className="flex-1 flex flex-col min-w-0">
           
-          {/* Top Bar with User Badge */}
-          <header className="bg-white border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between">
+          {/* Top Bar with Modern Gradient & Persistent Hamburger */}
+          <header className="sticky top-0 z-30 bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white shadow-md border-b border-indigo-900/40 px-4 sm:px-8 py-3.5 flex items-center justify-between">
             <div className="flex items-center gap-3">
+              {/* Tombol Hamburger Selalu Terlihat dan Mudah Diklik */}
               <button
-                onClick={() => setMobileSidebarOpen(true)}
-                className="md:hidden text-slate-500 hover:text-slate-800 p-1"
+                type="button"
+                onClick={() => {
+                  if (window.innerWidth < 768) {
+                    setMobileSidebarOpen(!mobileSidebarOpen);
+                  } else {
+                    setIsSidebarOpen(!isSidebarOpen);
+                  }
+                }}
+                className="p-2 bg-white/15 hover:bg-white/25 active:bg-white/30 text-white rounded-lg transition-all shadow-sm flex items-center justify-center cursor-pointer group"
+                title={isSidebarOpen ? 'Sembunyikan Bilah Samping' : 'Buka Bilah Samping'}
+                aria-label="Toggle Sidebar"
               >
-                <Menu className="w-6 h-6" />
+                <Menu className="w-5 h-5 group-hover:scale-110 transition-transform" />
               </button>
-              <span className="text-xs font-bold text-slate-400 tracking-wider hidden sm:inline">
-                PANEL PENDAFTARAN SISWA BARU
-              </span>
+
+              <div className="flex flex-col">
+                <span className="text-xs sm:text-sm font-black tracking-wide text-white drop-shadow-xs">
+                  PANEL PENDAFTARAN SISWA BARU
+                </span>
+                <span className="text-[10px] text-blue-100 font-semibold hidden sm:inline">
+                  SMK Muhammadiyah Bawang
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center gap-3">
               {/* Indikator Status Terhubung Hijau */}
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[10px] font-bold text-emerald-700">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 border border-emerald-400/40 rounded-full text-[11px] font-extrabold text-emerald-200 backdrop-blur-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                 <span>Terhubung</span>
               </div>
 
-              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+              {/* Logout cepat di pojok kanan atas desktop */}
+              <button
+                onClick={onLogout}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all transform hover:scale-105"
+                title="Keluar dari akun siswa"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Logout</span>
+              </button>
+
+              <div className="w-8 h-8 rounded-full bg-white text-indigo-800 flex items-center justify-center font-black text-xs shadow-sm">
                 {student.nama_lengkap?.charAt(0) || 'S'}
               </div>
-              <div className="text-right">
-                <span className="block text-xs font-bold text-slate-800">
+
+              <div className="text-right hidden sm:block">
+                <span className="block text-xs font-bold text-white drop-shadow-xs">
                   {student.nama_lengkap}
                 </span>
-                <span className="block text-[10px] text-slate-400 font-mono">
+                <span className="block text-[10px] text-blue-200 font-mono font-semibold">
                   No. {student.nomor_pendaftaran}
                 </span>
               </div>
