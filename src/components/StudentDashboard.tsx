@@ -24,7 +24,9 @@ import {
   ExternalLink,
   Lock,
   Download,
-  Copy
+  Copy,
+  ArrowRight,
+  FileCheck2
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { Student, User as UserType, JurusanType } from '../types/database';
@@ -567,19 +569,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           ${!isSidebarOpen ? 'md:-ml-64' : 'md:ml-0'}
         `}>
           <div>
-            {/* Logo SPMB SMK MUHIBA with Close / Collapse Toggle */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+            {/* Logo SPMB SMK MUHIBA with Close / Collapse Toggle - Synced with Header Gradient */}
+            <div className="h-[61px] px-4 bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white border-b border-indigo-900/40 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2.5">
                 <img
                   src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgzWdtCjCcX2chJuhLX_26N5MmkVK-1SkyO7kgXznQQJPQa6_TB_EJzD1WWpztg7yX9RBRE7rGn0t2Z3FdG06mwwT6pQix8t6vnlcOBm_EgGl9z0jeJemJkppP0KIIjkXGksQvaCLh2dz-gOF6a2H213VQBL6Am8Elhmd76OOnphogk-EoTTbkYbg0TQJhv/s512/34690.png"
                   alt="Logo"
-                  className="w-8 h-8 object-contain"
+                  className="w-8 h-8 object-contain drop-shadow"
                 />
                 <div>
-                  <h2 className="text-xs font-black tracking-wider text-slate-900 uppercase">
+                  <h2 className="text-xs font-black tracking-wider text-white uppercase drop-shadow-xs">
                     SPMB SMK MUHIBA
                   </h2>
-                  <p className="text-[10px] text-slate-500 font-semibold tracking-tight">
+                  <p className="text-[10px] text-blue-200 font-semibold tracking-tight">
                     Sistem Penerimaan Siswa Baru
                   </p>
                 </div>
@@ -591,7 +593,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   setMobileSidebarOpen(false);
                   setIsSidebarOpen(false);
                 }}
-                className="text-slate-500 hover:text-slate-900 p-1.5 rounded-lg hover:bg-slate-200 transition-colors"
+                className="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
                 title="Sembunyikan Bilah Samping"
               >
                 <X className="w-5 h-5" />
@@ -611,8 +613,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   }}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
                     activeMenu === 'beranda'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-slate-800 hover:bg-slate-100 hover:text-blue-700'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25'
+                      : 'text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-700'
                   }`}
                 >
                   <Home className="w-4 h-4 shrink-0" />
@@ -626,8 +628,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   }}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
                     activeMenu === 'formulir'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-slate-800 hover:bg-slate-100 hover:text-blue-700'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25'
+                      : 'text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-700'
                   }`}
                 >
                   <FileText className="w-4 h-4 shrink-0" />
@@ -643,8 +645,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     }}
                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
                       activeMenu === 'pembayaran'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-800 hover:bg-slate-100 hover:text-blue-700'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25'
+                        : 'text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-700'
                     }`}
                   >
                     <CreditCard className="w-4 h-4 shrink-0" />
@@ -659,8 +661,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   }}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
                     activeMenu === 'pengumuman'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-slate-800 hover:bg-slate-100 hover:text-blue-700'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25'
+                      : 'text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-700'
                   }`}
                 >
                   <Megaphone className="w-4 h-4 shrink-0" />
@@ -706,7 +708,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <main className="flex-1 flex flex-col min-w-0">
           
           {/* Top Bar with Modern Gradient & Persistent Hamburger */}
-          <header className="sticky top-0 z-30 bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white shadow-md border-b border-indigo-900/40 px-4 sm:px-8 py-3.5 flex items-center justify-between">
+          <header className="sticky top-0 z-30 h-[61px] bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white shadow-md border-b border-indigo-900/40 px-4 sm:px-8 flex items-center justify-between">
             <div className="flex items-center gap-3">
               {/* Tombol Hamburger Selalu Terlihat dan Mudah Diklik */}
               <button
@@ -995,48 +997,209 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                 </div>
 
-                {/* Information Pendaftaran Card with Exact Colors from Screenshot 9 */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-                      <Megaphone className="w-4 h-4" />
+                {/* Modern Dynamic Informasi Pendaftaran Card */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden transition-all">
+                  
+                  {/* Subtle Top Gradient Accent Line */}
+                  <div className="h-1.5 bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800" />
+
+                  <div className="p-6 sm:p-8 space-y-6">
+                    {/* Header Meta: Modern announcement header */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-sm shadow-blue-500/20">
+                          <Megaphone className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-slate-900 tracking-wide uppercase">Informasi Pendaftaran</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
+                              Pengumuman Resmi
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 font-medium">
+                            Tahun Ajaran 2026/2027 • SPMB SMK Muhammadiyah Bawang
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/70">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>2026-02-02 10:40:54</span>
+                      </div>
                     </div>
-                    <div className="text-xs text-slate-400">
-                      2026-02-02 10:40:54 • VIEW
-                      <span className="block font-bold text-slate-800 text-sm">Informasi Pendaftaran</span>
+
+                    {/* Welcoming Banner (Modern, Clean, Dynamic) */}
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white p-5 sm:p-6 shadow-md shadow-indigo-900/10">
+                      <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto space-y-2">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-white/15 backdrop-blur-xs text-yellow-300 border border-white/20">
+                          <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                          Selamat Datang Calon Peserta Didik Baru
+                        </span>
+                        <h3 className="text-base sm:text-xl font-black tracking-tight text-white leading-snug">
+                          Sekolah Pencetak Wirausaha • Siap Kerja • Siap Kuliah
+                        </h3>
+                        <p className="text-xs text-blue-100 max-w-lg">
+                          Persiapkan masa depan gemilang dengan pendidikan vokasi unggul dan berkarakter islami bersama SMK Muhammadiyah Bawang.
+                        </p>
+                      </div>
+                      {/* Decorative soft glow circles */}
+                      <div className="absolute -top-12 -right-12 w-44 h-44 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                      <div className="absolute -bottom-12 -left-12 w-44 h-44 bg-purple-500/20 rounded-full blur-2xl pointer-events-none" />
                     </div>
-                  </div>
 
-                  {/* Red highlight banner */}
-                  <div className="bg-red-600 text-white text-center py-3.5 px-4 rounded-md font-extrabold text-base sm:text-lg shadow">
-                    Selamat Datang Calon Peserta Didik Baru di Sekolah Pencetak Wirausaha, Siap Kerja, Siap Kuliah
-                  </div>
+                    {/* Section Persyaratan Berkas */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+                          <span>Sebelum mendaftar, silakan persiapkan berkas berikut :</span>
+                        </h4>
+                        <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+                          7 Dokumen Persyaratan
+                        </span>
+                      </div>
 
-                  <div className="space-y-2 text-xs sm:text-sm text-slate-700 leading-relaxed font-semibold">
-                    <p className="text-slate-900 font-bold mb-3">
-                      Sebelum mendaftar silahkan dipersiapkan berkas sebagai berikut :
-                    </p>
-                    <p className="text-red-600">&gt; Foto copy Kartu Keluarga</p>
-                    <p className="text-blue-600">&gt; Foto copy Akta Kelahiran</p>
-                    <p className="text-rose-700 font-bold">&gt; Nomer NISN (bisa dilihat di rapot)</p>
-                    <p className="text-emerald-600">&gt; Fotocopy ijasah SMP/MTs (bagi yang sudah ada) atau FC. Ijasah SD/MI (bagi yang belum keluar)</p>
-                    <p className="text-green-600">&gt; Foto copy KTP orang tua</p>
-                    <p className="text-purple-600">&gt; Kartu Bantuan seperti KIP, PKH (jika ada)</p>
-                    <p className="text-pink-600">&gt; Prestasi/Piagam Penghargaan yang pernah diraih (jalur prestasi)</p>
-                  </div>
+                      {/* Clean Grid Checklist with Modern Checkmarks and Neutral Typography */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                        
+                        {/* 1. KK */}
+                        <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
+                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
+                                Foto copy Kartu Keluarga
+                              </p>
+                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">Wajib</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5">Salinan Kartu Keluarga (KK) terbaru calon siswa</p>
+                          </div>
+                        </div>
 
-                  {/* Yellow highlight note */}
-                  <div className="bg-yellow-300 text-red-700 text-center py-2.5 px-4 rounded-md font-bold text-xs sm:text-sm">
-                    Setelah itu silahkan lengkapi data formulir pendaftaran kamu
-                  </div>
+                        {/* 2. Akta */}
+                        <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
+                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
+                                Foto copy Akta Kelahiran
+                              </p>
+                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">Wajib</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5">Akta kelahiran resmi dari Disdukcapil</p>
+                          </div>
+                        </div>
 
-                  <div className="pt-2 flex justify-center">
-                    <button
-                      onClick={() => setActiveMenu('formulir')}
-                      className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-lg shadow-md transition-colors"
-                    >
-                      Buka & Lengkapi Formulir Sekarang
-                    </button>
+                        {/* 3. NISN */}
+                        <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
+                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
+                                Nomor NISN
+                              </p>
+                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">Wajib</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5">Dapat dilihat pada rapor sekolah asal atau surat keterangan</p>
+                          </div>
+                        </div>
+
+                        {/* 4. Ijazah */}
+                        <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
+                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
+                                Fotocopy Ijazah SMP/MTs atau SD/MI
+                              </p>
+                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">Wajib</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5">Bagi yang ijazah SMP belum terbit, dapat menggunakan FC Ijazah SD</p>
+                          </div>
+                        </div>
+
+                        {/* 5. KTP Orang Tua */}
+                        <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
+                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
+                                Foto copy KTP Orang Tua / Wali
+                              </p>
+                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">Wajib</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5">Kartu identitas ayah/ibu atau wali murid yang sah</p>
+                          </div>
+                        </div>
+
+                        {/* 6. Kartu Bantuan */}
+                        <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
+                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
+                                Kartu Bantuan (KIP, PKH, KKS)
+                              </p>
+                              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 shrink-0">Jika Ada</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5">Program jaminan sosial dari pemerintah (opsional jika memiliki)</p>
+                          </div>
+                        </div>
+
+                        {/* 7. Prestasi */}
+                        <div className="md:col-span-2 p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
+                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
+                                Prestasi / Piagam Penghargaan
+                              </p>
+                              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 shrink-0">Jalur Prestasi</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5">Sertifikat piagam kejuaraan akademik maupun non-akademik tingkat kecamatan/kabupaten/provinsi</p>
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+
+                    {/* Simple Modern Callout Banner and Action Button */}
+                    <div className="rounded-xl p-4 sm:p-5 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-slate-50 border border-blue-200/70 flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 text-center sm:text-left">
+                        <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-500/20 shrink-0">
+                          <FileCheck2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs sm:text-sm font-bold text-slate-900">
+                            Setelah berkas disiapkan, silakan lengkapi data formulir pendaftaran kamu
+                          </p>
+                          <p className="text-[11px] text-slate-500 font-medium">
+                            Pengisian data lengkap menjamin validasi berkas lebih cepat oleh panitia.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setActiveMenu('formulir')}
+                        className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 active:scale-95 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer group"
+                      >
+                        <span>Buka & Lengkapi Formulir Sekarang</span>
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                    </div>
+
                   </div>
                 </div>
 

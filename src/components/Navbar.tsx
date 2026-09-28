@@ -260,7 +260,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* DRAWER / DROPDOWN NAVIGASI TIGA GARIS (TABLET, WINDOWS & MOBILE) */}
       {/* ========================================================================= */}
       {menuOpen && (
-        <div className="bg-blue-900/98 backdrop-blur-xl border-t border-blue-800 shadow-2xl px-4 sm:px-6 lg:px-8 py-6 animate-in slide-in-from-top-3 duration-200">
+        <div className="bg-gradient-to-b from-indigo-900/98 via-blue-900/98 to-purple-950/98 backdrop-blur-xl border-t border-indigo-500/30 shadow-2xl px-4 sm:px-6 lg:px-8 py-6 animate-in slide-in-from-top-3 duration-200">
           <div className="max-w-7xl mx-auto">
             
             {/* Header info in drawer */}
