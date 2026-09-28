@@ -152,7 +152,7 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
     let isUnique = false;
     let attempts = 0;
 
-    while (!isUnique && attempts < 10) {
+    while (!isUnique && attempts < 25) {
       attempts++;
       // Format: 2026 + 3-digit sequence padded + 2-digit random salt
       const randSalt = Math.floor(10 + Math.random() * 90);
@@ -173,7 +173,7 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
     }
 
     if (!nomorPendaftaran) {
-      nomorPendaftaran = `2026${Date.now().toString().slice(-6)}`;
+      nomorPendaftaran = `2026${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
     }
 
     const now = new Date();

@@ -48,7 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     setJurusanDropdownOpen(false);
     if (sectionId && typeof window !== 'undefined') {
       setTimeout(() => {
-        const el = document.getElementById(sectionId);
+        const el = document.getElementById(sectionId) || document.getElementById('profil-sekolah');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     }
@@ -100,10 +100,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               <button
-                onClick={() => navigateTo('home', 'profil-section')}
+                onClick={() => navigateTo('home', 'profil-sekolah')}
                 className="text-white/90 hover:text-yellow-300 transition-colors py-1"
               >
-                PROFIL
+                Profil Sekolah
               </button>
 
               {/* Jurusan Dropdown */}
@@ -214,38 +214,43 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               </div>
             ) : (
-              <div className="hidden sm:flex items-center gap-2.5">
+              <div className="hidden sm:flex items-center gap-2">
+                <button
+                  onClick={() => navigateTo('home', 'profil-sekolah')}
+                  className="px-3 py-1.5 text-xs font-bold text-blue-100 hover:text-white hover:bg-blue-700/50 rounded-lg transition-colors flex items-center gap-1.5 border border-blue-400/40 cursor-pointer"
+                >
+                  <Building2 className="w-3.5 h-3.5 text-yellow-300" />
+                  <span>Profil Sekolah</span>
+                </button>
+
                 <button
                   onClick={() => navigateTo('login')}
-                  className="px-3 py-1.5 text-xs font-bold text-blue-100 hover:text-white hover:bg-blue-700/50 rounded-md transition-colors flex items-center gap-1.5 border border-blue-400/40"
+                  className="px-3 py-1.5 text-xs font-bold text-blue-100 hover:text-white hover:bg-blue-700/50 rounded-lg transition-colors flex items-center gap-1.5 border border-blue-400/40 cursor-pointer"
                 >
                   <span>Login Siswa</span>
                 </button>
 
                 <button
                   onClick={() => navigateTo('portal')}
-                  className="px-3.5 py-1.5 text-xs font-extrabold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 rounded-md shadow-md hover:shadow-lg transition-all transform active:scale-95"
+                  className="px-3.5 py-1.5 text-xs font-extrabold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 rounded-lg shadow-md hover:shadow-lg transition-all transform active:scale-95 cursor-pointer"
                 >
                   DAFTAR SEKARANG
                 </button>
               </div>
             )}
 
-            {/* NAVIGASI TIGA GARIS (HAMBURGER PENANDA NAVIGASI UNTUK SEMUA TAMPILAN: TABLET, WINDOWS & MOBILE) */}
+            {/* NAVIGASI TIGA GARIS (HAMBURGER ICON-ONLY: SIMPLE & ELEGAN TANPA TULISAN MENU) */}
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="flex items-center gap-2 px-3 py-2 text-white bg-blue-800/80 hover:bg-blue-700 border border-blue-400/50 rounded-lg shadow-sm transition-all focus:outline-none cursor-pointer group hover:border-yellow-300/80"
-              aria-label="Navigasi Menu Tiga Garis"
-              title={menuOpen ? 'Tutup Menu' : 'Buka Navigasi (Tiga Garis)'}
+              className="p-2 sm:p-2.5 text-white bg-blue-800/80 hover:bg-blue-700 active:bg-blue-900 border border-blue-400/50 rounded-lg shadow-sm transition-all focus:outline-none cursor-pointer group hover:border-yellow-300/80 active:scale-95"
+              aria-label="Navigasi Garis Tiga"
+              title={menuOpen ? 'Tutup Navigasi' : 'Buka Navigasi'}
             >
               {menuOpen ? (
                 <X className="w-5 h-5 text-yellow-300 transition-transform duration-200" />
               ) : (
                 <Menu className="w-5 h-5 text-yellow-300 transition-transform duration-200 group-hover:scale-110" />
               )}
-              <span className="text-xs font-extrabold tracking-wider text-yellow-200 group-hover:text-yellow-300">
-                {menuOpen ? 'TUTUP' : 'MENU'}
-              </span>
             </button>
           </div>
         </div>
@@ -298,10 +303,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span className="text-[10px] text-blue-300">Utama</span>
                   </button>
                   <button
-                    onClick={() => navigateTo('home', 'profil-section')}
-                    className="w-full text-left py-2 px-3 rounded-md hover:bg-blue-800/80 text-white flex items-center justify-between transition-colors"
+                    onClick={() => navigateTo('home', 'profil-sekolah')}
+                    className="w-full text-left py-2 px-3 rounded-md hover:bg-blue-800/80 text-white flex items-center justify-between transition-colors group cursor-pointer"
                   >
-                    <span>Profil Sekolah & Visi Misi</span>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-yellow-300 group-hover:scale-110 transition-transform" />
+                      <span>Profil Sekolah</span>
+                    </div>
+                    <span className="text-[10px] bg-blue-700/60 text-yellow-300 px-1.5 py-0.5 rounded font-bold">SMK PK</span>
                   </button>
                   <button
                     onClick={() => navigateTo('home', 'fasilitas-section')}

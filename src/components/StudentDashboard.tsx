@@ -634,30 +634,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <span>Formulir Pendaftaran</span>
                 </button>
 
-                <button
-                  onClick={() => {
-                    if (!isSemuaFormLengkap) {
-                      showNotification('Lengkapi seluruh formulir pendaftaran & berkas terlebih dahulu untuk melihat rincian biaya pembayaran.');
-                      return;
-                    }
-                    setActiveMenu('pembayaran');
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
-                    activeMenu === 'pembayaran'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : !isSemuaFormLengkap
-                      ? 'text-slate-400 bg-slate-50 cursor-not-allowed border border-dashed border-slate-200'
-                      : 'text-slate-800 hover:bg-slate-100 hover:text-blue-700'
-                  }`}
-                  title={!isSemuaFormLengkap ? 'Selesaikan semua formulir terlebih dahulu' : ''}
-                >
-                  <div className="flex items-center gap-3">
+                {/* Menu Biaya & Pembayaran (Disembunyikan sebelum semua formulir lengkap) */}
+                {isSemuaFormLengkap && (
+                  <button
+                    onClick={() => {
+                      setActiveMenu('pembayaran');
+                      setMobileSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                      activeMenu === 'pembayaran'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-800 hover:bg-slate-100 hover:text-blue-700'
+                    }`}
+                  >
                     <CreditCard className="w-4 h-4 shrink-0" />
                     <span>Biaya & Pembayaran</span>
-                  </div>
-                  {!isSemuaFormLengkap && <Lock className="w-3.5 h-3.5 text-slate-400" />}
-                </button>
+                  </button>
+                )}
 
                 <button
                   onClick={() => {
@@ -2139,32 +2132,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             )}
 
             {/* ===================================================================== */}
-            {/* VIEW 3: PEMBAYARAN (Terkunci & Tersembunyi sebelum semua formulir lengkap) */}
+            {/* VIEW 3: PEMBAYARAN (Disembunyikan sebelum semua formulir lengkap) */}
             {/* ===================================================================== */}
-            {activeMenu === 'pembayaran' && (
-              !isSemuaFormLengkap ? (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-8 text-center space-y-4 max-w-xl mx-auto my-8">
-                  <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
-                    <Lock className="w-7 h-7" />
-                  </div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    Menu Pembayaran & Biaya Terkunci
-                  </h3>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Informasi rincian biaya dan cetak formulir pendaftaran hanya dapat diakses setelah seluruh data (Data Diri, Data Alamat, Data Orang Tua, dan Data Berkas) telah diisi lengkap oleh calon murid.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setActiveMenu('formulir');
-                      handleSelectTab('diri');
-                    }}
-                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm transition-colors"
-                  >
-                    Buka Formulir Pendaftaran
-                  </button>
-                </div>
-              ) : (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
+            {activeMenu === 'pembayaran' && isSemuaFormLengkap && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
                   <div className="flex items-center justify-between pb-4 border-b">
                     <div>
                       <h2 className="text-base font-bold text-slate-900">Rincian Pembayaran & Cetak Formulir</h2>
@@ -2224,8 +2195,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     </div>
                   </div>
                 </div>
-              )
-            )}
+              )}
 
             {/* ===================================================================== */}
             {/* VIEW 4: PENGUMUMAN (Conditional Status: Diterima / Terverifikasi / Cadangan / Menunggu Verifikasi / Berkas Fisik) */}

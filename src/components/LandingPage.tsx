@@ -11,7 +11,6 @@ import {
   Award, 
   Play, 
   Pause, 
-  Sparkles,
   ChevronRight,
   BookOpen,
   ArrowRight,
@@ -302,14 +301,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ========================================================================= */}
       {/* 2. PROFIL SEKOLAH & VIDEO PROFIL RESMI (AUTOPLAY LOOP YOUTUBE) */}
       {/* ========================================================================= */}
-      <section className="py-16 sm:py-20 bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 text-white relative overflow-hidden border-b border-indigo-900/50">
+      <section 
+        id="profil-sekolah" 
+        className="py-16 sm:py-20 bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 text-white relative overflow-hidden border-b border-indigo-900/50 scroll-mt-20"
+      >
         {/* Subtle decorative background glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600/20 text-blue-300 border border-blue-400/30 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+            <span className="inline-flex items-center px-3.5 py-1 bg-blue-600/20 text-blue-300 border border-blue-400/30 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
               <span>Profil Sekolah Pusat Keunggulan</span>
             </span>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
@@ -691,7 +692,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ========================================================================= */}
       {/* 5. TESTIMONIALS (WHAT THEY THINK) */}
       {/* ========================================================================= */}
-      <section id="profil-section" className="py-20 bg-white">
+      <section id="testimonials-section" className="py-20 bg-white scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-2xl mx-auto mb-16">

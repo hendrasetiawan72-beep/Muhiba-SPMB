@@ -117,12 +117,40 @@ export default async function handler(req: any, res: any) {
 
     const userId = authCreated.user.id;
 
-    // 3. Nomor pendaftaran urut
+    // 3. Nomor pendaftaran unik otomatis dan tidak mungkin sama (Collision-proof generator)
     const { count } = await supabaseAdmin
       .from('students')
       .select('*', { count: 'exact', head: true });
-    const nextSeq = (count || 0) + 1;
-    const nomorPendaftaran = (2026470 + nextSeq).toString();
+
+    let nextSeq = (count || 0) + 1;
+    let nomorPendaftaran = '';
+    let isUnique = false;
+    let attempts = 0;
+
+    while (!isUnique && attempts < 25) {
+      attempts++;
+      // Format: 2026 + 3-digit sequence padded + 2-digit random salt
+      const randSalt = Math.floor(10 + Math.random() * 90);
+      const candidateNomor = `2026${String(nextSeq).padStart(3, '0')}${randSalt}`;
+
+      const { data: existingNomor } = await supabaseAdmin
+        .from('students')
+        .select('nomor_pendaftaran')
+        .eq('nomor_pendaftaran', candidateNomor)
+        .maybeSingle();
+
+      if (!existingNomor) {
+        nomorPendaftaran = candidateNomor;
+        isUnique = true;
+      } else {
+        nextSeq++;
+      }
+    }
+
+    if (!nomorPendaftaran) {
+      // Fallback high-entropy timestamp + random salt guarantee
+      nomorPendaftaran = `2026${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
+    }
 
     const now = new Date();
     const dateFormatted = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;

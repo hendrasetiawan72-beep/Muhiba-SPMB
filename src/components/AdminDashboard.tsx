@@ -15,7 +15,8 @@ import {
   AlertCircle,
   ExternalLink,
   Save,
-  Printer
+  Printer,
+  LogOut
 } from 'lucide-react';
 import { Student, User, StatusPendaftaran, JurusanType } from '../types/database';
 import { dbService } from '../services/supabase';
@@ -61,7 +62,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setStudents(list);
     } catch (err: any) {
       console.error('Error loading students:', err);
-      showToast(err.message || 'Gagal memuat data pendaftar dari Supabase');
+      showToast(err.message || 'Gagal memuat data pendaftar dari server');
     }
   };
 
@@ -199,6 +200,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
             <span className="text-[11px] tracking-wide">Terhubung</span>
           </div>
+
+          {/* Download Data JSON in Header */}
+          <button
+            onClick={handleExportJSON}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
+            title="Download data pendaftar format JSON"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Download Data JSON</span>
+          </button>
 
           <a
             href="https://www.smkmuhiba.sch.id"
