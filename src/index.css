@@ -3,12 +3,19 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    scroll-snap-type: y proximity;
   }
 
   @media (prefers-reduced-motion: reduce) {
     html {
       scroll-behavior: auto;
+      scroll-snap-type: none;
     }
+  }
+
+  .section-snap {
+    scroll-snap-align: start;
+    scroll-snap-stop: normal;
   }
 
   body {

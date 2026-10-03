@@ -13,6 +13,7 @@ import {
   Play, 
   Pause, 
   ChevronRight,
+  ChevronDown,
   BookOpen,
   ArrowRight,
   ArrowUp,
@@ -58,6 +59,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const statsY = useTransform(scrollY, [500, 1200], [20, -10]);
   const jurusanGlowY = useTransform(scrollY, [800, 2200], [-40, 50]);
 
+  const scrollToSection = (sectionId: string) => {
+    const el = document.getElementById(sectionId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   // Smooth scroll listener for back to top button
   useEffect(() => {
     const handleScroll = () => {
@@ -65,6 +73,74 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Efek gulir cepat ke profil sekolah saat pengguna scroll dari bagian paling atas laman
+  const hasTriggeredQuickScroll = useRef(false);
+  const isAutoScrolling = useRef(false);
+
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+
+    const handleScrollSnap = () => {
+      const currentScrollY = window.scrollY;
+
+      // Reset kemampuan trigger jika pengguna kembali ke paling atas halaman (< 20px)
+      if (currentScrollY <= 20) {
+        hasTriggeredQuickScroll.current = false;
+        isAutoScrolling.current = false;
+      }
+
+      // Deteksi gerakan scroll ke bawah dari puncak laman (20px - 320px)
+      if (
+        !hasTriggeredQuickScroll.current &&
+        !isAutoScrolling.current &&
+        lastScrollY <= 30 &&
+        currentScrollY > 30 &&
+        currentScrollY < 320
+      ) {
+        hasTriggeredQuickScroll.current = true;
+        isAutoScrolling.current = true;
+
+        const target = document.getElementById('profil-sekolah');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(() => {
+            isAutoScrolling.current = false;
+          }, 900);
+        }
+      }
+
+      lastScrollY = currentScrollY;
+    };
+
+    const handleWheel = (e: WheelEvent) => {
+      if (
+        window.scrollY <= 25 &&
+        e.deltaY > 15 &&
+        !hasTriggeredQuickScroll.current &&
+        !isAutoScrolling.current
+      ) {
+        hasTriggeredQuickScroll.current = true;
+        isAutoScrolling.current = true;
+
+        const target = document.getElementById('profil-sekolah');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(() => {
+            isAutoScrolling.current = false;
+          }, 900);
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScrollSnap, { passive: true });
+    window.addEventListener('wheel', handleWheel, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollSnap);
+      window.removeEventListener('wheel', handleWheel);
+    };
   }, []);
 
   const toggleYtAudio = () => {
@@ -115,13 +191,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     setIsFullscreenModalOpen(true);
   };
 
-  const scrollToSection = (sectionId: string) => {
-    const el = document.getElementById(sectionId);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
   const fallbackHeroImage =
     'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjG8XVKrvlj5jkknTYzKlB2DYIKwYl1h-gKegies3GGfKcyk-1dkSbyfvt4Ghj1yFFkXhzsQ40PCyNUVALlRtkvQmnQtzCJe2vo7XL3Im96N_eQqnsxxRJkirDNC5NorqApzII5S2-bswtbk3wH3eUwOc6JCuHVkpKC3QCxZa2T2JPHtIJ9tvOEaMz45ZRb/s320/44857.png';
 
@@ -169,6 +238,79 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       isVideo: false,
     },
   ];
+
+  // Carousel Auto-Play and Touch/Swipe States
+  const [isAutoPlayActive, setIsAutoPlayActive] = useState<boolean>(true);
+  const [isCarouselHovered, setIsCarouselHovered] = useState<boolean>(false);
+  const [autoPlayProgress, setAutoPlayProgress] = useState<number>(0);
+  const [swipeDirection, setSwipeDirection] = useState<number>(1);
+
+  // Auto-play timer for Carousel (5000ms duration, pauses on hover / touch)
+  useEffect(() => {
+    if (!isAutoPlayActive || isCarouselHovered || isFullscreenModalOpen) return;
+
+    const intervalDuration = 5000;
+    const stepDuration = 50;
+    let elapsed = 0;
+
+    const timer = setInterval(() => {
+      elapsed += stepDuration;
+      setAutoPlayProgress(Math.min((elapsed / intervalDuration) * 100, 100));
+
+      if (elapsed >= intervalDuration) {
+        elapsed = 0;
+        setAutoPlayProgress(0);
+        setSwipeDirection(1);
+        setActiveFacility((prev) => (prev + 1) % facilities.length);
+      }
+    }, stepDuration);
+
+    return () => clearInterval(timer);
+  }, [isAutoPlayActive, isCarouselHovered, isFullscreenModalOpen, activeFacility, facilities.length]);
+
+  const nextFacility = () => {
+    setSwipeDirection(1);
+    setAutoPlayProgress(0);
+    setActiveFacility((prev) => (prev + 1) % facilities.length);
+  };
+
+  const prevFacility = () => {
+    setSwipeDirection(-1);
+    setAutoPlayProgress(0);
+    setActiveFacility((prev) => (prev - 1 + facilities.length) % facilities.length);
+  };
+
+  const goToFacility = (idx: number) => {
+    setSwipeDirection(idx > activeFacility ? 1 : -1);
+    setAutoPlayProgress(0);
+    setActiveFacility(idx);
+  };
+
+  // Touch Swipe Gesture Fallback
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setIsCarouselHovered(true);
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    setIsCarouselHovered(false);
+    if (touchStartX.current === null || touchEndX.current === null) return;
+    const distance = touchStartX.current - touchEndX.current;
+    if (distance > 40) {
+      nextFacility();
+    } else if (distance < -40) {
+      prevFacility();
+    }
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
 
   const testimonials = [
     {
@@ -233,6 +375,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     },
   };
 
+  const carouselSlideVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 100 : -100,
+      opacity: 0,
+      scale: 0.98,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      scale: 1,
+      transition: {
+        x: { type: 'spring' as const, stiffness: 300, damping: 30 },
+        opacity: { duration: 0.3 },
+      },
+    },
+    exit: (direction: number) => ({
+      x: direction > 0 ? -100 : 100,
+      opacity: 0,
+      scale: 0.98,
+      transition: {
+        x: { type: 'spring' as const, stiffness: 300, damping: 30 },
+        opacity: { duration: 0.25 },
+      },
+    }),
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden selection:bg-blue-600 selection:text-white relative">
       
@@ -244,10 +412,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         style={{ scaleX: scrollYProgress }}
       />
 
+
       {/* ========================================================================= */}
       {/* 1. HERO SECTION WITH VIDEO BACKGROUND & PARALLAX OVERLAY */}
       {/* ========================================================================= */}
-      <section className="relative min-h-[640px] lg:min-h-[740px] flex items-center bg-slate-950 overflow-hidden">
+      <section id="hero-section" className="relative min-h-[640px] lg:min-h-[740px] flex items-center bg-slate-950 overflow-hidden section-snap scroll-mt-20">
         
         {/* Parallax Background Layer: TikTok Video & Fallback Image */}
         <motion.div 
@@ -391,19 +560,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           </div>
         </div>
+
+        {/* Quick Scroll Indicator Button to Profil Sekolah */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+          <button
+            onClick={() => scrollToSection('profil-sekolah')}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/80 hover:bg-slate-900 text-blue-200 hover:text-white border border-blue-400/30 backdrop-blur-md text-xs font-semibold shadow-xl transition-all transform hover:scale-105 active:scale-95 group cursor-pointer"
+            title="Gulir Cepat ke Profil Sekolah"
+          >
+            <span>Profil Sekolah</span>
+            <ChevronDown className="w-4 h-4 text-blue-400 group-hover:translate-y-0.5 transition-transform animate-bounce" />
+          </button>
+        </div>
       </section>
 
       {/* ========================================================================= */}
       {/* 2. PROFIL SEKOLAH & VIDEO PROFIL RESMI (AUTOPLAY LOOP YOUTUBE) */}
+      {/* Background gradasi memudar: Warna Atas #FFFFFF ke Warna Bawah #D3E3FD */}
       {/* ========================================================================= */}
       <section 
         id="profil-sekolah" 
-        className="py-16 sm:py-24 bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 text-white relative overflow-hidden border-b border-indigo-900/50 scroll-mt-24"
+        className="py-16 sm:py-24 bg-gradient-to-b from-[#FFFFFF] via-[#E8F1FD] to-[#D3E3FD] text-slate-900 relative overflow-hidden border-b border-blue-200/60 scroll-mt-24 section-snap"
       >
         {/* Parallax decorative background glow */}
         <motion.div 
           style={{ y: profilGlowY }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-blue-600/15 rounded-full blur-3xl pointer-events-none will-change-transform" 
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-blue-300/35 rounded-full blur-3xl pointer-events-none will-change-transform" 
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -415,14 +597,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             transition={{ duration: 0.6, ease: smoothEase }}
             className="text-center max-w-3xl mx-auto mb-12"
           >
-            <span className="inline-flex items-center px-3.5 py-1 bg-blue-600/20 text-blue-300 border border-blue-400/30 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
+            <span className="inline-flex items-center px-3.5 py-1 bg-blue-100 text-blue-800 border border-blue-200/80 rounded-full text-xs font-bold uppercase tracking-wider mb-3 shadow-2xs">
               <span>Profil Sekolah Pusat Keunggulan</span>
             </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-              Mengenal Lebih Dekat <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400">SMK MUHIBA</span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
+              Mengenal Lebih Dekat <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-700">SMK MUHIBA</span>
             </h2>
-            <div className="w-20 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mt-4 rounded-full" />
-            <p className="text-sm sm:text-base text-slate-200 mt-6 leading-relaxed font-medium">
+            <div className="w-20 h-1 bg-gradient-to-r from-blue-600 to-indigo-600 mx-auto mt-4 rounded-full" />
+            <p className="text-sm sm:text-base text-slate-700 mt-6 leading-relaxed font-medium">
               “SMK Muhammadiyah Bawang (MUHIBA) adalah Sekolah Pusat Keunggulan yang mencetak generasi tangguh, terampil, dan berakhlak mulia. Dengan kurikulum link and match industri, kami mempersiapkan siswa siap kerja dan siap kuliah melalui program unggulan Teknik Otomotif, Teknik Jaringan Komputer & Telekomunikasi, serta Akuntansi dan Keuangan Lembaga.”
             </p>
           </motion.div>
@@ -436,7 +618,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             transition={{ duration: 0.65, ease: smoothEase }}
             className="max-w-4xl mx-auto will-change-transform"
           >
-            <div className="p-2 sm:p-3 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 shadow-2xl ring-1 ring-white/20">
+            <div className="p-2 sm:p-3 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 shadow-2xl ring-1 ring-blue-900/10">
               <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-black shadow-inner aspect-video">
                 
                 {/* Embedded YouTube Video */}
@@ -479,29 +661,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-300 px-2">
-              <span className="font-semibold flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-700 px-2">
+              <span className="font-bold flex items-center gap-1.5 text-slate-800">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>Sekolah Pusat Keunggulan (SMK PK) Kemendikbudristek</span>
               </span>
               <a
                 href="https://youtu.be/MjqT0ORLm1w?si=LMWN7mZdpKYSBu6R"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-300 hover:text-white transition-colors flex items-center gap-1 font-bold underline"
+                className="text-blue-700 hover:text-blue-900 transition-colors flex items-center gap-1 font-bold underline"
               >
                 <span>Buka di YouTube</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           </motion.div>
+
+          {/* Quick scroll to next section (Jurusan) */}
+          <div className="mt-8 text-center">
+            <button
+              onClick={() => scrollToSection('jurusan-section')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/90 hover:bg-white text-blue-900 border border-blue-200/90 text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer group"
+              title="Lanjut ke Bagian Konsentrasi Keahlian"
+            >
+              <span>Lanjut ke Konsentrasi Keahlian (Jurusan)</span>
+              <ChevronDown className="w-3.5 h-3.5 text-blue-600 group-hover:translate-y-0.5 transition-transform animate-bounce" />
+            </button>
+          </div>
+
         </div>
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. STATS QUICK STRIP WITH STAGGERED REVEAL */}
+      {/* 3. STATS QUICK STRIP WITH STAGGERED REVEAL */}
       {/* ========================================================================= */}
-      <section className="bg-white border-y border-slate-200 py-8 relative z-20">
+      <section id="stats-section" className="bg-white border-y border-slate-200 py-8 relative z-20 section-snap scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             style={{ y: statsY }}
@@ -532,9 +727,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ========================================================================= */}
-      {/* 3. KONSENTRASI KEAHLIAN (JURUSAN) WITH STAGGERED CARDS */}
+      {/* 4. KONSENTRASI KEAHLIAN (JURUSAN) WITH STAGGERED CARDS */}
       {/* ========================================================================= */}
-      <section id="jurusan-section" className="py-20 lg:py-24 bg-white relative overflow-hidden scroll-mt-24">
+      <section id="jurusan-section" className="py-20 lg:py-24 bg-white relative overflow-hidden scroll-mt-24 section-snap">
         {/* Parallax Background Accent Glow */}
         <motion.div 
           style={{ y: jurusanGlowY }}
@@ -661,13 +856,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </motion.div>
 
           </motion.div>
+
+          {/* Quick scroll to next section (Fasilitas) */}
+          <div className="mt-12 text-center">
+            <button
+              onClick={() => scrollToSection('fasilitas-section')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/90 text-xs font-bold transition-all cursor-pointer group"
+              title="Lanjut ke Bagian Fasilitas & Workshop"
+            >
+              <span>Lanjut ke Fasilitas & Workshop Modern</span>
+              <ChevronDown className="w-3.5 h-3.5 text-blue-600 group-hover:translate-y-0.5 transition-transform animate-bounce" />
+            </button>
+          </div>
+
         </div>
       </section>
 
       {/* ========================================================================= */}
-      {/* 4. FASILITAS & WORKSHOP (WHAT YOU CAN LEARN) WITH DYNAMIC TRANSITIONS */}
+      {/* 5. FASILITAS & WORKSHOP (RESPONSIVE AUTO-PLAY CAROUSEL WITH TOUCH/SWIPE) */}
       {/* ========================================================================= */}
-      <section id="fasilitas-section" className="py-20 bg-slate-50 border-t border-slate-200 relative scroll-mt-24">
+      <section id="fasilitas-section" className="py-20 bg-slate-50 border-t border-slate-200 relative scroll-mt-24 section-snap">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <motion.div 
@@ -675,69 +883,53 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.55 }}
-            className="text-center max-w-3xl mx-auto mb-16"
+            className="text-center max-w-3xl mx-auto mb-10"
           >
             <span className="text-xs font-bold text-blue-700 tracking-wider uppercase">OUR COURSES & FACILITIES</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1">
-              What You Can <span className="text-blue-600">Learn</span>
+              Fasilitas & <span className="text-blue-600">Workshop Modern</span>
             </h2>
             <div className="w-16 h-1 bg-blue-600 mx-auto mt-3 rounded-full" />
             <p className="text-sm text-slate-600 mt-4 leading-relaxed">
-              SMK Muhammadiyah Bawang adalah salah satu lembaga pendidikan menengah yang terletak di Kecamatan Bawang, Kabupaten Batang, Jawa Tengah. Sekolah ini didirikan dengan tujuan untuk mencetak generasi muda yang terampil dan berakhlak mulia melalui pendidikan vokasi yang berkualitas.
+              Jelajahi sarana praktik berstandar industri dengan kurikulum Link & Match. Dilengkapi laboratorium komputasi terkini, simulator akuntansi, bengkel otomotif resmi, serta sentra bisnis siswa.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            {/* Left facility selector list with Staggered items */}
-            <motion.div 
-              variants={staggerContainer}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.3 }}
-              className="lg:col-span-4 space-y-2.5"
-            >
-              {facilities.map((fac, idx) => {
-                const isSelected = activeFacility === idx;
-                return (
-                  <motion.button
-                    key={idx}
-                    variants={fadeInUpItem}
-                    whileHover={{ x: 4 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setActiveFacility(idx)}
-                    className={`w-full text-left p-4 rounded-xl font-bold text-sm transition-all duration-200 border flex items-center justify-between cursor-pointer ${
-                      isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-100'
-                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span>{fac.title}</span>
-                    <ChevronRight
-                      className={`w-4 h-4 transition-transform ${
-                        isSelected ? 'text-white translate-x-1' : 'text-slate-400'
-                      }`}
-                    />
-                  </motion.button>
-                );
-              })}
-            </motion.div>
-
-            {/* Right facility card preview with AnimatePresence Dynamic Crossfade */}
-            <div className="lg:col-span-8">
-              <AnimatePresence mode="wait">
+          {/* Responsive Carousel Stage with Touch/Swipe Gestures */}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsCarouselHovered(true)}
+            onMouseLeave={() => setIsCarouselHovered(false)}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Carousel Slide Card with Framer Motion Drag and AnimatePresence */}
+            <div className="overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xl bg-white">
+              <AnimatePresence mode="wait" custom={swipeDirection}>
                 <motion.div
                   key={activeFacility}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -16 }}
-                  transition={{ duration: 0.35, ease: smoothEase }}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden grid grid-cols-1 md:grid-cols-12"
+                  custom={swipeDirection}
+                  variants={carouselSlideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.2}
+                  onDragEnd={(_, info) => {
+                    if (info.offset.x < -40 || info.velocity.x < -150) {
+                      nextFacility();
+                    } else if (info.offset.x > 40 || info.velocity.x > 150) {
+                      prevFacility();
+                    }
+                  }}
+                  className="grid grid-cols-1 lg:grid-cols-12 cursor-grab active:cursor-grabbing select-none"
                 >
-                  {/* Media side */}
-                  <div className="md:col-span-5 relative min-h-[300px] md:min-h-[380px] bg-slate-950 flex items-center justify-center overflow-hidden">
+                  {/* Media Side - Ukuran Frame Seragam & Video Tercrop Sempurna */}
+                  <div className="lg:col-span-6 relative min-h-[300px] sm:min-h-[380px] lg:min-h-[460px] bg-slate-950 overflow-hidden">
                     {facilities[activeFacility].isVideo ? (
-                      <div className="relative w-full h-full min-h-[320px] md:min-h-[390px] bg-slate-950 flex flex-col justify-center items-center group overflow-hidden">
+                      <div className="absolute inset-0 w-full h-full overflow-hidden bg-slate-950 group">
                         <video
                           ref={videoRef}
                           src="/videos/workshop_otomotif.mp4"
@@ -745,19 +937,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                           loop
                           muted={isVideoMuted}
                           playsInline
-                          className="w-full h-full min-h-[320px] md:min-h-[390px] object-cover cursor-pointer select-none transition-transform duration-300"
+                          className="absolute inset-0 w-full h-full object-cover object-center cursor-pointer select-none"
                           onClick={toggleVideoPlay}
                           title="Klik untuk Jeda / Putar"
                         />
 
-                        {/* Header Badge: Live Loop */}
-                        <div className="absolute top-3 left-3 bg-red-600/90 backdrop-blur-md text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1.5 z-20 pointer-events-none">
+                        {/* Top Badges */}
+                        <div className="absolute top-4 left-4 bg-red-600/90 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 z-20 pointer-events-none">
                           <span className="w-2 h-2 rounded-full bg-white animate-ping" />
                           <span>WORKSHOP OTOMOTIF • LIVE LOOP</span>
                         </div>
 
-                        {/* Bottom Controls Bar */}
-                        <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-transparent flex items-center justify-between z-20 transition-opacity">
+                        {/* Video Controls Bar */}
+                        <div className="absolute inset-x-0 bottom-0 p-3.5 bg-gradient-to-t from-slate-950/95 via-slate-950/55 to-transparent flex items-center justify-between z-20 transition-opacity">
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
@@ -804,68 +996,106 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <>
+                      <div className="absolute inset-0 w-full h-full overflow-hidden bg-slate-900">
                         <img
                           src={facilities[activeFacility].image}
                           alt={facilities[activeFacility].title}
-                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                          className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 hover:scale-105"
                           referrerPolicy="no-referrer"
                         />
-                        <div className="absolute top-4 left-4 bg-blue-600 text-white text-xs font-extrabold px-3 py-1 rounded shadow">
-                          {facilities[activeFacility].completionRate} SIAP
+                        <div className="absolute top-4 left-4 bg-blue-600/90 backdrop-blur-md text-white text-xs font-extrabold px-3 py-1.5 rounded-full shadow-lg">
+                          {facilities[activeFacility].completionRate} SIAP PRAKTIK
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
 
-                  {/* Content side */}
-                  <div className="md:col-span-7 p-6 sm:p-8 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-900">
-                        {facilities[activeFacility].title}
-                      </h3>
-                      <p className="text-xs text-blue-600 font-semibold mt-1">
-                        {facilities[activeFacility].subtitle}
-                      </p>
-                      <p className="text-xs sm:text-sm text-slate-600 mt-4 leading-relaxed">
-                        {facilities[activeFacility].description}
-                      </p>
-                    </div>
-
-                    <div className="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {facilities[activeFacility].tags.map((tag, tIdx) => (
-                          <span
-                            key={tIdx}
-                            className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+                  {/* Information Content Side */}
+                  <div className="lg:col-span-6 p-6 sm:p-8 lg:p-10 flex flex-col justify-between bg-white">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-blue-700 uppercase tracking-wider bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                          {facilities[activeFacility].subtitle}
+                        </span>
+                        <span className="text-xs font-mono font-bold text-slate-400">
+                          0{activeFacility + 1} / 0{facilities.length}
+                        </span>
                       </div>
 
+                      <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                        {facilities[activeFacility].title}
+                      </h3>
+
+                      <p className="text-sm text-slate-600 leading-relaxed font-normal">
+                        {facilities[activeFacility].description}
+                      </p>
+
+                      <div className="pt-2">
+                        <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
+                          Karakteristik & Keunggulan:
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {facilities[activeFacility].tags.map((tag, tIdx) => (
+                            <span
+                              key={tIdx}
+                              className="text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1 rounded-lg"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 pt-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
                       <button
                         onClick={onRegisterClick}
-                        className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 group cursor-pointer"
+                        className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 cursor-pointer"
                       >
-                        <span>Pelajari & Daftar</span>
-                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                        <span>Daftar Jurusan Ini</span>
+                        <ArrowRight className="w-4 h-4" />
                       </button>
+
+                      <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        <span>Tersertifikasi LSP & Industri</span>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
               </AnimatePresence>
             </div>
 
+            {/* Navigasi Hanya Melalui Titik-Titik */}
+            <div className="mt-8 flex items-center justify-center gap-3">
+              {facilities.map((_, idx) => {
+                const isActive = activeFacility === idx;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => goToFacility(idx)}
+                    className={`h-3 rounded-full transition-all duration-300 cursor-pointer ${
+                      isActive
+                        ? 'w-10 bg-blue-600 shadow-md shadow-blue-500/30'
+                        : 'w-3 bg-slate-300 hover:bg-slate-400'
+                    }`}
+                    aria-label={`Pilih fasilitas ${idx + 1}: ${facilities[idx].title}`}
+                    title={facilities[idx].title}
+                  />
+                );
+              })}
+            </div>
+
           </div>
+
 
         </div>
       </section>
 
       {/* ========================================================================= */}
-      {/* 5. TESTIMONIALS (WHAT THEY THINK) WITH STAGGERED REVEAL */}
+      {/* 6. TESTIMONIALS (WHAT THEY THINK) WITH STAGGERED REVEAL */}
       {/* ========================================================================= */}
-      <section id="testimonials-section" className="py-20 bg-white scroll-mt-24">
+      <section id="testimonials-section" className="py-20 bg-white scroll-mt-24 section-snap">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <motion.div 
@@ -918,13 +1148,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             ))}
           </motion.div>
 
+          {/* Quick scroll to next section (Kontak) */}
+          <div className="mt-12 text-center">
+            <button
+              onClick={() => scrollToSection('kontak-section')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/90 text-xs font-bold transition-all cursor-pointer group"
+              title="Lanjut ke Bagian Kontak & Lokasi Peta"
+            >
+              <span>Lanjut ke Kontak & Lokasi Peta</span>
+              <ChevronDown className="w-3.5 h-3.5 text-blue-600 group-hover:translate-y-0.5 transition-transform animate-bounce" />
+            </button>
+          </div>
+
         </div>
       </section>
 
       {/* ========================================================================= */}
-      {/* 6. HUBUNGI KAMI & GOOGLE MAPS EMBED WITH STAGGERED ENTRANCE */}
+      {/* 7. HUBUNGI KAMI & GOOGLE MAPS EMBED (BAGIAN BAWAH ATAS FOOTER DENGAN GRADASI) */}
+      {/* Background gradasi memudar: Warna Atas #FFFFFF ke Warna Bawah #D3E3FD */}
       {/* ========================================================================= */}
-      <section id="kontak-section" className="py-20 bg-slate-900 text-white relative overflow-hidden scroll-mt-24">
+      <section 
+        id="kontak-section" 
+        className="py-20 bg-gradient-to-b from-[#FFFFFF] via-[#E8F1FD] to-[#D3E3FD] text-slate-900 relative overflow-hidden border-t border-slate-200 scroll-mt-24 section-snap"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -937,13 +1183,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               viewport={{ once: true, amount: 0.3 }}
               className="lg:col-span-5 space-y-6"
             >
-              <motion.span variants={fadeInUpItem} className="text-xs font-bold text-blue-400 tracking-wider uppercase block">
+              <motion.span variants={fadeInUpItem} className="text-xs font-bold text-blue-700 tracking-wider uppercase block">
                 HUBUNGI KAMI
               </motion.span>
-              <motion.h2 variants={fadeInUpItem} className="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
+              <motion.h2 variants={fadeInUpItem} className="text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight">
                 Ayo Bergabung Bersama SMK Muhammadiyah Bawang
               </motion.h2>
-              <motion.p variants={fadeInUpItem} className="text-sm text-slate-300 leading-relaxed">
+              <motion.p variants={fadeInUpItem} className="text-sm text-slate-600 leading-relaxed">
                 Jika Anda membutuhkan informasi pendaftaran peserta didik baru (PPDB), jurusan, biaya pendidikan, atau fasilitas sekolah, silakan hubungi kami. Tim PPDB SMK Muhammadiyah Bawang siap melayani dan membantu Anda dengan ramah.
               </motion.p>
 
@@ -953,14 +1199,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   href="https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang%2C%20perkenalkan%20saya%20ingin%20menanyakan%20informasi%20terkait%20pendaftaran%20peserta%20didik%20baru%20(PPDB).%20Terima%20kasih."
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-4 rounded-xl bg-slate-800/90 border border-slate-700 hover:border-emerald-500 transition-all flex items-center gap-4 group cursor-pointer hover:-translate-y-0.5"
+                  className="p-4 rounded-xl bg-white/95 border border-slate-200/90 hover:border-emerald-500 shadow-xs hover:shadow-md transition-all flex items-center gap-4 group cursor-pointer hover:-translate-y-0.5"
                 >
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                     <MessageCircle className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-xs text-slate-400 font-medium block">WHATSAPP PPDB</span>
-                    <span className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">
+                    <span className="text-xs text-slate-500 font-semibold block">WHATSAPP PPDB</span>
+                    <span className="text-sm font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
                       0856-1333-392
                     </span>
                   </div>
@@ -968,14 +1214,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                 <a
                   href="tel:085741977501"
-                  className="p-4 rounded-xl bg-slate-800/90 border border-slate-700 hover:border-blue-500 transition-all flex items-center gap-4 group cursor-pointer hover:-translate-y-0.5"
+                  className="p-4 rounded-xl bg-white/95 border border-slate-200/90 hover:border-blue-500 shadow-xs hover:shadow-md transition-all flex items-center gap-4 group cursor-pointer hover:-translate-y-0.5"
                 >
-                  <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                     <Phone className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-xs text-slate-400 font-medium block">MOBILE / TELEPON</span>
-                    <span className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">
+                    <span className="text-xs text-slate-500 font-semibold block">MOBILE / TELEPON</span>
+                    <span className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                       0857-4197-7501
                     </span>
                   </div>
@@ -985,7 +1231,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <motion.div variants={fadeInUpItem} className="pt-2">
                 <button
                   onClick={onRegisterClick}
-                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 font-extrabold text-sm rounded-lg shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-sm rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                 >
                   Daftar Sekarang Online
                 </button>
@@ -1000,17 +1246,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               transition={{ duration: 0.65, ease: smoothEase }}
               className="lg:col-span-7"
             >
-              <div className="bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl hover:border-slate-600 transition-all">
-                <div className="p-4 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 text-slate-200 font-semibold">
-                    <MapPin className="w-4 h-4 text-rose-400" />
+              <div className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-xl hover:shadow-2xl transition-all">
+                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                    <MapPin className="w-4 h-4 text-rose-500" />
                     <span>SMKS MUHAMMADIYAH BAWANG - Jl. Raya Bawang - Sukorejo KM 01, Jlamprang, Bawang, Batang 51274</span>
                   </div>
                   <a
                     href="https://maps.google.com/?q=SMK+Muhammadiyah+Bawang+Batang"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium"
+                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1 font-bold"
                   >
                     <span>Buka Peta</span>
                     <ExternalLink className="w-3.5 h-3.5" />
