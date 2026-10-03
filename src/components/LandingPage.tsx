@@ -950,7 +950,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               {/* Contact direct boxes */}
               <motion.div variants={fadeInUpItem} className="space-y-3 pt-2">
                 <a
-                  href="https://wa.me/628561333392?text=Halo%20Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang,%20saya%20ingin%20bertanya%20informasi%20pendaftaran"
+                  href="https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang%2C%20perkenalkan%20saya%20ingin%20menanyakan%20informasi%20terkait%20pendaftaran%20peserta%20didik%20baru%20(PPDB).%20Terima%20kasih."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-4 rounded-xl bg-slate-800/90 border border-slate-700 hover:border-emerald-500 transition-all flex items-center gap-4 group cursor-pointer hover:-translate-y-0.5"
@@ -1042,7 +1042,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ========================================================================= */}
       <div className="fixed bottom-6 left-6 z-40">
         <a
-          href="https://wa.me/628561333392?text=Halo%20Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang,%20saya%20ingin%20bertanya%20seputar%20pendaftaran"
+          href="https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang%2C%20perkenalkan%20saya%20ingin%20berkonsultasi%20mengenai%20pendaftaran%20dan%20program%20keahlian%20di%20SMK%20Muhammadiyah%20Bawang.%20Terima%20kasih."
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-white px-4 py-2.5 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-105 group"

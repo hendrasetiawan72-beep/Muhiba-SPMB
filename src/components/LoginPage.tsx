@@ -156,7 +156,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 <div>
                   <p className="text-xs font-bold text-slate-900">EDI SETIANTO</p>
                   <a
-                    href="https://wa.me/628561333392"
+                    href="https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Bapak%20Edi%20Setianto%20(Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang)%2C%20perkenalkan%20saya%20ingin%20menanyakan%20informasi%20mengenai%20pendaftaran%20dan%20akun%20login%20siswa.%20Terima%20kasih."
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs font-semibold text-emerald-600 hover:underline flex items-center gap-1 mt-0.5"
@@ -174,7 +174,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 <div>
                   <p className="text-xs font-bold text-slate-900">SUGI HARNOTO</p>
                   <a
-                    href="https://wa.me/6285741977501"
+                    href="https://wa.me/6285741977501?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Bapak%20Sugi%20Harnoto%20(Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang)%2C%20perkenalkan%20saya%20ingin%20menanyakan%20informasi%20mengenai%20alur%20pendaftaran%20dan%20akun%20login%20siswa.%20Terima%20kasih."
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs font-semibold text-emerald-600 hover:underline flex items-center gap-1 mt-0.5"

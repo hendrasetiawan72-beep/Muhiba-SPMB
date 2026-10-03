@@ -397,10 +397,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </td>
                       <td className="px-4 py-3.5 text-slate-600">
                         <a
-                          href={`https://wa.me/62${std.no_wa.replace(/^0/, '')}`}
+                          href={`https://wa.me/62${std.no_wa.replace(/^0/, '')}?text=${encodeURIComponent(
+                            `Assalamu'alaikum Warahmatullahi Wabarakatuh. Yth. Saudara/i ${std.nama_lengkap} (No. Pendaftaran: ${std.nomor_pendaftaran}), kami dari Panitia PPDB SMK Muhammadiyah Bawang ingin mengonfirmasikan status pendaftaran Anda (${std.status_pendaftaran}). Terima kasih.`
+                          )}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-emerald-600 hover:underline font-mono"
+                          title="Hubungi Siswa via WhatsApp Formal"
                         >
                           {std.no_wa}
                         </a>

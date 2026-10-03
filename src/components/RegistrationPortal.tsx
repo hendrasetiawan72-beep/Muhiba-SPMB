@@ -399,7 +399,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                       </div>
                     </div>
                     <a
-                      href="https://wa.me/628561333392?text=Halo%20Pak%20Edi,%20saya%20ingin%20bertanya%20informasi%20pendaftaran%20SMK%20Muhiba"
+                      href="https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Bapak%20Edi%20Setianto%2C%20perkenalkan%20saya%20calon%20pendaftar%20%2F%20orang%20tua%2C%20ingin%20berkonsultasi%20mengenai%20pelayanan%20pendaftaran%20dan%20pilihan%20konsentrasi%20keahlian%20di%20SMK%20Muhammadiyah%20Bawang.%20Terima%20kasih."
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-xs"
@@ -422,7 +422,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                       </div>
                     </div>
                     <a
-                      href="https://wa.me/6285741977501?text=Halo%20Pak%20Sugi,%20saya%20ingin%20bertanya%20informasi%20pendaftaran%20SMK%20Muhiba"
+                      href="https://wa.me/6285741977501?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Bapak%20Sugi%20Harnoto%2C%20perkenalkan%20saya%20calon%20pendaftar%20%2F%20orang%20tua%2C%20ingin%20menanyakan%20informasi%20terkait%20alur%20pendaftaran%20dan%20kelengkapan%20berkas%20fisik%20PPDB%20SMK%20Muhammadiyah%20Bawang.%20Terima%20kasih."
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-xs"
