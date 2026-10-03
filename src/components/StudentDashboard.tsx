@@ -20,7 +20,6 @@ import {
   AlertCircle,
   HelpCircle,
   Clock,
-  Sparkles,
   ExternalLink,
   Lock,
   Download,
@@ -1031,8 +1030,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     {/* Welcoming Banner (Modern, Clean, Dynamic) */}
                     <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white p-5 sm:p-6 shadow-md shadow-indigo-900/10">
                       <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto space-y-2">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-white/15 backdrop-blur-xs text-yellow-300 border border-white/20">
-                          <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold bg-white/15 backdrop-blur-xs text-yellow-300 border border-white/20">
                           Selamat Datang Calon Peserta Didik Baru
                         </span>
                         <h3 className="text-base sm:text-xl font-black tracking-tight text-white leading-snug">
