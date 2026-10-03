@@ -46,11 +46,15 @@ export const Navbar: React.FC<NavbarProps> = ({
     setActiveView(view);
     setMenuOpen(false);
     setJurusanDropdownOpen(false);
-    if (sectionId && typeof window !== 'undefined') {
-      setTimeout(() => {
-        const el = document.getElementById(sectionId) || document.getElementById('profil-sekolah');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+    if (typeof window !== 'undefined') {
+      if (sectionId) {
+        setTimeout(() => {
+          const el = document.getElementById(sectionId) || document.getElementById('profil-sekolah');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      } else if (view === 'home') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   };
 

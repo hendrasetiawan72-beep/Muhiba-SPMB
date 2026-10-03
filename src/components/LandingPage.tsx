@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { 
   Wrench, 
   Cpu, 
@@ -14,6 +15,7 @@ import {
   ChevronRight,
   BookOpen,
   ArrowRight,
+  ArrowUp,
   Volume2,
   VolumeX,
   Maximize2,
@@ -31,8 +33,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onLoginClick,
 }) => {
   const [activeFacility, setActiveFacility] = useState<number>(0);
-  const [showVideoModal, setShowVideoModal] = useState<boolean>(false);
-  const [videoPlaying, setVideoPlaying] = useState<boolean>(true);
+  const [showBackToTop, setShowBackToTop] = useState<boolean>(false);
 
   // States & refs for clean looping video in workshop otomotif
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -44,6 +45,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   // States & refs for Profile Video (YouTube)
   const [isYtMuted, setIsYtMuted] = useState<boolean>(true);
   const ytIframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  // Parallax scroll hooks
+  const { scrollY, scrollYProgress } = useScroll();
+  const heroBgY = useTransform(scrollY, [0, 800], [0, 160]);
+  const heroRingsY = useTransform(scrollY, [0, 800], [0, -80]);
+  const heroRingsRotate = useTransform(scrollY, [0, 800], [0, 40]);
+  const heroTextY = useTransform(scrollY, [0, 800], [0, 40]);
+  const heroCardY = useTransform(scrollY, [0, 800], [0, 65]);
+  const profilGlowY = useTransform(scrollY, [200, 1400], [-50, 60]);
+  const videoCardY = useTransform(scrollY, [300, 1200], [30, -20]);
+  const statsY = useTransform(scrollY, [500, 1200], [20, -10]);
+  const jurusanGlowY = useTransform(scrollY, [800, 2200], [-40, 50]);
+
+  // Smooth scroll listener for back to top button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const toggleYtAudio = () => {
     if (ytIframeRef.current && ytIframeRef.current.contentWindow) {
@@ -91,6 +113,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const handleOpenFullscreen = () => {
     setIsFullscreenModalOpen(true);
+  };
+
+  const scrollToSection = (sectionId: string) => {
+    const el = document.getElementById(sectionId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   const fallbackHeroImage =
@@ -165,25 +194,76 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     },
   ];
 
+  // Stagger animation variants
+  const smoothEase = [0.16, 1, 0.3, 1] as const;
+
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.12,
+        delayChildren: 0.08,
+      },
+    },
+  };
+
+  const fadeInUpItem = {
+    hidden: { opacity: 0, y: 22 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.55,
+        ease: smoothEase,
+      },
+    },
+  };
+
+  const cardStaggerVariants = {
+    hidden: { opacity: 0, y: 28, scale: 0.98 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: 0.55,
+        ease: smoothEase,
+      },
+    },
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden selection:bg-blue-600 selection:text-white relative">
       
       {/* ========================================================================= */}
-      {/* 1. HERO SECTION WITH VIDEO BACKGROUND & OVERLAY */}
+      {/* SMOOTH SCROLL TOP PROGRESS BAR */}
       {/* ========================================================================= */}
-      <section className="relative min-h-[640px] lg:min-h-[720px] flex items-center bg-slate-950 overflow-hidden">
-        {/* Background Layer: TikTok Video & Fallback Image */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
+      <motion.div
+        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-blue-500 to-indigo-500 z-50 origin-left pointer-events-none shadow-sm"
+        style={{ scaleX: scrollYProgress }}
+      />
+
+      {/* ========================================================================= */}
+      {/* 1. HERO SECTION WITH VIDEO BACKGROUND & PARALLAX OVERLAY */}
+      {/* ========================================================================= */}
+      <section className="relative min-h-[640px] lg:min-h-[740px] flex items-center bg-slate-950 overflow-hidden">
+        
+        {/* Parallax Background Layer: TikTok Video & Fallback Image */}
+        <motion.div 
+          style={{ y: heroBgY }} 
+          className="absolute inset-0 z-0 overflow-hidden pointer-events-none will-change-transform"
+        >
           {/* Fallback image */}
           <div
-            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
+            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 scale-105"
             style={{
               backgroundImage: `url(${fallbackHeroImage})`,
             }}
           />
 
-          {/* TikTok Dynamic Video Overlay Embed with reduced opacity scrim */}
-          <div className="absolute inset-0 w-full h-full opacity-95 scale-105 pointer-events-none overflow-hidden">
+          {/* TikTok Dynamic Video Overlay Embed */}
+          <div className="absolute inset-0 w-full h-full opacity-90 scale-110 pointer-events-none overflow-hidden">
             <iframe
               src="https://www.tiktok.com/player/v1/7462604408816225541?autoplay=1&muted=1&controls=0&loop=1"
               title="TikTok Video Background SMK Muhiba"
@@ -192,27 +272,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             />
           </div>
 
-          {/* Reduced Scrim: Much lighter opacity so video is clearly visible */}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/50 via-slate-950/25 to-blue-950/15 z-10" />
-          
-          {/* Halftone patterned decorative rings as seen in screenshot */}
-          <div className="absolute right-0 bottom-0 w-[500px] h-[500px] pointer-events-none opacity-20 z-10">
-            <svg viewBox="0 0 400 400" className="w-full h-full text-blue-400 fill-current">
-              <circle cx="200" cy="200" r="180" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="6 8" />
-              <circle cx="200" cy="200" r="140" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5 7" />
-              <circle cx="200" cy="200" r="100" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 6" />
-              <circle cx="200" cy="200" r="60" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="3 5" />
-            </svg>
-          </div>
-        </div>
+          {/* Scrim Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-950/35 to-blue-950/20 z-10" />
+        </motion.div>
 
-        {/* Hero Content */}
+        {/* Parallax Decorative Rings */}
+        <motion.div 
+          style={{ y: heroRingsY, rotate: heroRingsRotate }}
+          className="absolute right-0 bottom-0 w-[500px] h-[500px] pointer-events-none opacity-20 z-10 will-change-transform"
+        >
+          <svg viewBox="0 0 400 400" className="w-full h-full text-blue-400 fill-current">
+            <circle cx="200" cy="200" r="180" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="6 8" />
+            <circle cx="200" cy="200" r="140" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5 7" />
+            <circle cx="200" cy="200" r="100" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 6" />
+            <circle cx="200" cy="200" r="60" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="3 5" />
+          </svg>
+        </motion.div>
+
+        {/* Hero Content with Staggered Elements & Parallax Floating Card */}
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 w-full">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
-            {/* Left Column: Heading & Primary Action */}
-            <div className="lg:col-span-7 space-y-6 text-white drop-shadow-md">
-              <div className="space-y-2">
+            {/* Left Column: Staggered Heading & Action Content */}
+            <motion.div 
+              style={{ y: heroTextY }}
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="lg:col-span-7 space-y-6 text-white drop-shadow-md will-change-transform"
+            >
+              <motion.div variants={fadeInUpItem} className="space-y-2">
                 <p className="text-lg sm:text-xl text-blue-200 font-medium tracking-wide">
                   Welcome To Our School
                 </p>
@@ -220,52 +309,58 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   SMK MUHAMMADIYAH <br />
                   <span className="text-[#3b82f6] drop-shadow-sm">Bawang!</span>
                 </h1>
-              </div>
+              </motion.div>
 
-              <p className="text-base sm:text-lg text-slate-300 max-w-xl leading-relaxed">
+              <motion.p variants={fadeInUpItem} className="text-base sm:text-lg text-slate-300 max-w-xl leading-relaxed">
                 Sekolah Pusat Keunggulan dengan kurikulum link and match industri. Mencetak generasi tangguh, terampil, berakhlak mulia, dan siap bersaing di dunia kerja nasional maupun internasional.
-              </p>
+              </motion.p>
 
-              <div className="pt-2 flex flex-wrap items-center gap-4">
+              <motion.div variants={fadeInUpItem} className="pt-2 flex flex-wrap items-center gap-4">
                 <button
                   onClick={onRegisterClick}
-                  className="px-7 py-3.5 text-sm sm:text-base font-extrabold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-lg shadow-lg hover:shadow-blue-500/30 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0"
+                  className="px-7 py-3.5 text-sm sm:text-base font-extrabold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-lg shadow-lg hover:shadow-blue-500/30 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                 >
                   DAFTAR SEKARANG !!!
                 </button>
 
                 <button
                   onClick={onLoginClick}
-                  className="px-6 py-3.5 text-sm sm:text-base font-bold text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600 rounded-lg transition-all"
+                  className="px-6 py-3.5 text-sm sm:text-base font-bold text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600 rounded-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                 >
                   Cek Status / Login Siswa
                 </button>
-              </div>
+              </motion.div>
 
-              {/* Verified school info banner */}
-              <div className="pt-4 flex items-center gap-6 text-xs text-slate-300 border-t border-slate-800/80">
-                <div className="flex items-center gap-1.5">
+              {/* Verified school trust markers */}
+              <motion.div variants={fadeInUpItem} className="pt-4 flex items-center gap-6 text-xs text-slate-300 border-t border-slate-800/80">
+                <div className="flex items-center gap-1.5 hover:text-white transition-colors">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   <span>Akreditasi A Unggul</span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 hover:text-white transition-colors">
                   <Award className="w-4 h-4 text-yellow-400" />
                   <span>Sekolah Pusat Keunggulan</span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 hover:text-white transition-colors">
                   <BookOpen className="w-4 h-4 text-blue-400" />
                   <span>3 Jurusan Pilihan</span>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
 
-            {/* Right Column: Building Visual Card with School Photo */}
-            <div className="lg:col-span-5 relative">
-              <div className="relative mx-auto max-w-md rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-slate-900/60 backdrop-blur-sm group">
+            {/* Right Column: Building Visual Card with Parallax Float */}
+            <motion.div 
+              style={{ y: heroCardY }}
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.25, ease: smoothEase }}
+              className="lg:col-span-5 relative will-change-transform"
+            >
+              <div className="relative mx-auto max-w-md rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-slate-900/60 backdrop-blur-sm group hover:border-blue-400/40 transition-all duration-300">
                 <img
                   src={fallbackHeroImage}
                   alt="Gedung SMK Muhammadiyah Bawang"
-                  className="w-full h-72 object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-72 object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
                   referrerPolicy="no-referrer"
                 />
                 <div className="p-5 text-white">
@@ -292,7 +387,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
           </div>
         </div>
@@ -303,13 +398,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ========================================================================= */}
       <section 
         id="profil-sekolah" 
-        className="py-16 sm:py-20 bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 text-white relative overflow-hidden border-b border-indigo-900/50 scroll-mt-20"
+        className="py-16 sm:py-24 bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 text-white relative overflow-hidden border-b border-indigo-900/50 scroll-mt-24"
       >
-        {/* Subtle decorative background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
+        {/* Parallax decorative background glow */}
+        <motion.div 
+          style={{ y: profilGlowY }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-blue-600/15 rounded-full blur-3xl pointer-events-none will-change-transform" 
+        />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center max-w-3xl mx-auto mb-12">
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.6, ease: smoothEase }}
+            className="text-center max-w-3xl mx-auto mb-12"
+          >
             <span className="inline-flex items-center px-3.5 py-1 bg-blue-600/20 text-blue-300 border border-blue-400/30 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
               <span>Profil Sekolah Pusat Keunggulan</span>
             </span>
@@ -320,14 +425,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <p className="text-sm sm:text-base text-slate-200 mt-6 leading-relaxed font-medium">
               “SMK Muhammadiyah Bawang (MUHIBA) adalah Sekolah Pusat Keunggulan yang mencetak generasi tangguh, terampil, dan berakhlak mulia. Dengan kurikulum link and match industri, kami mempersiapkan siswa siap kerja dan siap kuliah melalui program unggulan Teknik Otomotif, Teknik Jaringan Komputer & Telekomunikasi, serta Akuntansi dan Keuangan Lembaga.”
             </p>
-          </div>
+          </motion.div>
 
-          {/* YouTube Video Player in Modern Rounded Blue-Purple Gradient Card Frame */}
-          <div className="max-w-4xl mx-auto">
+          {/* YouTube Video Player with Parallax Shift */}
+          <motion.div 
+            style={{ y: videoCardY }}
+            initial={{ opacity: 0, scale: 0.96 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.65, ease: smoothEase }}
+            className="max-w-4xl mx-auto will-change-transform"
+          >
             <div className="p-2 sm:p-3 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 shadow-2xl ring-1 ring-white/20">
               <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-black shadow-inner aspect-video">
                 
-                {/* Embedded YouTube Video with Autoplay, Loop, No Controls, and Enable JS API for Custom Mute */}
+                {/* Embedded YouTube Video */}
                 <iframe
                   ref={ytIframeRef}
                   src="https://www.youtube-nocookie.com/embed/MjqT0ORLm1w?autoplay=1&mute=1&loop=1&playlist=MjqT0ORLm1w&controls=0&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&enablejsapi=1"
@@ -342,12 +454,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span>OFFICIAL VIDEO PROFIL MUHIBA</span>
                 </div>
 
-                {/* Custom Minimalist Sound Toggle Button (Bottom-Right) */}
+                {/* Custom Minimalist Sound Toggle Button */}
                 <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20">
                   <button
                     type="button"
                     onClick={toggleYtAudio}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-white rounded-full backdrop-blur-md border border-white/20 text-xs font-semibold shadow-xl transition-all transform hover:scale-105 active:scale-95"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-white rounded-full backdrop-blur-md border border-white/20 text-xs font-semibold shadow-xl transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
                     title={isYtMuted ? 'Nyalakan Audio Video' : 'Bisukan Audio Video'}
                   >
                     {isYtMuted ? (
@@ -382,42 +494,61 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. STATS QUICK STRIP */}
+      {/* 2. STATS QUICK STRIP WITH STAGGERED REVEAL */}
       {/* ========================================================================= */}
-      <section className="bg-white border-y border-slate-200 py-6">
+      <section className="bg-white border-y border-slate-200 py-8 relative z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div className="p-3">
-              <p className="text-3xl font-extrabold text-blue-700 tabular-nums">59</p>
+          <motion.div 
+            style={{ y: statsY }}
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.3 }}
+            className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center will-change-transform"
+          >
+            <motion.div variants={fadeInUpItem} className="p-3 hover:-translate-y-1 transition-transform">
+              <p className="text-3xl sm:text-4xl font-extrabold text-blue-700 tabular-nums">59</p>
               <p className="text-xs font-semibold text-slate-600 mt-1">Sekolah Asal SMP/MTs</p>
-            </div>
-            <div className="p-3 border-l border-slate-100">
-              <p className="text-3xl font-extrabold text-amber-600 tabular-nums">3</p>
+            </motion.div>
+            <motion.div variants={fadeInUpItem} className="p-3 border-l border-slate-100 hover:-translate-y-1 transition-transform">
+              <p className="text-3xl sm:text-4xl font-extrabold text-amber-600 tabular-nums">3</p>
               <p className="text-xs font-semibold text-slate-600 mt-1">Konsentrasi Keahlian</p>
-            </div>
-            <div className="p-3 border-l border-slate-100">
-              <p className="text-3xl font-extrabold text-emerald-600 tabular-nums">1.500</p>
+            </motion.div>
+            <motion.div variants={fadeInUpItem} className="p-3 border-l border-slate-100 hover:-translate-y-1 transition-transform">
+              <p className="text-3xl sm:text-4xl font-extrabold text-emerald-600 tabular-nums">1.500</p>
               <p className="text-xs font-semibold text-slate-600 mt-1">Total Kuota Pendaftar</p>
-            </div>
-            <div className="p-3 border-l border-slate-100">
-              <p className="text-3xl font-extrabold text-indigo-600 tabular-nums">100%</p>
+            </motion.div>
+            <motion.div variants={fadeInUpItem} className="p-3 border-l border-slate-100 hover:-translate-y-1 transition-transform">
+              <p className="text-3xl sm:text-4xl font-extrabold text-indigo-600 tabular-nums">100%</p>
               <p className="text-xs font-semibold text-slate-600 mt-1">Terserap Kerja & Kuliah</p>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
       {/* ========================================================================= */}
-      {/* 3. KONSENTRASI KEAHLIAN (JURUSAN) */}
+      {/* 3. KONSENTRASI KEAHLIAN (JURUSAN) WITH STAGGERED CARDS */}
       {/* ========================================================================= */}
-      <section id="jurusan-section" className="py-20 lg:py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16">
+      <section id="jurusan-section" className="py-20 lg:py-24 bg-white relative overflow-hidden scroll-mt-24">
+        {/* Parallax Background Accent Glow */}
+        <motion.div 
+          style={{ y: jurusanGlowY }}
+          className="absolute -right-32 top-1/3 w-96 h-96 bg-blue-100/60 rounded-full blur-3xl pointer-events-none will-change-transform"
+        />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.55 }}
+            className="text-center max-w-2xl mx-auto mb-16"
+          >
             <span className="text-xs font-bold text-blue-700 tracking-wider uppercase">JURUSAN</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1">
               Konsentrasi <span className="text-blue-600">Keahlian</span>
@@ -426,17 +557,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <p className="text-sm text-slate-600 mt-4">
               Pilihan program keahlian unggulan berbasis kebutuhan revolusi industri modern dan digitalisasi global.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <motion.div 
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          >
             
             {/* 1. TEKNIK OTOMOTIF (TO) */}
-            <div id="jurusan-to" className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col group">
-              <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 mb-6 group-hover:scale-110 transition-transform">
+            <motion.div 
+              id="jurusan-to" 
+              variants={cardStaggerVariants}
+              whileHover={{ y: -8, transition: { duration: 0.25 } }}
+              className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 hover:shadow-2xl hover:border-amber-300 transition-all duration-300 flex flex-col group scroll-mt-24"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 mb-6 group-hover:scale-110 group-hover:bg-amber-100 transition-all">
                 <Wrench className="w-8 h-8" />
               </div>
 
-              <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">
+              <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-amber-600 transition-colors">
                 Teknik Otomotif (TO)
               </h3>
 
@@ -448,17 +590,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <span className="text-amber-700 bg-amber-100/70 px-2.5 py-1 rounded">Teknologi Mesin & TBSM</span>
                 <button
                   onClick={onRegisterClick}
-                  className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  className="text-blue-600 hover:text-blue-700 flex items-center gap-1 group/btn cursor-pointer"
                 >
                   <span>Daftar Jurusan</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
                 </button>
               </div>
-            </div>
+            </motion.div>
 
             {/* 2. TEKNIK JARINGAN KOMPUTER & TELEKOMUNIKASI (TJKT) */}
-            <div id="jurusan-tjkt" className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col group">
-              <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200/80 flex items-center justify-center text-blue-600 mb-6 group-hover:scale-110 transition-transform">
+            <motion.div 
+              id="jurusan-tjkt" 
+              variants={cardStaggerVariants}
+              whileHover={{ y: -8, transition: { duration: 0.25 } }}
+              className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 hover:shadow-2xl hover:border-blue-300 transition-all duration-300 flex flex-col group scroll-mt-24"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200/80 flex items-center justify-center text-blue-600 mb-6 group-hover:scale-110 group-hover:bg-blue-100 transition-all">
                 <Cpu className="w-8 h-8" />
               </div>
 
@@ -474,21 +621,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <span className="text-blue-700 bg-blue-100/70 px-2.5 py-1 rounded">Mikrotik & Fiber Optic</span>
                 <button
                   onClick={onRegisterClick}
-                  className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  className="text-blue-600 hover:text-blue-700 flex items-center gap-1 group/btn cursor-pointer"
                 >
                   <span>Daftar Jurusan</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
                 </button>
               </div>
-            </div>
+            </motion.div>
 
             {/* 3. AKUNTANSI DAN KEUANGAN LEMBAGA (AKL) */}
-            <div id="jurusan-akl" className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col group">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 mb-6 group-hover:scale-110 transition-transform">
+            <motion.div 
+              id="jurusan-akl" 
+              variants={cardStaggerVariants}
+              whileHover={{ y: -8, transition: { duration: 0.25 } }}
+              className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 hover:shadow-2xl hover:border-emerald-300 transition-all duration-300 flex flex-col group scroll-mt-24"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 mb-6 group-hover:scale-110 group-hover:bg-emerald-100 transition-all">
                 <Calculator className="w-8 h-8" />
               </div>
 
-              <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">
+              <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-emerald-600 transition-colors">
                 Akuntansi dan Keuangan Lembaga (AKL)
               </h3>
 
@@ -500,25 +652,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <span className="text-emerald-700 bg-emerald-100/70 px-2.5 py-1 rounded">Fintech & Perbankan</span>
                 <button
                   onClick={onRegisterClick}
-                  className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  className="text-blue-600 hover:text-blue-700 flex items-center gap-1 group/btn cursor-pointer"
                 >
                   <span>Daftar Jurusan</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
                 </button>
               </div>
-            </div>
+            </motion.div>
 
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ========================================================================= */}
-      {/* 4. FASILITAS & WORKSHOP (WHAT YOU CAN LEARN) */}
+      {/* 4. FASILITAS & WORKSHOP (WHAT YOU CAN LEARN) WITH DYNAMIC TRANSITIONS */}
       {/* ========================================================================= */}
-      <section id="fasilitas-section" className="py-20 bg-slate-50 border-t border-slate-200">
+      <section id="fasilitas-section" className="py-20 bg-slate-50 border-t border-slate-200 relative scroll-mt-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.55 }}
+            className="text-center max-w-3xl mx-auto mb-16"
+          >
             <span className="text-xs font-bold text-blue-700 tracking-wider uppercase">OUR COURSES & FACILITIES</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1">
               What You Can <span className="text-blue-600">Learn</span>
@@ -527,19 +685,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <p className="text-sm text-slate-600 mt-4 leading-relaxed">
               SMK Muhammadiyah Bawang adalah salah satu lembaga pendidikan menengah yang terletak di Kecamatan Bawang, Kabupaten Batang, Jawa Tengah. Sekolah ini didirikan dengan tujuan untuk mencetak generasi muda yang terampil dan berakhlak mulia melalui pendidikan vokasi yang berkualitas.
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            {/* Left facility selector list */}
-            <div className="lg:col-span-4 space-y-2.5">
+            {/* Left facility selector list with Staggered items */}
+            <motion.div 
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.3 }}
+              className="lg:col-span-4 space-y-2.5"
+            >
               {facilities.map((fac, idx) => {
                 const isSelected = activeFacility === idx;
                 return (
-                  <button
+                  <motion.button
                     key={idx}
+                    variants={fadeInUpItem}
+                    whileHover={{ x: 4 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setActiveFacility(idx)}
-                    className={`w-full text-left p-4 rounded-xl font-bold text-sm transition-all duration-200 border flex items-center justify-between ${
+                    className={`w-full text-left p-4 rounded-xl font-bold text-sm transition-all duration-200 border flex items-center justify-between cursor-pointer ${
                       isSelected
                         ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-100'
                         : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
@@ -551,137 +718,143 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         isSelected ? 'text-white translate-x-1' : 'text-slate-400'
                       }`}
                     />
-                  </button>
+                  </motion.button>
                 );
               })}
-            </div>
+            </motion.div>
 
-            {/* Right facility card preview */}
+            {/* Right facility card preview with AnimatePresence Dynamic Crossfade */}
             <div className="lg:col-span-8">
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden grid grid-cols-1 md:grid-cols-12">
-                
-                {/* Media side: Playable Video if isVideo, otherwise Image */}
-                <div className="md:col-span-5 relative min-h-[300px] md:min-h-[380px] bg-slate-950 flex items-center justify-center overflow-hidden">
-                  {facilities[activeFacility].isVideo ? (
-                    <div className="relative w-full h-full min-h-[320px] md:min-h-[390px] bg-slate-950 flex flex-col justify-center items-center group overflow-hidden">
-                      {/* Clean HTML5 looping video without TikTok UI, likes, or watermark */}
-                      <video
-                        ref={videoRef}
-                        src="/videos/workshop_otomotif.mp4"
-                        autoPlay
-                        loop
-                        muted={isVideoMuted}
-                        playsInline
-                        className="w-full h-full min-h-[320px] md:min-h-[390px] object-cover cursor-pointer select-none transition-transform duration-300"
-                        onClick={toggleVideoPlay}
-                        title="Klik untuk Jeda / Putar"
-                      />
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeFacility}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -16 }}
+                  transition={{ duration: 0.35, ease: smoothEase }}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden grid grid-cols-1 md:grid-cols-12"
+                >
+                  {/* Media side */}
+                  <div className="md:col-span-5 relative min-h-[300px] md:min-h-[380px] bg-slate-950 flex items-center justify-center overflow-hidden">
+                    {facilities[activeFacility].isVideo ? (
+                      <div className="relative w-full h-full min-h-[320px] md:min-h-[390px] bg-slate-950 flex flex-col justify-center items-center group overflow-hidden">
+                        <video
+                          ref={videoRef}
+                          src="/videos/workshop_otomotif.mp4"
+                          autoPlay
+                          loop
+                          muted={isVideoMuted}
+                          playsInline
+                          className="w-full h-full min-h-[320px] md:min-h-[390px] object-cover cursor-pointer select-none transition-transform duration-300"
+                          onClick={toggleVideoPlay}
+                          title="Klik untuk Jeda / Putar"
+                        />
 
-                      {/* Header Badge: Live Loop */}
-                      <div className="absolute top-3 left-3 bg-red-600/90 backdrop-blur-md text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1.5 z-20 pointer-events-none">
-                        <span className="w-2 h-2 rounded-full bg-white animate-ping" />
-                        <span>WORKSHOP OTOMOTIF • LIVE LOOP</span>
+                        {/* Header Badge: Live Loop */}
+                        <div className="absolute top-3 left-3 bg-red-600/90 backdrop-blur-md text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1.5 z-20 pointer-events-none">
+                          <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                          <span>WORKSHOP OTOMOTIF • LIVE LOOP</span>
+                        </div>
+
+                        {/* Bottom Controls Bar */}
+                        <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-transparent flex items-center justify-between z-20 transition-opacity">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={toggleVideoPlay}
+                              className="p-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md transition-colors cursor-pointer"
+                              title={isVideoPlaying ? 'Jeda Video' : 'Putar Video'}
+                            >
+                              {isVideoPlaying ? (
+                                <Pause className="w-3.5 h-3.5 fill-current" />
+                              ) : (
+                                <Play className="w-3.5 h-3.5 fill-current" />
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={toggleVideoMute}
+                              className="p-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md transition-colors cursor-pointer"
+                              title={isVideoMuted ? 'Nyalakan Audio' : 'Bisukan Audio'}
+                            >
+                              {isVideoMuted ? (
+                                <VolumeX className="w-3.5 h-3.5" />
+                              ) : (
+                                <Volume2 className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+
+                            <span className="text-[11px] font-medium text-slate-200 hidden sm:inline">
+                              {isVideoMuted ? 'Audio Bisu' : 'Audio Aktif'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleOpenFullscreen}
+                              className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded-full shadow-md flex items-center gap-1.5 transition-all transform hover:scale-105 cursor-pointer"
+                              title="Tampilkan Layar Penuh (Full Screen)"
+                            >
+                              <Maximize2 className="w-3.5 h-3.5" />
+                              <span>Full Screen</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        <img
+                          src={facilities[activeFacility].image}
+                          alt={facilities[activeFacility].title}
+                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="absolute top-4 left-4 bg-blue-600 text-white text-xs font-extrabold px-3 py-1 rounded shadow">
+                          {facilities[activeFacility].completionRate} SIAP
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-                      {/* Bottom Controls Bar (Clean HUD) */}
-                      <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-transparent flex items-center justify-between z-20 transition-opacity">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={toggleVideoPlay}
-                            className="p-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md transition-colors"
-                            title={isVideoPlaying ? 'Jeda Video' : 'Putar Video'}
+                  {/* Content side */}
+                  <div className="md:col-span-7 p-6 sm:p-8 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900">
+                        {facilities[activeFacility].title}
+                      </h3>
+                      <p className="text-xs text-blue-600 font-semibold mt-1">
+                        {facilities[activeFacility].subtitle}
+                      </p>
+                      <p className="text-xs sm:text-sm text-slate-600 mt-4 leading-relaxed">
+                        {facilities[activeFacility].description}
+                      </p>
+                    </div>
+
+                    <div className="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {facilities[activeFacility].tags.map((tag, tIdx) => (
+                          <span
+                            key={tIdx}
+                            className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded"
                           >
-                            {isVideoPlaying ? (
-                              <Pause className="w-3.5 h-3.5 fill-current" />
-                            ) : (
-                              <Play className="w-3.5 h-3.5 fill-current" />
-                            )}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={toggleVideoMute}
-                            className="p-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md transition-colors"
-                            title={isVideoMuted ? 'Nyalakan Audio' : 'Bisukan Audio'}
-                          >
-                            {isVideoMuted ? (
-                              <VolumeX className="w-3.5 h-3.5" />
-                            ) : (
-                              <Volume2 className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-
-                          <span className="text-[11px] font-medium text-slate-200 hidden sm:inline">
-                            {isVideoMuted ? 'Audio Bisu' : 'Audio Aktif'}
+                            {tag}
                           </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={handleOpenFullscreen}
-                            className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded-full shadow-md flex items-center gap-1.5 transition-all transform hover:scale-105"
-                            title="Tampilkan Layar Penuh (Full Screen)"
-                          >
-                            <Maximize2 className="w-3.5 h-3.5" />
-                            <span>Full Screen</span>
-                          </button>
-                        </div>
+                        ))}
                       </div>
+
+                      <button
+                        onClick={onRegisterClick}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 group cursor-pointer"
+                      >
+                        <span>Pelajari & Daftar</span>
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                      </button>
                     </div>
-                  ) : (
-                    <>
-                      <img
-                        src={facilities[activeFacility].image}
-                        alt={facilities[activeFacility].title}
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute top-4 left-4 bg-blue-600 text-white text-xs font-extrabold px-3 py-1 rounded shadow">
-                        {facilities[activeFacility].completionRate} SIAP
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Content side */}
-                <div className="md:col-span-7 p-6 sm:p-8 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-900">
-                      {facilities[activeFacility].title}
-                    </h3>
-                    <p className="text-xs text-blue-600 font-semibold mt-1">
-                      {facilities[activeFacility].subtitle}
-                    </p>
-                    <p className="text-xs sm:text-sm text-slate-600 mt-4 leading-relaxed">
-                      {facilities[activeFacility].description}
-                    </p>
                   </div>
-
-                  <div className="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {facilities[activeFacility].tags.map((tag, tIdx) => (
-                        <span
-                          key={tIdx}
-                          className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={onRegisterClick}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 group"
-                    >
-                      <span>Pelajari & Daftar</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
-                  </div>
-                </div>
-
-              </div>
+                </motion.div>
+              </AnimatePresence>
             </div>
 
           </div>
@@ -690,12 +863,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ========================================================================= */}
-      {/* 5. TESTIMONIALS (WHAT THEY THINK) */}
+      {/* 5. TESTIMONIALS (WHAT THEY THINK) WITH STAGGERED REVEAL */}
       {/* ========================================================================= */}
-      <section id="testimonials-section" className="py-20 bg-white scroll-mt-20">
+      <section id="testimonials-section" className="py-20 bg-white scroll-mt-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-16">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.55 }}
+            className="text-center max-w-2xl mx-auto mb-16"
+          >
             <span className="text-xs font-bold text-blue-700 tracking-wider uppercase">TESTIMONIALS</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1">
               What They <span className="text-blue-600">Think</span>
@@ -704,13 +883,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <p className="text-sm text-slate-600 mt-4">
               Kisah sukses alumni SMK Muhammadiyah Bawang yang telah berkiprah di dunia usaha, industri, dan startup digital.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <motion.div 
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          >
             {testimonials.map((testi, idx) => (
-              <div
+              <motion.div
                 key={idx}
-                className="bg-slate-50 border border-slate-200/80 rounded-2xl p-7 flex flex-col justify-between hover:shadow-lg transition-all"
+                variants={cardStaggerVariants}
+                whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                className="bg-slate-50 border border-slate-200/80 rounded-2xl p-7 flex flex-col justify-between hover:shadow-xl transition-all"
               >
                 <div>
                   <p className="text-sm text-slate-700 italic leading-relaxed">
@@ -727,40 +914,48 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     ”
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
         </div>
       </section>
 
       {/* ========================================================================= */}
-      {/* 6. HUBUNGI KAMI & GOOGLE MAPS EMBED */}
+      {/* 6. HUBUNGI KAMI & GOOGLE MAPS EMBED WITH STAGGERED ENTRANCE */}
       {/* ========================================================================= */}
-      <section id="kontak-section" className="py-20 bg-slate-900 text-white relative overflow-hidden">
+      <section id="kontak-section" className="py-20 bg-slate-900 text-white relative overflow-hidden scroll-mt-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
-            {/* Left Contact description */}
-            <div className="lg:col-span-5 space-y-6">
-              <span className="text-xs font-bold text-blue-400 tracking-wider uppercase">HUBUNGI KAMI</span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
+            {/* Left Contact description with Staggered items */}
+            <motion.div 
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.3 }}
+              className="lg:col-span-5 space-y-6"
+            >
+              <motion.span variants={fadeInUpItem} className="text-xs font-bold text-blue-400 tracking-wider uppercase block">
+                HUBUNGI KAMI
+              </motion.span>
+              <motion.h2 variants={fadeInUpItem} className="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
                 Ayo Bergabung Bersama SMK Muhammadiyah Bawang
-              </h2>
-              <p className="text-sm text-slate-300 leading-relaxed">
+              </motion.h2>
+              <motion.p variants={fadeInUpItem} className="text-sm text-slate-300 leading-relaxed">
                 Jika Anda membutuhkan informasi pendaftaran peserta didik baru (PPDB), jurusan, biaya pendidikan, atau fasilitas sekolah, silakan hubungi kami. Tim PPDB SMK Muhammadiyah Bawang siap melayani dan membantu Anda dengan ramah.
-              </p>
+              </motion.p>
 
               {/* Contact direct boxes */}
-              <div className="space-y-3 pt-2">
+              <motion.div variants={fadeInUpItem} className="space-y-3 pt-2">
                 <a
                   href="https://wa.me/628561333392?text=Halo%20Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang,%20saya%20ingin%20bertanya%20informasi%20pendaftaran"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-4 rounded-xl bg-slate-800/90 border border-slate-700 hover:border-emerald-500 transition-all flex items-center gap-4 group"
+                  className="p-4 rounded-xl bg-slate-800/90 border border-slate-700 hover:border-emerald-500 transition-all flex items-center gap-4 group cursor-pointer hover:-translate-y-0.5"
                 >
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                     <MessageCircle className="w-5 h-5" />
                   </div>
                   <div>
@@ -773,9 +968,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                 <a
                   href="tel:085741977501"
-                  className="p-4 rounded-xl bg-slate-800/90 border border-slate-700 hover:border-blue-500 transition-all flex items-center gap-4 group"
+                  className="p-4 rounded-xl bg-slate-800/90 border border-slate-700 hover:border-blue-500 transition-all flex items-center gap-4 group cursor-pointer hover:-translate-y-0.5"
                 >
-                  <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                     <Phone className="w-5 h-5" />
                   </div>
                   <div>
@@ -785,21 +980,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </span>
                   </div>
                 </a>
-              </div>
+              </motion.div>
 
-              <div className="pt-2">
+              <motion.div variants={fadeInUpItem} className="pt-2">
                 <button
                   onClick={onRegisterClick}
-                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 font-extrabold text-sm rounded-lg shadow-lg transition-all"
+                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 font-extrabold text-sm rounded-lg shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                 >
                   Daftar Sekarang Online
                 </button>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
 
-            {/* Right Google Maps Embed */}
-            <div className="lg:col-span-7">
-              <div className="bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl">
+            {/* Right Google Maps Embed with Smooth Scale Reveal */}
+            <motion.div 
+              initial={{ opacity: 0, x: 25 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.65, ease: smoothEase }}
+              className="lg:col-span-7"
+            >
+              <div className="bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl hover:border-slate-600 transition-all">
                 <div className="p-4 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2 text-slate-200 font-semibold">
                     <MapPin className="w-4 h-4 text-rose-400" />
@@ -829,7 +1030,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   />
                 </div>
               </div>
-            </div>
+            </motion.div>
 
           </div>
 
@@ -837,7 +1038,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ========================================================================= */}
-      {/* FLOATING WHATSAPP BUTTON (BOTTOM-LEFT AS IN SCREENSHOTS) */}
+      {/* FLOATING WHATSAPP BUTTON (BOTTOM-LEFT) */}
       {/* ========================================================================= */}
       <div className="fixed bottom-6 left-6 z-40">
         <a
@@ -856,6 +1057,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </a>
       </div>
 
+      {/* ========================================================================= */}
+      {/* FLOATING SMOOTH SCROLL TO TOP BUTTON (BOTTOM-RIGHT) */}
+      {/* ========================================================================= */}
+      <AnimatePresence>
+        {showBackToTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 16 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="fixed bottom-6 right-6 z-40 p-3.5 bg-gradient-to-tr from-blue-700 to-indigo-600 hover:from-blue-600 hover:to-indigo-500 text-white rounded-full shadow-2xl border border-white/20 transition-all flex items-center justify-center group focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
+            title="Kembali ke Atas (Smooth Scroll)"
+            aria-label="Kembali ke Atas"
+          >
+            <ArrowUp className="w-5 h-5 group-hover:-translate-y-1 transition-transform" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* FOOTER */}
       <footer className="bg-slate-950 text-slate-400 py-8 border-t border-slate-800 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -865,14 +1086,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span>www.smkmuhiba.sch.id</span>
               <ExternalLink className="w-3 h-3" />
             </a>
-            <button onClick={onLoginClick} className="hover:text-white transition-colors">
+            <button onClick={onLoginClick} className="hover:text-white transition-colors cursor-pointer">
               Login Petugas & Siswa
             </button>
           </div>
         </div>
       </footer>
 
-      {/* FULLSCREEN VIDEO MODAL (Bersih, Looping Otomatis, Tanpa Logo TikTok, Tanpa Tombol Like) */}
+      {/* FULLSCREEN VIDEO MODAL */}
       {isFullscreenModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col justify-between p-4 sm:p-6 animate-in fade-in duration-200">
           {/* Header */}
@@ -893,7 +1114,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <button
                 type="button"
                 onClick={toggleVideoMute}
-                className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors border border-white/20"
+                className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors border border-white/20 cursor-pointer"
               >
                 {isVideoMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 <span>{isVideoMuted ? 'Nyalakan Audio' : 'Bisukan Audio'}</span>
@@ -902,7 +1123,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <button
                 type="button"
                 onClick={() => setIsFullscreenModalOpen(false)}
-                className="p-2 bg-white/10 hover:bg-red-600 text-white rounded-lg transition-colors border border-white/20"
+                className="p-2 bg-white/10 hover:bg-red-600 text-white rounded-lg transition-colors border border-white/20 cursor-pointer"
                 title="Tutup Layar Penuh (Esc)"
               >
                 <X className="w-5 h-5" />
@@ -929,7 +1150,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <span>Fasilitas Resmi Teknik Otomotif (TBSM) SMK Muhammadiyah Bawang</span>
             <button
               onClick={() => setIsFullscreenModalOpen(false)}
-              className="px-3 py-1 bg-white/10 hover:bg-white/20 text-blue-300 hover:text-white rounded text-xs font-semibold transition-colors flex items-center gap-1.5"
+              className="px-3 py-1 bg-white/10 hover:bg-white/20 text-blue-300 hover:text-white rounded text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Minimize2 className="w-3.5 h-3.5" />
               <span>Keluar Mode Layar Penuh (Esc)</span>
