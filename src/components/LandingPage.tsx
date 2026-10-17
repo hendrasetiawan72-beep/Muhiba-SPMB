@@ -968,6 +968,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         <video
                           ref={videoRef}
                           src="/videos/workshop_otomotif.mp4"
+                          poster="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80"
+                          preload="none"
                           autoPlay
                           loop
                           muted={isVideoMuted}
@@ -1427,6 +1429,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <video
               ref={modalVideoRef}
               src="/videos/workshop_otomotif.mp4"
+              poster="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80"
+              preload="none"
               autoPlay
               loop
               muted={isVideoMuted}

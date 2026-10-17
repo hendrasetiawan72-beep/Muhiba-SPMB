@@ -46,6 +46,43 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const turnstileContainerRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Inisialisasi Cloudflare Turnstile widget jika site key tersedia
+  React.useEffect(() => {
+    if (!showRegisterForm) return;
+
+    const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+    if (siteKey && (window as any).turnstile && turnstileContainerRef.current) {
+      try {
+        const widgetId = (window as any).turnstile.render(turnstileContainerRef.current, {
+          sitekey: siteKey,
+          size: 'compact',
+          theme: 'light',
+          callback: (token: string) => {
+            setTurnstileToken(token);
+          },
+          'expired-callback': () => {
+            setTurnstileToken('');
+          },
+          'error-callback': () => {
+            setTurnstileToken('');
+          },
+        });
+
+        return () => {
+          try {
+            if ((window as any).turnstile && widgetId) {
+              (window as any).turnstile.remove(widgetId);
+            }
+          } catch {}
+        };
+      } catch (e) {
+        console.warn('Turnstile render warning:', e);
+      }
+    }
+  }, [showRegisterForm]);
 
   const alurImageUrl =
     'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEga2-1HAuZXRM2x_IXfGzJtMmJ6YoCWwCgTvmdPWNN786gbn4m4p7P_nh_3H20kAbYoF4LX_Y9gqzkewq7NrCjp__JnwlA24Wwhqp_xvTL-5z_WOQS2Ta8tuIsh97yime-a_EmX5P1F9c92SoA2D8Anmejlu8FTLrP1jV2L1NtggjWz8Z4mWojqdUY5b4zr/s1668/44856.png';
@@ -70,13 +107,25 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
       return;
     }
 
-    if (password.length < 5) {
-      setErrorMessage('Password minimal 5 karakter agar akun Anda aman.');
+    if (password.length < 8) {
+      setErrorMessage('Kata sandi minimal 8 karakter demi keamanan akun Anda.');
+      return;
+    }
+
+    const lowerPass = password.toLowerCase();
+    const commonPasswords = ['12345678', '123456789', 'password', 'admin123', 'qwertyui', 'indonesia', 'smkmuhiba'];
+    if (
+      commonPasswords.includes(lowerPass) ||
+      password === cleanNik ||
+      lowerPass.startsWith('muhiba@') ||
+      (namaLengkap && lowerPass === namaLengkap.trim().toLowerCase())
+    ) {
+      setErrorMessage('Kata sandi terlalu mudah ditebak. Gunakan minimal 8 karakter kombinasi huruf dan angka.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setErrorMessage('Konfirmasi password tidak cocok dengan password yang dibuat.');
+      setErrorMessage('Konfirmasi kata sandi tidak cocok dengan kata sandi yang dibuat.');
       return;
     }
 
@@ -88,30 +137,30 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
         jurusan_pilihan: jurusanPilihan,
         no_wa: noWa,
         password: password,
+        turnstileToken: turnstileToken || undefined,
       });
 
-      // Save credentials temporarily in sessionStorage for StudentDashboard warning & PDF
-      try {
-        sessionStorage.setItem('spmb_new_credentials', JSON.stringify({
-          nik: res.student.nik,
-          password: password,
-          nama: res.student.nama_lengkap,
-          nomor_pendaftaran: res.student.nomor_pendaftaran,
-          tanggal_daftar: res.student.tanggal_daftar,
-          jurusan_pilihan: res.student.jurusan_pilihan
-        }));
-      } catch (storageErr) {
-        console.warn('Failed saving credentials to sessionStorage:', storageErr);
-      }
-
-      // Show proof modal matching screenshot 7
+      // Tampilkan bukti pendaftaran dari state memori tanpa menyimpan kata sandi di sessionStorage
       setBuktiPendaftaran({
         student: res.student,
         rawPassword: password,
       });
       setShowRegisterForm(false);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Gagal mendaftar. Silakan coba kembali.');
+      // Pembacaan kode error terstruktur dari respons server
+      if (err.code === 'NIK_EXISTS') {
+        setErrorMessage(err.message || 'NIK ini sudah terdaftar. Silakan langsung login.');
+      } else if (err.code === 'NIK_INVALID') {
+        setErrorMessage('NIK tidak valid. Pastikan 16 digit angka sesuai dokumen resmi.');
+      } else if (err.code === 'WEAK_PASSWORD') {
+        setErrorMessage(err.message || 'Kata sandi tidak aman.');
+      } else if (err.code === 'RATE_LIMITED') {
+        setErrorMessage(err.message || 'Terlalu banyak percobaan pendaftaran. Coba lagi beberapa menit lagi.');
+      } else if (err.code === 'CAPTCHA_FAILED') {
+        setErrorMessage(err.message || 'Verifikasi keamanan Turnstile gagal. Silakan coba lagi.');
+      } else {
+        setErrorMessage(err.message || 'Gagal mendaftar. Silakan coba kembali.');
+      }
     } finally {
       setIsSubmitting(false);
     }
