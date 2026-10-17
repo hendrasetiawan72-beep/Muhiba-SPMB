@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { dbService } from '../services/supabase';
 import { User, Student } from '../types/database';
 import { AlertCircle, Lock, User as UserIcon, Phone, ArrowLeft, ShieldAlert } from 'lucide-react';
@@ -19,6 +19,59 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Cloudflare Turnstile: wajib karena CAPTCHA Supabase Auth aktif (token sekali pakai)
+  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!siteKey) return;
+    let cancelled = false;
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const tryRender = () => {
+      if (cancelled || !turnstileContainerRef.current) return;
+      const ts = (window as any).turnstile;
+      if (!ts) {
+        // Script api.js (async defer) mungkin belum selesai dimuat
+        if (tries++ < 50) timer = setTimeout(tryRender, 200);
+        return;
+      }
+      try {
+        turnstileWidgetIdRef.current = ts.render(turnstileContainerRef.current, {
+          sitekey: siteKey,
+          theme: 'light',
+          callback: (token: string) => setTurnstileToken(token),
+          'expired-callback': () => setTurnstileToken(''),
+          'error-callback': () => setTurnstileToken(''),
+        });
+      } catch (e) {
+        console.warn('Turnstile render warning:', e);
+      }
+    };
+    tryRender();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      try {
+        const ts = (window as any).turnstile;
+        if (ts && turnstileWidgetIdRef.current) ts.remove(turnstileWidgetIdRef.current);
+      } catch {}
+      turnstileWidgetIdRef.current = null;
+    };
+  }, [siteKey]);
+
+  const resetTurnstile = () => {
+    setTurnstileToken('');
+    try {
+      const ts = (window as any).turnstile;
+      if (ts && turnstileWidgetIdRef.current) ts.reset(turnstileWidgetIdRef.current);
+    } catch {}
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -32,12 +85,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       return;
     }
 
+    if (siteKey && !turnstileToken) {
+      setErrorMessage('Selesaikan verifikasi keamanan (CAPTCHA) terlebih dahulu.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const res = await dbService.login(usernameNik, password);
+      const res = await dbService.login(usernameNik, password, turnstileToken || undefined);
       onSuccessLogin(res.user, res.student);
     } catch (err: any) {
       setErrorMessage(err.message || 'Login gagal. Periksa kembali NIK dan password.');
+      resetTurnstile(); // token Turnstile hanya berlaku sekali
     } finally {
       setIsLoading(false);
     }
@@ -115,6 +174,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 </div>
               </div>
 
+              {siteKey && <div ref={turnstileContainerRef} className="pt-1" />}
+
               <div className="text-[11px] text-slate-500 space-y-1 pt-1">
                 <p>* Masukan sesuai username dan password yang diberikan</p>
                 <p>* jika belum dapat password silahkan hubungi panitia</p>
@@ -123,7 +184,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || (!!siteKey && !turnstileToken)}
                   className="px-6 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors disabled:opacity-50"
                 >
                   {isLoading ? 'Memverifikasi...' : 'Masuk'}
