@@ -15,7 +15,8 @@ import {
   Layers, 
   CheckCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  ListChecks
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -158,6 +159,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               <button
+                onClick={() => navigateTo('home', 'alur-pendaftaran')}
+                className="relative py-1 font-bold text-yellow-300 hover:text-white transition-colors"
+              >
+                Alur Pendaftaran
+                <span className="absolute -bottom-0.5 left-0 h-0.5 w-full rounded-full bg-yellow-300" />
+              </button>
+
+              <button
                 onClick={() => navigateTo('home', 'kontak-section')}
                 className="text-white/90 hover:text-yellow-300 transition-colors py-1"
               >
@@ -246,10 +255,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* NAVIGASI TIGA GARIS (HAMBURGER ICON-ONLY: SIMPLE & ELEGAN TANPA TULISAN MENU) */}
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="p-2 sm:p-2.5 text-white bg-blue-800/80 hover:bg-blue-700 active:bg-blue-900 border border-blue-400/50 rounded-lg shadow-sm transition-all focus:outline-none cursor-pointer group hover:border-yellow-300/80 active:scale-95"
+              className="relative p-2 sm:p-2.5 text-white bg-blue-800/80 hover:bg-blue-700 active:bg-blue-900 border border-blue-400/50 rounded-lg shadow-sm transition-all focus:outline-none cursor-pointer group hover:border-yellow-300/80 active:scale-95"
               aria-label="Navigasi Garis Tiga"
               title={menuOpen ? 'Tutup Navigasi' : 'Buka Navigasi'}
             >
+              {!menuOpen && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-300 opacity-75" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-yellow-300" />
+                </span>
+              )}
               {menuOpen ? (
                 <X className="w-5 h-5 text-yellow-300 transition-transform duration-200" />
               ) : (
@@ -321,6 +336,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="w-full text-left py-2 px-3 rounded-md hover:bg-blue-800/80 text-white flex items-center justify-between transition-colors"
                   >
                     <span>Fasilitas & Gedung</span>
+                  </button>
+                  <button
+                    onClick={() => navigateTo('home', 'alur-pendaftaran')}
+                    className="relative w-full overflow-hidden text-left py-2.5 px-3 rounded-md border-l-4 border-yellow-300 bg-gradient-to-r from-yellow-300/25 to-transparent hover:from-yellow-300/40 text-white flex items-center justify-between transition-colors group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <ListChecks className="w-4 h-4 text-yellow-300 group-hover:scale-110 transition-transform" />
+                      <span className="font-bold text-yellow-200">Alur Pendaftaran</span>
+                    </div>
+                    <span className="text-[10px] bg-yellow-300 text-blue-950 px-1.5 py-0.5 rounded font-extrabold animate-pulse">7 LANGKAH</span>
+                    <span className="absolute bottom-0 left-0 h-0.5 w-full bg-yellow-300/80" />
                   </button>
                   <button
                     onClick={() => navigateTo('home', 'kontak-section')}
