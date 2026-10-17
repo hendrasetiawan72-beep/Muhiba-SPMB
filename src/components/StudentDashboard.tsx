@@ -406,7 +406,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const handleSaveDataAlamat = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const updated = await dbService.updateStudentDataAlamat(student.nik, {
+      const updated = await dbService.updateStudentDataAlamat(student.id, {
         dukuh,
         rt,
         rw,
@@ -429,7 +429,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const handleSaveDataOrangTua = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const updated = await dbService.updateStudentDataOrangTua(student.nik, {
+      const updated = await dbService.updateStudentDataOrangTua(student.id, {
         nik_ayah: nikAyah,
         nama_ayah: namaAyah,
         tempat_lahir_ayah: tempatLahirAyah,
@@ -504,7 +504,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       if (jenis === 'pas_foto') setBerkasFoto(res.nama_file);
 
       // Save directly to student data_berkas
-      const updated = await dbService.updateStudentDataBerkas(student.nik, {
+      const updated = await dbService.updateStudentDataBerkas(student.id, {
         [jenis]: item,
       });
       setStudent(updated);
@@ -523,7 +523,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       const nowStr = new Date().toLocaleDateString('id-ID');
       const cur = student.data_berkas || {};
 
-      const updated = await dbService.updateStudentDataBerkas(student.nik, {
+      const updated = await dbService.updateStudentDataBerkas(student.id, {
         kartu_keluarga: berkasKK
           ? {
               nama_file: berkasKK,
