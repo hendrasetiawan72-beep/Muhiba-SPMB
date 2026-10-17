@@ -7,6 +7,17 @@ import resetPasswordHandler from '../api/admin/reset-password';
 
 interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
+  [key: string]: unknown;
+}
+
+// Salin variabel/secret Worker ke process.env, karena handler di folder api/
+// membacanya lewat process.env (gaya Node/Vercel).
+function syncEnvToProcess(env: Env) {
+  const proc = (globalThis as any).process;
+  if (!proc || !proc.env) return;
+  for (const [key, value] of Object.entries(env)) {
+    if (typeof value === 'string') proc.env[key] = value;
+  }
 }
 
 type VercelStyleHandler = (req: any, res: any) => unknown;
@@ -107,6 +118,7 @@ async function runHandler(handler: VercelStyleHandler, request: Request): Promis
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    syncEnvToProcess(env);
     const url = new URL(request.url);
 
     if (url.pathname.startsWith('/api/')) {
