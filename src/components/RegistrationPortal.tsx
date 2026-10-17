@@ -346,12 +346,15 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
         {/* ========================================================================= */}
         {/* ALUR PPDB BANNER IMAGE (Screenshot 4, 5, 6) */}
         {/* ========================================================================= */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-4 sm:p-6 overflow-hidden">
-          <div className="relative rounded-lg overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
+                {/* ALUR SPMB - GAMBAR PENUH */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-3 sm:p-6">
+          <div className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-2xl rounded-lg overflow-hidden border border-slate-100 bg-slate-50">
             <img
               src={alurImageUrl}
               alt="Alur SPMB Online SMK Muhammadiyah Bawang - Sekolah SMART"
-              className="w-full h-auto object-contain max-h-[520px]"
+              className="block w-full h-auto"
+              loading="lazy"
+              decoding="async"
               referrerPolicy="no-referrer"
             />
           </div>
