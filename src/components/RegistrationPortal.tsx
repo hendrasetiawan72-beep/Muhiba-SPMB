@@ -24,6 +24,65 @@ interface RegistrationPortalProps {
   onNavigateHome: () => void;
 }
 
+// Hook kecil untuk widget Cloudflare Turnstile.
+// Token Turnstile hanya berlaku sekali, jadi disediakan fungsi reset().
+function useTurnstile(active: boolean) {
+  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = React.useRef<string | null>(null);
+  const [token, setToken] = React.useState('');
+
+  React.useEffect(() => {
+    if (!siteKey || !active) return;
+    let cancelled = false;
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const tryRender = () => {
+      if (cancelled || !containerRef.current) return;
+      const ts = (window as any).turnstile;
+      if (!ts) {
+        // Script api.js (async defer) mungkin belum selesai dimuat
+        if (tries++ < 50) timer = setTimeout(tryRender, 200);
+        return;
+      }
+      try {
+        widgetIdRef.current = ts.render(containerRef.current, {
+          sitekey: siteKey,
+          theme: 'light',
+          callback: (t: string) => setToken(t),
+          'expired-callback': () => setToken(''),
+          'error-callback': () => setToken(''),
+        });
+      } catch (e) {
+        console.warn('Turnstile render warning:', e);
+      }
+    };
+    tryRender();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      try {
+        const ts = (window as any).turnstile;
+        if (ts && widgetIdRef.current) ts.remove(widgetIdRef.current);
+      } catch {}
+      widgetIdRef.current = null;
+      setToken('');
+    };
+  }, [siteKey, active]);
+
+  const reset = React.useCallback(() => {
+    setToken('');
+    try {
+      const ts = (window as any).turnstile;
+      if (ts && widgetIdRef.current) ts.reset(widgetIdRef.current);
+    } catch {}
+  }, []);
+
+  return { siteKey, containerRef, token, reset };
+}
+
 export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
   onSuccessRegister,
   onNavigateLogin,
@@ -46,43 +105,37 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string>('');
-  const turnstileContainerRef = React.useRef<HTMLDivElement | null>(null);
+  // Turnstile untuk form pendaftaran
+  const formTs = useTurnstile(showRegisterForm);
 
-  // Inisialisasi Cloudflare Turnstile widget jika site key tersedia
+  // Setelah daftar: jika CAPTCHA Supabase aktif, server tidak bisa membuat sesi login
+  // (login server tanpa token ditolak), jadi siswa login di sini dengan token Turnstile baru.
+  const [needsLogin, setNeedsLogin] = useState(false);
+  const enterTs = useTurnstile(!!buktiPendaftaran && needsLogin);
+  const [isEntering, setIsEntering] = useState(false);
+  const [enterError, setEnterError] = useState('');
+
   React.useEffect(() => {
-    if (!showRegisterForm) return;
-
-    const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
-    if (siteKey && (window as any).turnstile && turnstileContainerRef.current) {
-      try {
-        const widgetId = (window as any).turnstile.render(turnstileContainerRef.current, {
-          sitekey: siteKey,
-          size: 'compact',
-          theme: 'light',
-          callback: (token: string) => {
-            setTurnstileToken(token);
-          },
-          'expired-callback': () => {
-            setTurnstileToken('');
-          },
-          'error-callback': () => {
-            setTurnstileToken('');
-          },
-        });
-
-        return () => {
-          try {
-            if ((window as any).turnstile && widgetId) {
-              (window as any).turnstile.remove(widgetId);
-            }
-          } catch {}
-        };
-      } catch (e) {
-        console.warn('Turnstile render warning:', e);
-      }
+    if (!buktiPendaftaran) {
+      setNeedsLogin(false);
+      setEnterError('');
+      return;
     }
-  }, [showRegisterForm]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const client = dbService.getClient();
+        if (!client) return;
+        const { data } = await client.auth.getSession();
+        if (!cancelled) setNeedsLogin(!data?.session);
+      } catch {
+        if (!cancelled) setNeedsLogin(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [buktiPendaftaran]);
 
   const alurImageUrl =
     'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEga2-1HAuZXRM2x_IXfGzJtMmJ6YoCWwCgTvmdPWNN786gbn4m4p7P_nh_3H20kAbYoF4LX_Y9gqzkewq7NrCjp__JnwlA24Wwhqp_xvTL-5z_WOQS2Ta8tuIsh97yime-a_EmX5P1F9c92SoA2D8Anmejlu8FTLrP1jV2L1NtggjWz8Z4mWojqdUY5b4zr/s1668/44856.png';
@@ -129,6 +182,11 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
       return;
     }
 
+    if (formTs.siteKey && !formTs.token) {
+      setErrorMessage('Selesaikan verifikasi keamanan (CAPTCHA) terlebih dahulu.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const res = await dbService.register({
@@ -137,7 +195,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
         jurusan_pilihan: jurusanPilihan,
         no_wa: noWa,
         password: password,
-        turnstileToken: turnstileToken || undefined,
+        turnstileToken: formTs.token || undefined,
       });
 
       // Tampilkan bukti pendaftaran dari state memori tanpa menyimpan kata sandi di sessionStorage
@@ -147,6 +205,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
       });
       setShowRegisterForm(false);
     } catch (err: any) {
+      formTs.reset(); // token Turnstile sekali pakai
       // Pembacaan kode error terstruktur dari respons server
       if (err.code === 'NIK_EXISTS') {
         setErrorMessage(err.message || 'NIK ini sudah terdaftar. Silakan langsung login.');
@@ -168,6 +227,41 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleEnterDashboard = async () => {
+    if (!buktiPendaftaran) return;
+    setEnterError('');
+
+    if (needsLogin && enterTs.siteKey && !enterTs.token) {
+      setEnterError('Selesaikan verifikasi keamanan (CAPTCHA) terlebih dahulu.');
+      return;
+    }
+
+    setIsEntering(true);
+    try {
+      const { student, rawPassword } = buktiPendaftaran;
+      if (needsLogin) {
+        const res = await dbService.login(student.nik, rawPassword, enterTs.token || undefined);
+        onSuccessRegister(res.user, res.student || student);
+      } else {
+        const loggedUser: UserType = {
+          id: student.user_id,
+          nik: student.nik,
+          role: 'student',
+          full_name: student.nama_lengkap,
+          created_at: new Date().toISOString(),
+        };
+        onSuccessRegister(loggedUser, student);
+      }
+    } catch (err: any) {
+      setEnterError(
+        err?.message || 'Gagal masuk ke dashboard. Silakan login dengan NIK dan password Anda.'
+      );
+      enterTs.reset();
+    } finally {
+      setIsEntering(false);
+    }
   };
 
   return (
@@ -646,10 +740,12 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                 </div>
               </div>
 
+              {formTs.siteKey && <div ref={formTs.containerRef} className="flex justify-center" />}
+
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || (!!formTs.siteKey && !formTs.token)}
                   className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-lg shadow-md transition-colors disabled:opacity-50"
                 >
                   {isSubmitting ? 'Memproses Pendaftaran...' : 'Simpan & Dapatkan Bukti Pendaftaran'}
@@ -731,6 +827,21 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
               <span className="font-semibold text-slate-600">Panitia SPMB SMK Muhammadiyah Bawang</span>
             </div>
 
+            {needsLogin && enterTs.siteKey && (
+              <div className="mt-5 no-print">
+                <p className="text-[11px] text-slate-500 mb-2 text-center">
+                  Selesaikan verifikasi keamanan di bawah ini untuk masuk ke dashboard.
+                </p>
+                <div ref={enterTs.containerRef} className="flex justify-center" />
+              </div>
+            )}
+
+            {enterError && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 no-print">
+                {enterError}
+              </div>
+            )}
+
             {/* Action buttons */}
             <div className="mt-6 flex flex-col sm:flex-row gap-3 no-print">
               <button
@@ -742,19 +853,11 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
               </button>
 
               <button
-                onClick={() => {
-                  const loggedUser: UserType = {
-                    id: buktiPendaftaran.student.user_id,
-                    nik: buktiPendaftaran.student.nik,
-                    role: 'student',
-                    password_hash: buktiPendaftaran.rawPassword,
-                    created_at: new Date().toISOString(),
-                  };
-                  onSuccessRegister(loggedUser, buktiPendaftaran.student);
-                }}
-                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                onClick={handleEnterDashboard}
+                disabled={isEntering}
+                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
               >
-                <span>Masuk Ke Dashboard Siswa</span>
+                <span>{isEntering ? 'Memproses...' : 'Masuk Ke Dashboard Siswa'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
