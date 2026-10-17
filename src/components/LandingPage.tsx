@@ -192,7 +192,7 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
   return (
     <section
       id="alur-pendaftaran"
-      className="relative scroll-mt-24 overflow-hidden bg-gradient-to-b from-slate-50 via-blue-50/60 to-white py-16 sm:py-20"
+      className="relative scroll-mt-24 section-snap overflow-hidden bg-gradient-to-b from-slate-50 via-blue-50/60 to-white py-16 sm:py-20"
     >
       {/* Hiasan latar */}
       <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-blue-200/40 blur-3xl" />
@@ -447,6 +447,21 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
               );
             })}
           </ol>
+        </div>
+
+        {/* Lanjut ke bagian berikutnya (Kontak) */}
+        <div className="mt-12 text-center">
+          <button
+            type="button"
+            onClick={() =>
+              document.getElementById('kontak-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+            className="group inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200/90 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-blue-50 hover:text-blue-700"
+            title="Lanjut ke Bagian Kontak & Lokasi Peta"
+          >
+            <span>Lanjut ke Kontak & Lokasi Peta</span>
+            <ChevronDown className="h-3.5 w-3.5 animate-bounce text-blue-600 transition-transform group-hover:translate-y-0.5" />
+          </button>
         </div>
       </div>
     </section>
@@ -1617,11 +1632,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Quick scroll to next section (Kontak) */}
           <div className="mt-12 text-center">
             <button
-              onClick={() => scrollToSection('kontak-section')}
+              onClick={() => scrollToSection('alur-pendaftaran')}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/90 text-xs font-bold transition-all cursor-pointer group"
-              title="Lanjut ke Bagian Kontak & Lokasi Peta"
+              title="Lanjut ke Alur Pendaftaran SPMB"
             >
-              <span>Lanjut ke Kontak & Lokasi Peta</span>
+              <span>Lanjut ke Alur Pendaftaran</span>
               <ChevronDown className="w-3.5 h-3.5 text-blue-600 group-hover:translate-y-0.5 transition-transform animate-bounce" />
             </button>
           </div>
