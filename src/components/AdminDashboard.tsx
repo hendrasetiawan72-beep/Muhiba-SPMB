@@ -105,14 +105,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleDeleteStudent = async (nik: string, nama: string) => {
     if (window.confirm(`Yakin ingin menghapus data pendaftar ${nama} (NIK: ${nik})?`)) {
-      try {
-        await dbService.deleteStudent(nik);
-        loadStudents();
-        if (selectedStudent?.nik === nik) setSelectedStudent(null);
-        showToast(`Data pendaftar ${nama} berhasil dihapus.`);
-      } catch (err: any) {
-        showToast(err.message || 'Gagal menghapus data pendaftar.');
-      }
+      await dbService.deleteStudent(nik);
+      loadStudents();
+      if (selectedStudent?.nik === nik) setSelectedStudent(null);
+      showToast(`Data pendaftar ${nama} berhasil dihapus.`);
     }
   };
 
@@ -133,45 +129,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       'Nama Ibu',
     ];
 
-    const escapeCsvCell = (val: any): string => {
-      let str = String(val ?? '');
-      if (/^[=+\-@\t\r]/.test(str)) {
-        str = "'" + str;
-      }
-      return `"${str.replace(/"/g, '""')}"`;
-    };
-
-    const headerRow = headers.map(h => escapeCsvCell(h)).join(',');
-
     const rows = filteredStudents.map(s => [
-      escapeCsvCell(s.nomor_pendaftaran),
-      escapeCsvCell(s.nik),
-      escapeCsvCell(s.nama_lengkap),
-      escapeCsvCell(s.jurusan_pilihan),
-      escapeCsvCell(s.no_wa),
-      escapeCsvCell(s.data_diri?.asal_sekolah || '-'),
-      escapeCsvCell(s.status_pendaftaran),
-      escapeCsvCell(s.tanggal_daftar),
-      escapeCsvCell(s.data_diri?.ukuran_baju || '-'),
-      escapeCsvCell(s.data_alamat?.dukuh || '-'),
-      escapeCsvCell(s.data_alamat?.kecamatan || '-'),
-      escapeCsvCell(s.data_orang_tua?.nama_ayah || '-'),
-      escapeCsvCell(s.data_orang_tua?.nama_ibu || '-'),
-    ].join(','));
+      `"${s.nomor_pendaftaran}"`,
+      `"${s.nik}"`,
+      `"${s.nama_lengkap}"`,
+      `"${s.jurusan_pilihan}"`,
+      `"${s.no_wa}"`,
+      `"${s.data_diri?.asal_sekolah || '-'}"`,
+      `"${s.status_pendaftaran}"`,
+      `"${s.tanggal_daftar}"`,
+      `"${s.data_diri?.ukuran_baju || '-'}"`,
+      `"${s.data_alamat?.dukuh || '-'}"`,
+      `"${s.data_alamat?.kecamatan || '-'}"`,
+      `"${s.data_orang_tua?.nama_ayah || '-'}"`,
+      `"${s.data_orang_tua?.nama_ibu || '-'}"`,
+    ]);
 
-    // UTF-8 BOM to prevent Excel encoding issues
-    const bom = '\uFEFF';
-    const csvContent = bom + [headerRow, ...rows].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
-    link.setAttribute('href', url);
+    link.setAttribute('href', encodedUri);
     link.setAttribute('download', `DATA_PPDB_SMK_MUHIBA_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   const handleExportJSON = () => {

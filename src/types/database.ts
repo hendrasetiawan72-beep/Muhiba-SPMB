@@ -102,7 +102,6 @@ export interface BerkasItem {
   url?: string;
   ukuran?: string;
   uploaded_at?: string;
-  path?: string;
 }
 
 export interface DataBerkas {

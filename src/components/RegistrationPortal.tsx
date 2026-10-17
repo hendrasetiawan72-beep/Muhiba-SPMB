@@ -16,7 +16,6 @@ import {
   Check
 } from 'lucide-react';
 import { dbService } from '../services/supabase';
-import { credentialStore } from '../services/credentialStore';
 import { Student, User as UserType, JurusanType } from '../types/database';
 
 interface RegistrationPortalProps {
@@ -71,8 +70,8 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
       return;
     }
 
-    if (password.length < 8) {
-      setErrorMessage('Password minimal 8 karakter agar akun Anda aman.');
+    if (password.length < 5) {
+      setErrorMessage('Password minimal 5 karakter agar akun Anda aman.');
       return;
     }
 
@@ -91,15 +90,19 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
         password: password,
       });
 
-      // Save credentials in-memory for StudentDashboard warning banner & PDF
-      credentialStore.set({
-        nik: res.student.nik,
-        password: password,
-        nama: res.student.nama_lengkap,
-        nomor_pendaftaran: res.student.nomor_pendaftaran,
-        tanggal_daftar: res.student.tanggal_daftar,
-        jurusan_pilihan: res.student.jurusan_pilihan,
-      });
+      // Save credentials temporarily in sessionStorage for StudentDashboard warning & PDF
+      try {
+        sessionStorage.setItem('spmb_new_credentials', JSON.stringify({
+          nik: res.student.nik,
+          password: password,
+          nama: res.student.nama_lengkap,
+          nomor_pendaftaran: res.student.nomor_pendaftaran,
+          tanggal_daftar: res.student.tanggal_daftar,
+          jurusan_pilihan: res.student.jurusan_pilihan
+        }));
+      } catch (storageErr) {
+        console.warn('Failed saving credentials to sessionStorage:', storageErr);
+      }
 
       // Show proof modal matching screenshot 7
       setBuktiPendaftaran({
