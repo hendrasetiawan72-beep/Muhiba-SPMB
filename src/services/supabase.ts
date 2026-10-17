@@ -138,7 +138,11 @@ class DatabaseService {
    * Maps 16-digit NIK to internal auth email or admin username to admin email.
    * Fetches profiles and students ONCE upon successful login.
    */
-  public async login(nikOrUsername: string, password: string): Promise<{ user: User; student?: Student }> {
+  public async login(
+    nikOrUsername: string,
+    password: string,
+    captchaToken?: string
+  ): Promise<{ user: User; student?: Student }> {
     if (!this.supabase) throw new Error('Supabase client belum terhubung.');
 
     const cleanIdentifier = nikOrUsername.trim();
@@ -166,6 +170,7 @@ class DatabaseService {
     const { data: signInData, error: signInErr } = await this.supabase.auth.signInWithPassword({
       email: authEmail,
       password: cleanPassword,
+      options: captchaToken ? { captchaToken } : undefined,
     });
 
     if (signInErr || !signInData?.user) {
