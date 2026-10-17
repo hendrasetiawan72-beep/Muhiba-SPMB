@@ -121,6 +121,35 @@ export default {
     syncEnvToProcess(env);
     const url = new URL(request.url);
 
+    // Diagnosa sementara: hanya menampilkan ADA/TIDAK variabel (bukan nilainya).
+    // Hapus blok ini setelah pendaftaran berjalan normal.
+    if (url.pathname === '/api/health') {
+      const names = [
+        'SUPABASE_URL',
+        'SUPABASE_ANON_KEY',
+        'SUPABASE_SERVICE_ROLE_KEY',
+        'TURNSTILE_SECRET_KEY',
+        'RATE_LIMIT_SALT',
+        'ALLOWED_ORIGIN',
+      ];
+      const proc = (globalThis as any).process;
+      const present: Record<string, boolean> = {};
+      const inProcessEnv: Record<string, boolean> = {};
+      for (const n of names) {
+        const v = env[n];
+        present[n] = typeof v === 'string' && v.trim().length > 0;
+        inProcessEnv[n] = !!(proc && proc.env && proc.env[n]);
+      }
+      const supabaseUrl = typeof env.SUPABASE_URL === 'string' ? env.SUPABASE_URL.trim() : '';
+      return jsonResponse(200, {
+        ok: true,
+        version: 'worker-v2-health',
+        env: present,
+        processEnv: inProcessEnv,
+        supabaseUrlFormatOk: /^https:\/\/[a-z0-9]+\.supabase\.co\/?$/.test(supabaseUrl),
+      });
+    }
+
     if (url.pathname.startsWith('/api/')) {
       const handler = routes[url.pathname.replace(/\/+$/, '')];
       if (!handler) {
