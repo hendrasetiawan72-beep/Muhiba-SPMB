@@ -75,6 +75,41 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Floating WhatsApp button visibility timer (hilang dalam 20 detik jika diam, muncul kembali saat scroll)
+  const [showWhatsappButton, setShowWhatsappButton] = useState<boolean>(true);
+  const waTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const resetWaTimer = () => {
+      setShowWhatsappButton(true);
+
+      if (waTimerRef.current) {
+        clearTimeout(waTimerRef.current);
+      }
+
+      waTimerRef.current = setTimeout(() => {
+        setShowWhatsappButton(false);
+      }, 20000);
+    };
+
+    // Mulai timer 20 detik saat pertama kali halaman dimuat
+    resetWaTimer();
+
+    // Munculkan kembali tombol dan reset countdown 20 detik setiap kali pengguna melakukan scroll
+    const handleScroll = () => {
+      resetWaTimer();
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      if (waTimerRef.current) {
+        clearTimeout(waTimerRef.current);
+      }
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
   // Efek gulir cepat ke profil sekolah saat pengguna scroll dari bagian paling atas laman
   const hasTriggeredQuickScroll = useRef(false);
   const isAutoScrolling = useRef(false);
@@ -245,11 +280,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [autoPlayProgress, setAutoPlayProgress] = useState<number>(0);
   const [swipeDirection, setSwipeDirection] = useState<number>(1);
 
-  // Auto-play timer for Carousel (5000ms duration, pauses on hover / touch)
+  // Auto-play timer for Carousel (20 detik / 20000ms duration, pauses on hover / touch)
   useEffect(() => {
     if (!isAutoPlayActive || isCarouselHovered || isFullscreenModalOpen) return;
 
-    const intervalDuration = 5000;
+    const intervalDuration = 20000;
     const stepDuration = 50;
     let elapsed = 0;
 
@@ -1284,24 +1319,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ========================================================================= */}
-      {/* FLOATING WHATSAPP BUTTON (BOTTOM-LEFT) */}
+      {/* FLOATING WHATSAPP BUTTON (BOTTOM-LEFT) - HILANG DALAM 20 DETIK JIKA DIAM, MUNCUL LAGI SAAT SCROLL */}
       {/* ========================================================================= */}
-      <div className="fixed bottom-6 left-6 z-40">
-        <a
-          href="https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang%2C%20perkenalkan%20saya%20ingin%20berkonsultasi%20mengenai%20pendaftaran%20dan%20program%20keahlian%20di%20SMK%20Muhammadiyah%20Bawang.%20Terima%20kasih."
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-white px-4 py-2.5 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-105 group"
-        >
-          <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
-            <MessageCircle className="w-4 h-4 fill-current" />
-          </div>
-          <div className="text-left pr-1">
-            <p className="text-[10px] uppercase font-bold leading-tight tracking-tight">Hubungi Kami Disini</p>
-            <p className="text-xs font-semibold leading-none">WhatsApp PPDB</p>
-          </div>
-        </a>
-      </div>
+      <AnimatePresence>
+        {showWhatsappButton && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 16 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="fixed bottom-6 left-6 z-40"
+          >
+            <a
+              href="https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang%2C%20perkenalkan%20saya%20ingin%20berkonsultasi%20mengenai%20pendaftaran%20dan%20program%20keahlian%20di%20SMK%20Muhammadiyah%20Bawang.%20Terima%20kasih."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-white px-4 py-2.5 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-105 group"
+            >
+              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                <MessageCircle className="w-4 h-4 fill-current" />
+              </div>
+              <div className="text-left pr-1">
+                <p className="text-[10px] uppercase font-bold leading-tight tracking-tight">Hubungi Kami Disini</p>
+                <p className="text-xs font-semibold leading-none">WhatsApp PPDB</p>
+              </div>
+            </a>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ========================================================================= */}
       {/* FLOATING SMOOTH SCROLL TO TOP BUTTON (BOTTOM-RIGHT) */}
