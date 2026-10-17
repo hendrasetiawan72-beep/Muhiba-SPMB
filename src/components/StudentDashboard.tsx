@@ -27,9 +27,9 @@ import {
   ArrowRight,
   FileCheck2
 } from 'lucide-react';
-import { jsPDF } from 'jspdf';
 import { Student, User as UserType, JurusanType } from '../types/database';
 import { dbService } from '../services/supabase';
+import { credentialStore } from '../services/credentialStore';
 
 interface StudentDashboardProps {
   currentUser: UserType;
@@ -152,27 +152,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   } | null>(null);
   const [copiedField, setCopiedField] = useState<'username' | 'password' | null>(null);
 
-  // Read new credentials from sessionStorage on mount (once)
+  // Read new credentials from in-memory credentialStore on mount (once)
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem('spmb_new_credentials');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.nik && parsed.password) {
-          setNewCredentials(parsed);
-        }
+      const stored = credentialStore.get();
+      if (stored && stored.nik && stored.password) {
+        setNewCredentials(stored);
       }
     } catch (e) {
-      console.warn('Error reading sessionStorage for credentials:', e);
+      console.warn('Error reading credentialStore:', e);
     }
   }, []);
 
   const handleCloseCredentialsWarning = () => {
-    try {
-      sessionStorage.removeItem('spmb_new_credentials');
-    } catch (e) {
-      console.warn('Error clearing sessionStorage:', e);
-    }
+    credentialStore.clear();
     setNewCredentials(null);
   };
 
@@ -182,9 +175,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const handleDownloadCredentialsPDF = () => {
+  const handleDownloadCredentialsPDF = async () => {
     if (!newCredentials) return;
     try {
+      const { jsPDF } = await import('jspdf');
       const doc = new jsPDF();
       
       // Header
@@ -473,6 +467,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp'];
+    const fileExt = '.' + file.name.split('.').pop()?.toLowerCase();
+
+    if (!allowedMimeTypes.includes(file.type) && !allowedExtensions.includes(fileExt)) {
+      alert('Tipe file tidak didukung. Format yang diperbolehkan: PDF, JPG, JPEG, PNG, WEBP.');
+      e.target.value = '';
+      return;
+    }
+
     if (file.size > 2 * 1024 * 1024) {
       alert('Ukuran file maksimal adalah 2MB.');
       e.target.value = '';
@@ -487,6 +491,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       const nowStr = new Date().toLocaleDateString('id-ID');
       const item = {
         nama_file: res.nama_file,
+        path: res.path,
         url: res.url,
         ukuran: res.ukuran,
         uploaded_at: nowStr,
@@ -516,12 +521,54 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     e.preventDefault();
     try {
       const nowStr = new Date().toLocaleDateString('id-ID');
+      const cur = student.data_berkas || {};
+
       const updated = await dbService.updateStudentDataBerkas(student.nik, {
-        kartu_keluarga: berkasKK ? { nama_file: berkasKK, ukuran: '1.2 MB', uploaded_at: nowStr, url: student.data_berkas?.kartu_keluarga?.url } : undefined,
-        ijazah_skl: berkasSKL ? { nama_file: berkasSKL, ukuran: '900 KB', uploaded_at: nowStr, url: student.data_berkas?.ijazah_skl?.url } : undefined,
-        akta_kelahiran: berkasAkta ? { nama_file: berkasAkta, ukuran: '850 KB', uploaded_at: nowStr, url: student.data_berkas?.akta_kelahiran?.url } : undefined,
-        kartu_kip: berkasKIP ? { nama_file: berkasKIP, ukuran: '750 KB', uploaded_at: nowStr, url: student.data_berkas?.kartu_kip?.url } : undefined,
-        pas_foto: berkasFoto ? { nama_file: berkasFoto, ukuran: '450 KB', uploaded_at: nowStr, url: student.data_berkas?.pas_foto?.url } : undefined,
+        kartu_keluarga: berkasKK
+          ? {
+              nama_file: berkasKK,
+              ukuran: cur.kartu_keluarga?.ukuran || '2 MB',
+              uploaded_at: cur.kartu_keluarga?.uploaded_at || nowStr,
+              path: cur.kartu_keluarga?.path,
+              url: cur.kartu_keluarga?.url,
+            }
+          : undefined,
+        ijazah_skl: berkasSKL
+          ? {
+              nama_file: berkasSKL,
+              ukuran: cur.ijazah_skl?.ukuran || '2 MB',
+              uploaded_at: cur.ijazah_skl?.uploaded_at || nowStr,
+              path: cur.ijazah_skl?.path,
+              url: cur.ijazah_skl?.url,
+            }
+          : undefined,
+        akta_kelahiran: berkasAkta
+          ? {
+              nama_file: berkasAkta,
+              ukuran: cur.akta_kelahiran?.ukuran || '2 MB',
+              uploaded_at: cur.akta_kelahiran?.uploaded_at || nowStr,
+              path: cur.akta_kelahiran?.path,
+              url: cur.akta_kelahiran?.url,
+            }
+          : undefined,
+        kartu_kip: berkasKIP
+          ? {
+              nama_file: berkasKIP,
+              ukuran: cur.kartu_kip?.ukuran || '2 MB',
+              uploaded_at: cur.kartu_kip?.uploaded_at || nowStr,
+              path: cur.kartu_kip?.path,
+              url: cur.kartu_kip?.url,
+            }
+          : undefined,
+        pas_foto: berkasFoto
+          ? {
+              nama_file: berkasFoto,
+              ukuran: cur.pas_foto?.ukuran || '2 MB',
+              uploaded_at: cur.pas_foto?.uploaded_at || nowStr,
+              path: cur.pas_foto?.path,
+              url: cur.pas_foto?.url,
+            }
+          : undefined,
       });
       setStudent(updated);
       showNotification('Berkas pendaftaran berhasil disimpan & diserahkan untuk verifikasi!');
@@ -1993,6 +2040,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <div className="flex items-center gap-2">
                               <input
                                 type="file"
+                                accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
                                 disabled={isUploadingBerkas}
                                 onChange={(e) => handleFileUpload(e, 'kartu_keluarga')}
                                 className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -2025,6 +2073,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <div className="flex items-center gap-2">
                               <input
                                 type="file"
+                                accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
                                 disabled={isUploadingBerkas}
                                 onChange={(e) => handleFileUpload(e, 'ijazah_skl')}
                                 className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -2057,6 +2106,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <div className="flex items-center gap-2">
                               <input
                                 type="file"
+                                accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
                                 disabled={isUploadingBerkas}
                                 onChange={(e) => handleFileUpload(e, 'akta_kelahiran')}
                                 className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -2089,6 +2139,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <div className="flex items-center gap-2">
                               <input
                                 type="file"
+                                accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
                                 disabled={isUploadingBerkas}
                                 onChange={(e) => handleFileUpload(e, 'kartu_kip')}
                                 className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
