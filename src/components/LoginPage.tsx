@@ -177,7 +177,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               {siteKey && <div ref={turnstileContainerRef} className="pt-1" />}
 
               <div className="text-[11px] text-slate-500 space-y-1 pt-1">
-                <p>* Masukan sesuai username berupa NIK dan password yang telah anda buat</p>
+                <p>* Masukan username berupa NIK dan password yang telah anda buat</p>
               </div>
 
               <div className="pt-2">
