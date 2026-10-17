@@ -486,7 +486,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     try {
       setIsUploadingBerkas(true);
       showNotification(`Mengunggah ${file.name}...`);
-      const res = await dbService.uploadBerkasFile(student.nik, jenis, file);
+      const res = await dbService.uploadBerkasFile(student.user_id, jenis, file);
       
       const nowStr = new Date().toLocaleDateString('id-ID');
       const item = {
