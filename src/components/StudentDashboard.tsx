@@ -368,7 +368,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     e.preventDefault();
     try {
       const updated = await dbService.updateStudentDataDiri(
-        student.nik,
+        student.id,
         {
           nisn,
           nik: student.nik,
