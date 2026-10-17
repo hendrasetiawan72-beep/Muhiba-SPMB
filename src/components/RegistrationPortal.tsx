@@ -137,9 +137,9 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
     };
   }, [buktiPendaftaran]);
 
-  const alurImageUrl =
-    'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEga2-1HAuZXRM2x_IXfGzJtMmJ6YoCWwCgTvmdPWNN786gbn4m4p7P_nh_3H20kAbYoF4LX_Y9gqzkewq7NrCjp__JnwlA24Wwhqp_xvTL-5z_WOQS2Ta8tuIsh97yime-a_EmX5P1F9c92SoA2D8Anmejlu8FTLrP1jV2L1NtggjWz8Z4mWojqdUY5b4zr/s1668/44856.png';
-
+    const alurImageUrl =
+    'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjWidT8Ag5CtNDVGLjtJIQXHWfQnzoKmsl3JXqy_yOzjdlw6GQ9kOCGRg4KFIGTi3avq5jYlh410UldZZxPHISNJfoncMjXVUfzi_AfMCU3mHhqcQlqkkIZP-Z8GPHYt0HwMAOr0h_zfMO5kWQHKy737mvC3JfR3NluDkBSAs5VLJ0-YNQ9HmBXlK6lCfam/s4908/58636.png';
+  
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -350,7 +350,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
           <div className="relative rounded-lg overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
             <img
               src={alurImageUrl}
-              alt="Alur PPDB Online SMK Muhammadiyah Bawang - Sekolah SMART"
+              alt="Alur SPMB Online SMK Muhammadiyah Bawang - Sekolah SMART"
               className="w-full h-auto object-contain max-h-[520px]"
               referrerPolicy="no-referrer"
             />
