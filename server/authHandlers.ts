@@ -289,21 +289,33 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     if (captchaError) return captchaError;
   }
 
+  // Identitas login:
+  //  - siswa : NIK 16 digit
+  //  - admin : username "admin" ATAU email akun admin (mis. admin@smkmuhiba.sch.id)
+  // Email sintetis siswa (nik_...@auth...) tidak boleh dipakai untuk login.
+  const STUDENT_EMAIL_DOMAIN = '@auth.smkmuhiba.sch.id';
+  const lowerId = cleanId.toLowerCase();
   const isNik = /^\d{16}$/.test(cleanId);
-  const isAdminIdentifier = cleanId.toLowerCase() === 'admin';
+  const isEmailId =
+    lowerId.length <= 254 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lowerId) &&
+    !lowerId.endsWith(STUDENT_EMAIL_DOMAIN);
+  const isAdminIdentifier = lowerId === 'admin' || isEmailId;
 
   let authEmail = '';
   if (isNik) {
-    authEmail = `nik_${cleanId}@auth.smkmuhiba.sch.id`;
-  } else if (isAdminIdentifier) {
+    authEmail = `nik_${cleanId}${STUDENT_EMAIL_DOMAIN}`;
+  } else if (lowerId === 'admin') {
     authEmail = 'admin@smkmuhiba.sch.id';
+  } else if (isEmailId) {
+    authEmail = lowerId;
   } else {
     return {
       statusCode: 400,
       body: {
         success: false,
         code: 'INVALID_IDENTIFIER',
-        error: 'NIK harus terdiri dari 16 digit angka atau username "admin".',
+        error: 'Masukkan NIK 16 digit angka. Untuk admin, gunakan username "admin" atau email admin.',
       },
     };
   }
@@ -329,6 +341,29 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     });
 
     if (authErr || !authData?.user) {
+      // CAPTCHA Supabase menolak: ini masalah konfigurasi/token, bukan password salah
+      if (authErr && /captcha/i.test(authErr.message || '')) {
+        console.error('[handleLogin] Supabase menolak karena CAPTCHA:', authErr.message);
+        if (supabaseCaptchaMode) {
+          return {
+            statusCode: 403,
+            body: {
+              success: false,
+              code: 'CAPTCHA_FAILED',
+              error: 'Verifikasi keamanan gagal atau kedaluwarsa. Selesaikan CAPTCHA lagi lalu coba kembali.',
+            },
+          };
+        }
+        return {
+          statusCode: 503,
+          body: {
+            success: false,
+            code: 'CAPTCHA_CONFIG',
+            error:
+              'CAPTCHA Supabase aktif tetapi server belum meneruskan token. Atur variabel SUPABASE_CAPTCHA=true pada Worker, lalu coba lagi.',
+          },
+        };
+      }
       return {
         statusCode: 401,
         body: {
