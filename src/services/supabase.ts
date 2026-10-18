@@ -339,24 +339,29 @@ class DatabaseService {
    * Fetch all students (Admin overview)
    */
   public async getAllStudents(): Promise<Student[]> {
-    if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
-
-    const { data, error } = await this.supabase
-      .from('students')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('getAllStudents error:', error);
-      throw new Error(`Gagal memuat data pendaftar dari Supabase: ${error.message}`);
-    }
-
-    return (data as Student[]) || [];
+    return this.getStudentsForExport({});
   }
 
   /**
    * Server-side paginated list for Admin with search and filters
    */
+  private static readonly STUDENT_LIST_COLUMNS =
+    'id, user_id, nik, nama_lengkap, jurusan_pilihan, no_wa, status_pendaftaran, nomor_pendaftaran, tanggal_daftar, catatan_admin, created_at, updated_at, data_diri, data_alamat, data_orang_tua, data_berkas';
+
+  private applyStudentFilters(query: any, f: { search?: string; jurusan?: string; status?: string }) {
+    if (f.jurusan && f.jurusan !== 'ALL') query = query.eq('jurusan_pilihan', f.jurusan);
+    if (f.status && f.status !== 'ALL') query = query.eq('status_pendaftaran', f.status);
+    // Buang karakter yang bermakna di sintaks filter PostgREST (, ( ) dan wildcard
+    const term = (f.search || '').trim().replace(/[,()%_*\\]/g, ' ').trim();
+    if (term) {
+      const q = `%${term}%`;
+      query = query.or(
+        `nama_lengkap.ilike.${q},nik.ilike.${q},nomor_pendaftaran.ilike.${q},data_diri->>asal_sekolah.ilike.${q}`
+      );
+    }
+    return query;
+  }
+
   public async getStudentsPaginated(params: {
     page: number;
     pageSize: number;
@@ -366,25 +371,14 @@ class DatabaseService {
   }): Promise<{ students: Student[]; totalCount: number }> {
     if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
 
-    const { page, pageSize, search, jurusan, status } = params;
+    const { page, pageSize } = params;
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
     let query = this.supabase
       .from('students')
-      .select('id, user_id, nik, nama_lengkap, jurusan_pilihan, no_wa, status_pendaftaran, nomor_pendaftaran, tanggal_daftar, catatan_admin, created_at, updated_at, data_diri, data_alamat, data_orang_tua, data_berkas', { count: 'exact' });
-
-    if (jurusan && jurusan !== 'ALL') {
-      query = query.eq('jurusan_pilihan', jurusan);
-    }
-    if (status && status !== 'ALL') {
-      query = query.eq('status_pendaftaran', status);
-    }
-    if (search && search.trim()) {
-      const q = `%${search.trim()}%`;
-      query = query.or(`nama_lengkap.ilike.${q},nik.ilike.${q},nomor_pendaftaran.ilike.${q}`);
-    }
-
+      .select(DatabaseService.STUDENT_LIST_COLUMNS, { count: 'exact' });
+    query = this.applyStudentFilters(query, params);
     query = query.order('created_at', { ascending: false }).range(from, to);
 
     const { data, count, error } = await query;
@@ -395,6 +389,69 @@ class DatabaseService {
     return {
       students: (data as Student[]) || [],
       totalCount: count || 0,
+    };
+  }
+
+  /**
+   * Ambil SEMUA baris sesuai filter secara bertahap (untuk ekspor).
+   * Diunduh per 500 baris agar tidak terpotong batas 1.000 baris API Supabase.
+   * Hanya dipanggil saat admin menekan tombol ekspor (hemat egress).
+   */
+  public async getStudentsForExport(f: {
+    search?: string;
+    jurusan?: string;
+    status?: string;
+  }): Promise<Student[]> {
+    if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
+
+    const CHUNK = 500;
+    const all: Student[] = [];
+    for (let from = 0; ; from += CHUNK) {
+      let query = this.supabase.from('students').select(DatabaseService.STUDENT_LIST_COLUMNS);
+      query = this.applyStudentFilters(query, f);
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, from + CHUNK - 1);
+      if (error) throw new Error(`Gagal memuat data pendaftar: ${error.message}`);
+      const rows = (data as Student[]) || [];
+      all.push(...rows);
+      if (rows.length < CHUNK) break;
+    }
+    return all;
+  }
+
+  /**
+   * Statistik ringkas untuk kartu KPI admin. Hanya menghitung (head: true),
+   * tidak ada baris yang diunduh sehingga egress nyaris nol.
+   */
+  public async getStudentStats(): Promise<{
+    total: number;
+    to: number;
+    tjkt: number;
+    akl: number;
+    lolos: number;
+  }> {
+    if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
+    const client = this.supabase;
+    const head = () => client.from('students').select('id', { count: 'exact', head: true });
+
+    const results = await Promise.all([
+      head(),
+      head().eq('jurusan_pilihan', 'TO'),
+      head().eq('jurusan_pilihan', 'TJKT'),
+      head().eq('jurusan_pilihan', 'AKL'),
+      head().in('status_pendaftaran', ['Diterima', 'Terverifikasi']),
+    ]);
+    const failed = results.find((r) => r.error);
+    if (failed?.error) throw new Error(`Gagal memuat statistik: ${failed.error.message}`);
+
+    return {
+      total: results[0].count || 0,
+      to: results[1].count || 0,
+      tjkt: results[2].count || 0,
+      akl: results[3].count || 0,
+      lolos: results[4].count || 0,
     };
   }
 
@@ -482,43 +539,93 @@ class DatabaseService {
   }
 
   /**
+   * Kompres gambar di browser (maks. sisi terpanjang 1600 px, JPEG kualitas 0.8)
+   * agar hemat kuota storage Supabase. PDF / gagal kompres -> file asli.
+   */
+  private async compressImage(file: File): Promise<File> {
+    if (!file.type.startsWith('image/') || typeof document === 'undefined') return file;
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' } as any);
+      const MAX = 1600;
+      const scale = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return file;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      (bitmap as any).close?.();
+      const blob: Blob | null = await new Promise((resolve) =>
+        canvas.toBlob(resolve, 'image/jpeg', 0.8)
+      );
+      if (!blob || blob.size >= file.size) return file;
+      return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+    } catch {
+      return file;
+    }
+  }
+
+  /**
    * Upload Berkas File to Supabase Storage
    * Bucket: 'dokumen-ppdb'
-   * Path: {userId}/{jenis}_{timestamp}.{ext}
-   * Size limit: 2MB, allowed types: PDF, JPG, PNG
+   * Path: {userId}/{jenis}_{timestamp}.{ext}   (userId HARUS = auth.uid())
+   * Foto: boleh sampai 10 MB, otomatis dikompres, hasil akhir maks. 2 MB.
+   * PDF: maks. 2 MB. oldPath (opsional): berkas lama jenis yang sama, dihapus setelah upload sukses.
    */
   public async uploadBerkasFile(
     userId: string,
     jenis: string,
-    file: File
-  ): Promise<{ path: string; nama_file: string; ukuran: string }> {
+    rawFile: File,
+    oldPath?: string
+  ): Promise<{ path: string; nama_file: string; ukuran: string; url?: string }> {
     if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
 
-    // 1. Validasi ukuran (maksimal 2 MB)
-    if (file.size > 2 * 1024 * 1024) {
-      throw new Error(`Ukuran file "${file.name}" melebihi batas maksimal 2 MB.`);
+    const MB = 1024 * 1024;
+    const rawExt = rawFile.name.split('.').pop()?.toLowerCase() || '';
+    const allowedMime = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (!allowedMime.includes(rawFile.type) && !['pdf', 'jpg', 'jpeg', 'png', 'webp'].includes(rawExt)) {
+      throw new Error('Format berkas harus berupa dokumen PDF, JPG, PNG, atau WEBP.');
     }
 
-    // 2. Validasi tipe file
-    const allowedMime = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-    const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    if (!allowedMime.includes(file.type) && !['pdf', 'jpg', 'jpeg', 'png'].includes(ext)) {
-      throw new Error('Format berkas harus berupa dokumen PDF, JPG, atau PNG.');
+    const isImage = rawFile.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp'].includes(rawExt);
+    if (rawFile.size > (isImage ? 10 * MB : 2 * MB)) {
+      throw new Error(
+        `Ukuran file \"${rawFile.name}\" melebihi batas (${isImage ? 'foto maks. 10 MB' : 'PDF maks. 2 MB'}).`
+      );
     }
 
-    const timestamp = Date.now();
-    const filePath = `${userId}/${jenis}_${timestamp}.${ext}`;
+    const file = isImage ? await this.compressImage(rawFile) : rawFile;
+    if (file.size > 2 * MB) {
+      throw new Error(`Ukuran file \"${rawFile.name}\" masih melebihi 2 MB setelah dikompres. Gunakan foto yang lebih kecil.`);
+    }
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || rawExt;
+    const safeJenis = jenis.replace(/[^a-z0-9_]/gi, '');
+    const filePath = `${userId}/${safeJenis}_${Date.now()}.${ext}`;
 
     const { error: uploadError } = await this.supabase.storage
       .from('dokumen-ppdb')
       .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: true,
+        upsert: false,
+        contentType: file.type || undefined,
       });
 
     if (uploadError) {
       console.error('[Storage Upload] Gagal upload ke dokumen-ppdb:', uploadError);
       throw new Error(`Gagal mengunggah berkas: ${uploadError.message}`);
+    }
+
+    // Bersihkan berkas lama (non-fatal bila gagal). Hanya folder milik sendiri.
+    if (oldPath && oldPath !== filePath && oldPath.startsWith(`${userId}/`) && !oldPath.includes('..')) {
+      this.supabase.storage
+        .from('dokumen-ppdb')
+        .remove([oldPath])
+        .then(({ error }) => {
+          if (error) console.warn('[Storage] Gagal menghapus berkas lama:', error.message);
+        });
     }
 
     const formatBytes = (bytes: number): string => {
@@ -529,7 +636,7 @@ class DatabaseService {
 
     return {
       path: filePath,
-      nama_file: file.name,
+      nama_file: rawFile.name,
       ukuran: formatBytes(file.size),
     };
   }
@@ -740,36 +847,6 @@ class DatabaseService {
     if (rpcErr && !rpcMissing) {
       throw new Error('Password berhasil diganti, tetapi status akun belum diperbarui. Silakan muat ulang halaman.');
     }
-  }
-
-  /**
-   * Realtime Subscription: Subscribe to changes in students table with debounce
-   */
-  public subscribeToStudents(callback: (payload: any) => void): () => void {
-    if (!this.supabase) return () => {};
-
-    let debounceTimer: any = null;
-
-    const channel = this.supabase
-      .channel('public-students-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'students' },
-        (payload) => {
-          if (debounceTimer) clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(() => {
-            callback(payload);
-          }, 500);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      if (this.supabase) {
-        this.supabase.removeChannel(channel);
-      }
-    };
   }
 }
 
