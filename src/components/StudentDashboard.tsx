@@ -2586,11 +2586,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
       {showLocalChangePassword && (
         <ChangePasswordModal
-          userId={currentUser.id}
+          forced={false}
           nik={student.nik}
-          isOpen={showLocalChangePassword}
           onClose={() => setShowLocalChangePassword(false)}
-          onSuccess={() => {
+          onChanged={() => {
             setShowLocalChangePassword(false);
             showNotification('Kata sandi berhasil diperbarui.');
           }}
