@@ -1092,7 +1092,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                       NIK dan Password Anda! Anda sangat membutuhkannya untuk login kembali.
                     </p>
                     <p className="text-xs sm:text-sm text-red-900 mt-2 font-medium leading-relaxed bg-red-100/50 p-2 rounded border border-red-200">
-                      Anda <span className="font-black uppercase text-blue-700">Wajib Mendownload / Mencetak PDF Bukti Pendaftaran</span> ini agar kredensial Anda tersimpan dengan aman sebelum masuk ke Dashboard.
+                      Anda <span className="font-black uppercase text-blue-700">Silakan SCREENSHOT/ Download / cetak PDF Bukti Pendaftaran</span> ini agar kredensial Anda tersimpan dengan aman sebelum masuk ke Dashboard.
                     </p>
                   </div>
                 </div>
