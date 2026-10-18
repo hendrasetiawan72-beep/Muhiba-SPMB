@@ -178,6 +178,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
               <div className="text-[11px] text-slate-500 space-y-1 pt-1">
                 <p>* Masukan username berupa NIK dan password yang telah anda buat</p>
+                <p>
+                  * Lupa password? Hubungi panitia (kontak ada di kotak Info Lebih Lanjut). Siapkan{' '}
+                  <strong>nomor pendaftaran</strong> dan nomor WhatsApp yang Anda daftarkan untuk verifikasi.
+                </p>
               </div>
 
               <div className="pt-2">
