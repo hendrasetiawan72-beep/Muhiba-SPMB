@@ -197,6 +197,7 @@ export default async function handler(req: any, res: any) {
     const okNomor = nomorInput !== '' && nomorInput === normAlnum(student.nomor_pendaftaran);
 
     const waInput = normPhone(verifikasi.no_wa);
+    const okWa = waInput !== '' && waInput === normPhone(student.no_wa);
     const dobInput = String(verifikasi.tanggal_lahir ?? '').trim();
     if (!dobInput) {
       return res.status(400).json({
