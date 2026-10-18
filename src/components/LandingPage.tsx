@@ -1739,7 +1739,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <span>SMKS MUHAMMADIYAH BAWANG - Jl. Raya Bawang - Sukorejo KM 01, Jlamprang, Bawang, Batang 51274</span>
                   </div>
                   <a
-                    href="https://maps.google.com/?q=SMK+Muhammadiyah+Bawang+Batang"
+                    href="https://share.google/WChfuaQjWqFfda9jZ"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-800 flex items-center gap-1 font-bold"
@@ -1750,8 +1750,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
 
                 <div className="relative w-full h-[360px]">
+                  {/* Pin otomatis pada tempat "SMK Muhammadiyah Bawang" (tanpa API key).
+                      Untuk pin yang persis dari tautan Google Anda: buka Google Maps > Bagikan > Sematkan peta,
+                      salin isi src="..." lalu tempel menggantikan alamat di bawah ini. */}
                   <iframe
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15837.288219468936!2d109.91494559999999!3d-7.0886111!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7073289069d519%3A0xe54efda6cb94ea9c!2sSMK%20Muhammadiyah%20Bawang!5e0!3m2!1sid!2sid!4v1700000000000!5m2!1sid!2sid"
+                    src="https://www.google.com/maps?q=SMK+Muhammadiyah+Bawang+Batang+Jawa+Tengah&z=16&hl=id&output=embed"
                     width="100%"
                     height="100%"
                     style={{ border: 0 }}
