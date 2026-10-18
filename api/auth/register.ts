@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { formatTanggalDaftarJakarta } from '../../server/authHandlers';
 
 // Vercel / Cloudflare Worker: POST /api/auth/register
 export default async function handler(req: any, res: any) {
@@ -21,9 +22,7 @@ export default async function handler(req: any, res: any) {
     // Jika origin berbeda → jangan set ACAO (browser akan block)
   } else {
     // Production WAJIB set ALLOWED_ORIGIN.
-    console.error('[CORS] ALLOWED_ORIGIN belum dikonfigurasi!');
-    // Tanpa credentials agar tidak berbahaya
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    console.error('[CORS] ALLOWED_ORIGIN belum dikonfigurasi! Hanya request same-origin yang akan berfungsi.');
   }
 
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
@@ -136,7 +135,9 @@ export default async function handler(req: any, res: any) {
     // ============================================================
     // 2. Rate limiting — FAIL CLOSED
     // ============================================================
-    const salt = process.env.RATE_LIMIT_SALT || 'spmb_default_rate_limit_salt';
+    const salt =
+      process.env.RATE_LIMIT_SALT ||
+      crypto.createHash('sha256').update('rl-salt:' + supabaseServiceKey).digest('hex');
     const ipHash = crypto.createHash('sha256').update(clientIp + salt).digest('hex');
 
     try {
@@ -346,21 +347,15 @@ export default async function handler(req: any, res: any) {
           rpcErr
         );
         const randSalt = Math.floor(10 + Math.random() * 90);
-        nomorPendaftaran = `2026\( {Date.now().toString().slice(-4)} \){randSalt}`;
+        nomorPendaftaran = `2026${Date.now().toString().slice(-4)}${randSalt}`;
       }
     } catch (rpcEx) {
       console.warn('[API /auth/register] RPC call exception:', rpcEx);
       const randSalt = Math.floor(10 + Math.random() * 90);
-      nomorPendaftaran = `2026\( {Date.now().toString().slice(-4)} \){randSalt}`;
+      nomorPendaftaran = `2026${Date.now().toString().slice(-4)}${randSalt}`;
     }
 
-    const now = new Date();
-    const dateFormatted = `\( {String(now.getDate()).padStart(2, '0')}- \){String(
-      now.getMonth() + 1
-    ).padStart(2, '0')}-${now.getFullYear()} ${String(now.getHours()).padStart(
-      2,
-      '0'
-    )}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const dateFormatted = formatTanggalDaftarJakarta();
 
     // ============================================================
     // 9. Insert profiles + students (dengan atomic rollback)
