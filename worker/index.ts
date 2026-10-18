@@ -29,15 +29,45 @@ const routes: Record<string, VercelStyleHandler> = {
   '/api/admin/reset-password': resetPasswordHandler,
 };
 
-function jsonResponse(status: number, payload: unknown): Response {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
+function jsonResponse(status: number, payload: unknown, extraHeaders: Record<string, string> = {}): Response {
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    ...extraHeaders,
   });
+  return new Response(JSON.stringify(payload), { status, headers });
+}
+
+/** Security headers yang diterapkan ke SEMUA response (API + static) */
+function applySecurityHeaders(headers: Headers) {
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // CSP longgar agar React + Turnstile + Google Fonts tetap jalan.
+  // Sesuaikan domain Supabase Anda jika perlu.
+  headers.set(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: blob: https://*.supabase.co https://blogger.googleusercontent.com https://images.unsplash.com",
+      "connect-src 'self' https://*.supabase.co https://challenges.cloudflare.com",
+      "frame-src https://challenges.cloudflare.com https://www.youtube-nocookie.com https://www.tiktok.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; ')
+  );
 }
 
 // Membungkus Request/Response Workers menjadi objek req/res bergaya Vercel/Express
-// supaya handler di folder api/ bisa dipakai apa adanya.
 async function runHandler(handler: VercelStyleHandler, request: Request): Promise<Response> {
   const headers: Record<string, string> = {};
   request.headers.forEach((value, key) => {
@@ -52,7 +82,7 @@ async function runHandler(handler: VercelStyleHandler, request: Request): Promis
     try {
       body = text ? JSON.parse(text) : {};
     } catch {
-      body = text; // handler akan membalas 400 sendiri bila bukan JSON valid
+      body = text;
     }
   }
 
@@ -71,6 +101,7 @@ async function runHandler(handler: VercelStyleHandler, request: Request): Promis
     const finish = (payload: string) => {
       if (done) return;
       done = true;
+      applySecurityHeaders(outHeaders);
       const noBody = statusCode === 204 || statusCode === 205 || statusCode === 304;
       resolve(new Response(noBody ? null : payload, { status: statusCode, headers: outHeaders }));
     };
@@ -86,6 +117,7 @@ async function runHandler(handler: VercelStyleHandler, request: Request): Promis
       },
       json(obj: unknown) {
         outHeaders.set('Content-Type', 'application/json');
+        outHeaders.set('Cache-Control', 'no-store');
         finish(JSON.stringify(obj));
         return res;
       },
@@ -121,9 +153,23 @@ export default {
     syncEnvToProcess(env);
     const url = new URL(request.url);
 
-    // Diagnosa sementara: hanya menampilkan ADA/TIDAK variabel (bukan nilainya).
-    // Hapus blok ini setelah pendaftaran berjalan normal.
+    // ============================================================
+    // HEALTH CHECK — DILINDUNGI / DINONAKTIFKAN DI PRODUCTION
+    // Hanya aktif jika HEALTH_CHECK_SECRET diset dan cocok.
+    // ============================================================
     if (url.pathname === '/api/health') {
+      const secret = typeof env.HEALTH_CHECK_SECRET === 'string' ? env.HEALTH_CHECK_SECRET : '';
+      const provided = url.searchParams.get('token') || request.headers.get('x-health-token') || '';
+
+      // Jika secret tidak diset → endpoint dimatikan (404)
+      if (!secret || secret.length < 16) {
+        return jsonResponse(404, { success: false, message: 'Not found' });
+      }
+      if (provided !== secret) {
+        return jsonResponse(403, { success: false, message: 'Forbidden' });
+      }
+
+      // Hanya kembalikan status boolean, jangan bocorkan nama secret
       const names = [
         'SUPABASE_URL',
         'SUPABASE_ANON_KEY',
@@ -132,32 +178,35 @@ export default {
         'RATE_LIMIT_SALT',
         'ALLOWED_ORIGIN',
       ];
-      const proc = (globalThis as any).process;
       const present: Record<string, boolean> = {};
-      const inProcessEnv: Record<string, boolean> = {};
       for (const n of names) {
         const v = env[n];
         present[n] = typeof v === 'string' && v.trim().length > 0;
-        inProcessEnv[n] = !!(proc && proc.env && proc.env[n]);
       }
-      const supabaseUrl = typeof env.SUPABASE_URL === 'string' ? env.SUPABASE_URL.trim() : '';
       return jsonResponse(200, {
         ok: true,
-        version: 'worker-v2-health',
+        version: 'worker-v3-secured',
         env: present,
-        processEnv: inProcessEnv,
-        supabaseUrlFormatOk: /^https:\/\/[a-z0-9]+\.supabase\.co\/?$/.test(supabaseUrl),
       });
     }
 
     if (url.pathname.startsWith('/api/')) {
-      const handler = routes[url.pathname.replace(/\/+$/, '')];
+      const handler = routes[url.pathname];
       if (!handler) {
-        return jsonResponse(404, { success: false, code: 'NOT_FOUND', message: 'Endpoint tidak ditemukan.' });
+        return jsonResponse(404, { success: false, message: 'Endpoint tidak ditemukan.' });
       }
       return runHandler(handler, request);
     }
 
-    return env.ASSETS.fetch(request);
+    // Static assets dari Vite build
+    const assetResponse = await env.ASSETS.fetch(request);
+    // Clone supaya bisa set header
+    const newHeaders = new Headers(assetResponse.headers);
+    applySecurityHeaders(newHeaders);
+    return new Response(assetResponse.body, {
+      status: assetResponse.status,
+      statusText: assetResponse.statusText,
+      headers: newHeaders,
+    });
   },
 };
