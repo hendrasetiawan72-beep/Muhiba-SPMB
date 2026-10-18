@@ -13,7 +13,8 @@ import {
   CreditCard, 
   AlertCircle,
   X,
-  Check
+  Check,
+  ShieldAlert
 } from 'lucide-react';
 import { dbService } from '../services/supabase';
 import { Student, User as UserType, JurusanType } from '../types/database';
@@ -25,7 +26,6 @@ interface RegistrationPortalProps {
 }
 
 // Hook kecil untuk widget Cloudflare Turnstile.
-// Token Turnstile hanya berlaku sekali, jadi disediakan fungsi reset().
 function useTurnstile(active: boolean) {
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
   const containerRef = React.useRef<HTMLDivElement | null>(null);
@@ -42,7 +42,6 @@ function useTurnstile(active: boolean) {
       if (cancelled || !containerRef.current) return;
       const ts = (window as any).turnstile;
       if (!ts) {
-        // Script api.js (async defer) mungkin belum selesai dimuat
         if (tries++ < 50) timer = setTimeout(tryRender, 200);
         return;
       }
@@ -88,7 +87,6 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
   onNavigateLogin,
   onNavigateHome,
 }) => {
-  // Tabs: 'info' | 'syarat' | 'kontak'
   const [activeTab, setActiveTab] = useState<'info' | 'syarat' | 'kontak'>('info');
   const [showRegisterForm, setShowRegisterForm] = useState<boolean>(false);
   const [buktiPendaftaran, setBuktiPendaftaran] = useState<{
@@ -105,11 +103,9 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Turnstile untuk form pendaftaran
+  
   const formTs = useTurnstile(showRegisterForm);
 
-  // Setelah daftar: jika CAPTCHA Supabase aktif, server tidak bisa membuat sesi login
-  // (login server tanpa token ditolak), jadi siswa login di sini dengan token Turnstile baru.
   const [needsLogin, setNeedsLogin] = useState(false);
   const enterTs = useTurnstile(!!buktiPendaftaran && needsLogin);
   const [isEntering, setIsEntering] = useState(false);
@@ -137,7 +133,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
     };
   }, [buktiPendaftaran]);
 
-    const alurImageUrl =
+  const alurImageUrl =
     'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjWidT8Ag5CtNDVGLjtJIQXHWfQnzoKmsl3JXqy_yOzjdlw6GQ9kOCGRg4KFIGTi3avq5jYlh410UldZZxPHISNJfoncMjXVUfzi_AfMCU3mHhqcQlqkkIZP-Z8GPHYt0HwMAOr0h_zfMO5kWQHKy737mvC3JfR3NluDkBSAs5VLJ0-YNQ9HmBXlK6lCfam/s4908/58636.png';
   
   const handleRegisterSubmit = async (e: React.FormEvent) => {
@@ -204,15 +200,13 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
         turnstileToken: formTs.token || undefined,
       });
 
-      // Tampilkan bukti pendaftaran dari state memori tanpa menyimpan kata sandi di sessionStorage
       setBuktiPendaftaran({
         student: res.student,
         rawPassword: password,
       });
       setShowRegisterForm(false);
     } catch (err: any) {
-      formTs.reset(); // token Turnstile sekali pakai
-      // Pembacaan kode error terstruktur dari respons server
+      formTs.reset();
       if (err.code === 'NIK_EXISTS') {
         setErrorMessage(err.message || 'NIK ini sudah terdaftar. Silakan langsung login.');
       } else if (err.code === 'NIK_INVALID') {
@@ -271,12 +265,13 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto space-y-6">
+    // Tambahkan class print:bg-white agar background cerah saat mencetak
+    <div className="min-h-screen bg-slate-100 py-6 sm:py-10 px-4 sm:px-6 lg:px-8 print:bg-white print:py-0 print:px-0">
+      
+      {/* Tambahan class print:hidden untuk membuang semua konten halaman background saat modal bukti pendaftaran dicetak */}
+      <div className="max-w-5xl mx-auto space-y-6 print:hidden">
 
-        {/* ========================================================================= */}
-        {/* TOP WELCOME BAR (Matches Screenshot 4, 5, 6) */}
-        {/* ========================================================================= */}
+        {/* TOP WELCOME BAR */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <h1 className="text-base sm:text-lg font-bold text-slate-800 tracking-wide">
@@ -306,12 +301,8 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
           </div>
         </div>
 
-        {/* ========================================================================= */}
-        {/* 3 STATS COUNTERS (Matches Screenshot 4, 5, 6) */}
-        {/* ========================================================================= */}
+        {/* 3 STATS COUNTERS */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          
-          {/* Card 1: Data Sekolah */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-lg bg-red-500 text-white flex items-center justify-center shrink-0 shadow-sm">
               <Building2 className="w-6 h-6" />
@@ -323,7 +314,6 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
             </div>
           </div>
 
-          {/* Card 2: Data Jurusan */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
               <BookMarked className="w-6 h-6" />
@@ -335,7 +325,6 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
             </div>
           </div>
 
-          {/* Card 3: Kuota Pendaftaran */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
               <Users className="w-6 h-6" />
@@ -346,13 +335,9 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
               <p className="text-[11px] text-slate-400">Siswa Total Kuota</p>
             </div>
           </div>
-
         </div>
 
-        {/* ========================================================================= */}
-        {/* ALUR PPDB BANNER IMAGE (Screenshot 4, 5, 6) */}
-        {/* ========================================================================= */}
-                {/* ALUR SPMB - GAMBAR PENUH */}
+        {/* ALUR SPMB GAMBAR PENUH */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-3 sm:p-6">
           <div className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-2xl rounded-lg overflow-hidden border border-slate-100 bg-slate-50">
             <img
@@ -366,12 +351,8 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
           </div>
         </div>
 
-        {/* ========================================================================= */}
-        {/* TABBED INFORMATION BOX - Optimized for Tablet & Desktop Windows */}
-        {/* ========================================================================= */}
+        {/* TABBED INFORMATION BOX */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-8">
-          
-          {/* Top Segmented Tabs Navigation */}
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-1.5 bg-slate-100/90 rounded-xl mb-6">
             <button
               onClick={() => setActiveTab('info')}
@@ -410,10 +391,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
             </button>
           </div>
 
-          {/* Tab Content Area */}
           <div className="bg-slate-50/70 p-5 sm:p-7 rounded-xl border border-slate-200/70">
-            
-            {/* TAB 1: INFORMASI PENDAFTARAN - Clean 3-Step Card Layout for Tablet & PC */}
             {activeTab === 'info' && (
               <div className="space-y-6">
                 <div>
@@ -422,12 +400,9 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Step 1 */}
                   <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-blue-300 transition-colors">
                     <div>
-                      <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 font-extrabold text-xs flex items-center justify-center mb-3">
-                        01
-                      </div>
+                      <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 font-extrabold text-xs flex items-center justify-center mb-3">01</div>
                       <h4 className="font-bold text-sm text-slate-900 mb-1">Daftar Online</h4>
                       <p className="text-xs text-slate-600 leading-relaxed">
                         Calon siswa mengisi data dasar (NIK, Nama, WhatsApp, Pilihan Jurusan) dan membuat password akun.
@@ -444,12 +419,9 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                     </div>
                   </div>
 
-                  {/* Step 2 */}
                   <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-emerald-300 transition-colors">
                     <div>
-                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 font-extrabold text-xs flex items-center justify-center mb-3">
-                        02
-                      </div>
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 font-extrabold text-xs flex items-center justify-center mb-3">02</div>
                       <h4 className="font-bold text-sm text-slate-900 mb-1">Login Masuk</h4>
                       <p className="text-xs text-slate-600 leading-relaxed">
                         Gunakan nomor pendaftaran / NIK dan password yang didapat untuk masuk ke dashboard siswa.
@@ -466,12 +438,9 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                     </div>
                   </div>
 
-                  {/* Step 3 */}
                   <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-blue-300 transition-colors">
                     <div>
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 font-extrabold text-xs flex items-center justify-center mb-3">
-                        03
-                      </div>
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 font-extrabold text-xs flex items-center justify-center mb-3">03</div>
                       <h4 className="font-bold text-sm text-slate-900 mb-1">Lengkapi Berkas</h4>
                       <p className="text-xs text-slate-600 leading-relaxed">
                         Lengkapi formulir biodata diri, alamat, data orang tua, serta serahkan / upload berkas pendaftaran.
@@ -488,7 +457,6 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
               </div>
             )}
 
-            {/* TAB 2: SYARAT PENDAFTARAN - Clean 2-Column Responsive Grid */}
             {activeTab === 'syarat' && (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200/80">
@@ -529,7 +497,6 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
               </div>
             )}
 
-            {/* TAB 3: KONTAK PENDAFTARAN - Responsive Cards with Direct WhatsApp Buttons */}
             {activeTab === 'kontak' && (
               <div className="space-y-4">
                 <div className="pb-2 border-b border-slate-200/80">
@@ -538,12 +505,9 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  {/* Contact 1 */}
                   <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between gap-4">
                     <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 font-extrabold text-sm">
-                        ES
-                      </div>
+                      <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 font-extrabold text-sm">ES</div>
                       <div>
                         <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase">Panitia PPDB 1</span>
                         <h4 className="text-sm font-bold text-slate-900 mt-1">EDI SETIANTO</h4>
@@ -561,12 +525,9 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                     </a>
                   </div>
 
-                  {/* Contact 2 */}
                   <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between gap-4">
                     <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-extrabold text-sm">
-                        SH
-                      </div>
+                      <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-extrabold text-sm">SH</div>
                       <div>
                         <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded uppercase">Panitia PPDB 2</span>
                         <h4 className="text-sm font-bold text-slate-900 mt-1">SUGI HARNOTO</h4>
@@ -589,7 +550,6 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
           </div>
         </div>
 
-        {/* Footer with official address and website link */}
         <div className="pt-4 border-t border-slate-200/80 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <div>
             <p className="font-semibold text-slate-700">SMK Muhammadiyah Bawang</p>
@@ -614,9 +574,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
 
       </div>
 
-      {/* ========================================================================= */}
-      {/* INITIAL REGISTRATION MODAL FORM */}
-      {/* ========================================================================= */}
+      {/* REGISTRATION MODAL FORM */}
       {showRegisterForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 relative my-8 animate-in fade-in zoom-in-95 duration-200">
@@ -645,6 +603,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
             )}
 
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
+              {/* Form Input (sama dengan sebelumnya) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Nomor Induk Kependudukan (NIK) <span className="text-red-500">*</span>
@@ -766,114 +725,140 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* BUKTI PENDAFTARAN MODAL / CARD (Exact Match to Screenshot 7) */}
-      {/* ========================================================================= */}
+      {/* BUKTI PENDAFTARAN MODAL / CARD DENGAN PRINT CSS FIX */}
       {buktiPendaftaran && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 relative my-8 animate-in fade-in duration-200">
-            
-            {/* Header info */}
-            <div className="flex items-start justify-between border-b pb-4 mb-5">
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-900 tracking-wider uppercase">
-                  BUKTI PENDAFTARAN PESERTA DIDIK BARU
-                </h3>
-                <p className="text-[11px] font-semibold text-blue-700">
-                  SPMB SMK MUHAMMADIYAH BAWANG
+        <>
+          {/* CSS khusus saat mode print berjalan untuk memastikan tampilan hanya sebatas area Bukti Pendaftaran tanpa page break tambahan */}
+          <style type="text/css" media="print">
+            {`
+              @page { size: A4 portrait; margin: 15mm; }
+              body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            `}
+          </style>
+
+          {/* Menghilangkan modal layang pada saat dicetak, dibuat seakan dokumen statis full layar (print:static print:block) */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 overflow-y-auto print:static print:bg-white print:p-0 print:block">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 relative my-8 animate-in fade-in duration-200 print:shadow-none print:m-0 print:max-w-full print:border-none print:p-0 print:block">
+              
+              <div className="flex items-start justify-between border-b pb-4 mb-5">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 tracking-wider uppercase">
+                    BUKTI PENDAFTARAN PESERTA DIDIK BARU
+                  </h3>
+                  <p className="text-[11px] font-semibold text-blue-700">
+                    SPMB SMK MUHAMMADIYAH BAWANG
+                  </p>
+                </div>
+                <button
+                  onClick={() => setBuktiPendaftaran(null)}
+                  className="text-slate-400 hover:text-slate-600 print:hidden"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="border border-slate-200 rounded-lg overflow-hidden text-xs">
+                <table className="w-full divide-y divide-slate-200">
+                  <tbody className="divide-y divide-slate-100">
+                    <tr className="bg-slate-50/50">
+                      <td className="px-4 py-2.5 font-semibold text-slate-600 w-1/3">Nama Peserta</td>
+                      <td className="px-4 py-2.5 font-bold text-slate-900">{buktiPendaftaran.student.nama_lengkap}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 font-semibold text-slate-600">No. Pendaftaran</td>
+                      <td className="px-4 py-2.5 font-mono font-bold text-blue-700">{buktiPendaftaran.student.nomor_pendaftaran}</td>
+                    </tr>
+                    <tr className="bg-slate-50/50">
+                      <td className="px-4 py-2.5 font-semibold text-slate-600">NIK (Username)</td>
+                      <td className="px-4 py-2.5 font-mono font-bold text-slate-900">{buktiPendaftaran.student.nik}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 font-semibold text-slate-600">Password</td>
+                      <td className="px-4 py-2.5 font-mono font-bold text-slate-900">{buktiPendaftaran.rawPassword}</td>
+                    </tr>
+                    <tr className="bg-slate-50/50">
+                      <td className="px-4 py-2.5 font-semibold text-slate-600">Jurusan Pilihan</td>
+                      <td className="px-4 py-2.5 font-semibold text-emerald-700">{buktiPendaftaran.student.jurusan_pilihan}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 font-semibold text-slate-600">Tanggal Daftar</td>
+                      <td className="px-4 py-2.5 font-medium text-slate-700">{buktiPendaftaran.student.tanggal_daftar}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-4 text-[11px] text-slate-600 leading-relaxed bg-blue-50/60 p-3 rounded-lg border border-blue-100">
+                <p className="font-semibold text-blue-900 mb-1">
+                  Dengan ini menyatakan bahwa peserta didik di atas telah <span className="font-extrabold uppercase">BERHASIL MELAKUKAN PENDAFTARAN</span> secara online.
+                </p>
+                <p>
+                  Silakan login menggunakan <strong>Nomor Pendaftaran / NIK</strong> dan <strong>Password</strong> untuk melengkapi data formulir dan mengikuti tahapan selanjutnya.
                 </p>
               </div>
-              <button
-                onClick={() => setBuktiPendaftaran(null)}
-                className="text-slate-400 hover:text-slate-600 no-print"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            {/* Registration Summary Table (Screenshot 7) */}
-            <div className="border border-slate-200 rounded-lg overflow-hidden text-xs">
-              <table className="w-full divide-y divide-slate-200">
-                <tbody className="divide-y divide-slate-100">
-                  <tr className="bg-slate-50/50">
-                    <td className="px-4 py-2.5 font-semibold text-slate-600 w-1/3">Nama Peserta</td>
-                    <td className="px-4 py-2.5 font-bold text-slate-900">{buktiPendaftaran.student.nama_lengkap}</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-2.5 font-semibold text-slate-600">No. Pendaftaran</td>
-                    <td className="px-4 py-2.5 font-mono font-bold text-blue-700">{buktiPendaftaran.student.nomor_pendaftaran}</td>
-                  </tr>
-                  <tr className="bg-slate-50/50">
-                    <td className="px-4 py-2.5 font-semibold text-slate-600">NIK (Username)</td>
-                    <td className="px-4 py-2.5 font-mono font-bold text-slate-900">{buktiPendaftaran.student.nik}</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-2.5 font-semibold text-slate-600">Password</td>
-                    <td className="px-4 py-2.5 font-mono font-bold text-slate-900">{buktiPendaftaran.rawPassword}</td>
-                  </tr>
-                  <tr className="bg-slate-50/50">
-                    <td className="px-4 py-2.5 font-semibold text-slate-600">Jurusan Pilihan</td>
-                    <td className="px-4 py-2.5 font-semibold text-emerald-700">{buktiPendaftaran.student.jurusan_pilihan}</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-2.5 font-semibold text-slate-600">Tanggal Daftar</td>
-                    <td className="px-4 py-2.5 font-medium text-slate-700">{buktiPendaftaran.student.tanggal_daftar}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-4 text-[11px] text-slate-600 leading-relaxed bg-blue-50/60 p-3 rounded-lg border border-blue-100">
-              <p className="font-semibold text-blue-900 mb-1">
-                Dengan ini menyatakan bahwa peserta didik di atas telah <span className="font-extrabold uppercase">BERHASIL MELAKUKAN PENDAFTARAN</span> secara online.
-              </p>
-              <p>
-                Silakan login menggunakan <strong>Nomor Pendaftaran / NIK</strong> dan <strong>Password</strong> untuk melengkapi data formulir dan mengikuti tahapan selanjutnya.
-              </p>
-            </div>
-
-            <div className="mt-4 flex items-center justify-between text-[10px] text-slate-400">
-              <span>Dicetak pada: {buktiPendaftaran.student.tanggal_daftar}</span>
-              <span className="font-semibold text-slate-600">Panitia SPMB SMK Muhammadiyah Bawang</span>
-            </div>
-
-            {needsLogin && enterTs.siteKey && (
-              <div className="mt-5 no-print">
-                <p className="text-[11px] text-slate-500 mb-2 text-center">
-                  Selesaikan verifikasi keamanan di bawah ini untuk masuk ke dashboard.
-                </p>
-                <div ref={enterTs.containerRef} className="flex justify-center" />
+              <div className="mt-4 flex items-center justify-between text-[10px] text-slate-400 border-b pb-4 mb-4">
+                <span>Dicetak pada: {buktiPendaftaran.student.tanggal_daftar}</span>
+                <span className="font-semibold text-slate-600">Panitia SPMB SMK Muhammadiyah Bawang</span>
               </div>
-            )}
 
-            {enterError && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 no-print">
-                {enterError}
+              {/* PERINGATAN KEAMANAN HIGHLIGHT BESAR (Sembunyikan saat di print) */}
+              <div className="mt-2 border-2 border-red-500 bg-red-50 p-4 sm:p-5 rounded-xl shadow-sm mb-6 print:hidden">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <ShieldAlert className="w-8 h-8 sm:w-10 sm:h-10 text-red-600 shrink-0 animate-bounce mt-1" />
+                  <div>
+                    <h4 className="text-sm sm:text-base font-black text-red-700 uppercase tracking-widest">
+                      PERHATIAN SANGAT PENTING!
+                    </h4>
+                    <p className="text-xs sm:text-sm text-red-900 mt-1.5 font-semibold leading-relaxed">
+                      Jaga kerahasiaan dan <span className="font-black underline text-red-700 text-sm sm:text-base">JANGAN SAMPAI LUPA</span> <br className="hidden sm:block"/> 
+                      NIK dan Password Anda! Anda sangat membutuhkannya untuk login kembali.
+                    </p>
+                    <p className="text-xs sm:text-sm text-red-900 mt-2 font-medium leading-relaxed bg-red-100/50 p-2 rounded border border-red-200">
+                      Anda <span className="font-black uppercase text-blue-700">Wajib Mendownload / Mencetak PDF Bukti Pendaftaran</span> ini agar kredensial Anda tersimpan dengan aman sebelum masuk ke Dashboard.
+                    </p>
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* Action buttons */}
-            <div className="mt-6 flex flex-col sm:flex-row gap-3 no-print">
-              <button
-                onClick={handlePrint}
-                className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>CETAK BUKTI PENDAFTARAN</span>
-              </button>
+              {needsLogin && enterTs.siteKey && (
+                <div className="mt-5 print:hidden">
+                  <p className="text-[11px] text-slate-500 mb-2 text-center">
+                    Selesaikan verifikasi keamanan di bawah ini untuk masuk ke dashboard.
+                  </p>
+                  <div ref={enterTs.containerRef} className="flex justify-center" />
+                </div>
+              )}
 
-              <button
-                onClick={handleEnterDashboard}
-                disabled={isEntering}
-                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
-              >
-                <span>{isEntering ? 'Memproses...' : 'Masuk Ke Dashboard Siswa'}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              {enterError && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 print:hidden">
+                  {enterError}
+                </div>
+              )}
+
+              {/* Action buttons (Sembunyikan saat di print) */}
+              <div className="mt-2 flex flex-col sm:flex-row gap-3 print:hidden">
+                <button
+                  onClick={handlePrint}
+                  className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95"
+                >
+                  <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>DOWNLOAD / CETAK PDF (WAJIB)</span>
+                </button>
+
+                <button
+                  onClick={handleEnterDashboard}
+                  disabled={isEntering}
+                  className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                >
+                  <span>{isEntering ? 'Memproses...' : 'Masuk Ke Dashboard Siswa'}</span>
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              </div>
+
             </div>
-
           </div>
-        </div>
+        </>
       )}
 
     </div>
