@@ -1,5 +1,5 @@
 // Cloudflare Worker entry: menjalankan endpoint /api/* (yang aslinya fungsi Vercel)
-// dan menyajikan hasil build Vite (folder dist) lewat binding ASSETS.
+//  menyajikan hasil build Vite (folder dist) lewat binding ASSETS.
 import registerHandler from '../api/auth/register';
 import loginHandler from '../api/auth/login';
 import deleteStudentHandler from '../api/admin/delete-student';
@@ -54,13 +54,14 @@ function applySecurityHeaders(headers: Headers) {
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+      "script-src 'self' https://challenges.cloudflare.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://*.supabase.co https://blogger.googleusercontent.com https://images.unsplash.com",
       "connect-src 'self' https://*.supabase.co https://challenges.cloudflare.com",
       "frame-src https://challenges.cloudflare.com https://www.youtube-nocookie.com https://www.tiktok.com",
       "object-src 'none'",
+      "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
     ].join('; ')
