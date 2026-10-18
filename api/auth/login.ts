@@ -32,6 +32,11 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  const result = await handleLogin(req.body);
+  const clientIp =
+    (req.headers?.['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    '';
+
+  const result = await handleLogin(req.body, clientIp);
   return res.status(result.statusCode).json(result.body);
 }
