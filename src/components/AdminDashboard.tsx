@@ -234,12 +234,14 @@ import {
   Save,
   LogOut,
   Pencil,
+  KeyRound,
   History,
   RefreshCw,
   ChevronDown,
 } from 'lucide-react';
 import { Student, User, StatusPendaftaran, JurusanType, BerkasItem } from '../types/database';
 import { dbService } from '../services/supabase';
+import { AdminResetPasswordModal } from './AdminResetPasswordModal';
 
 // ============================================================================
 // KONSTANTA & TIPE
@@ -251,7 +253,13 @@ interface AdminDashboardProps {
   onNavigateHome: () => void;
 }
 
-type LogAction = 'UBAH_STATUS' | 'EDIT_DATA' | 'HAPUS_PENDAFTAR' | 'EKSPOR_DATA' | 'RESET_PASSWORD';
+type LogAction =
+  | 'UBAH_STATUS'
+  | 'EDIT_DATA'
+  | 'HAPUS_PENDAFTAR'
+  | 'EKSPOR_DATA'
+  | 'RESET_PASSWORD'
+  | 'RESET_PASSWORD_GAGAL';
 
 interface ActivityLog {
   id: string;
@@ -379,6 +387,7 @@ const ACTION_META: Record<string, { label: string; badge: string }> = {
   HAPUS_PENDAFTAR: { label: 'Hapus pendaftar', badge: 'bg-rose-100 text-rose-800' },
   EKSPOR_DATA: { label: 'Ekspor data', badge: 'bg-amber-100 text-amber-800' },
   RESET_PASSWORD: { label: 'Reset password', badge: 'bg-slate-200 text-slate-700' },
+  RESET_PASSWORD_GAGAL: { label: 'Reset password gagal', badge: 'bg-red-100 text-red-800' },
 };
 
 const LOG_PAGE_SIZE = 30;
@@ -520,7 +529,11 @@ const summarizeLog = (log: ActivityLog): string => {
     case 'EKSPOR_DATA':
       return `${d.format || 'Data'} \u00b7 ${d.jumlah_baris ?? '?'} baris`;
     case 'RESET_PASSWORD':
-      return 'Password sementara diterbitkan';
+      return d.sesi_dicabut === false
+        ? 'Password sementara diterbitkan (sesi lama belum dicabut)'
+        : 'Password sementara diterbitkan, sesi lama dicabut';
+    case 'RESET_PASSWORD_GAGAL':
+      return 'Verifikasi pemohon tidak cocok';
     default:
       return '-';
   }
@@ -880,6 +893,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Reset password
+  const [resetTarget, setResetTarget] = useState<Student | null>(null);
+
   // Toast
   const [notification, setNotification] = useState<{ msg: string; kind: 'ok' | 'error' } | null>(null);
   const toastTimer = useRef<number | null>(null);
@@ -921,6 +937,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
+      if (resetTarget) return; // dialog reset menutup dirinya sendiri
       if (deleteTarget) {
         if (!isDeleting) setDeleteTarget(null);
       } else if (editStudent) {
@@ -932,7 +949,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deleteTarget, editStudent, selectedStudent, isDeleting, isSaving]);
+  }, [resetTarget, deleteTarget, editStudent, selectedStudent, isDeleting, isSaving]);
 
   // --------------------------------------------------------------------------
   // Pencatatan log (hapus & ekspor dicatat dari sini; edit/status oleh trigger DB)
@@ -1591,6 +1608,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <Pencil className="w-4 h-4" />
                               </button>
                               <button
+                                onClick={() => setResetTarget(std)}
+                                className="p-1.5 text-slate-600 hover:bg-slate-200 rounded transition-colors"
+                                title="Reset Password"
+                              >
+                                <KeyRound className="w-4 h-4" />
+                              </button>
+                              <button
                                 onClick={() => openDelete(std)}
                                 className="p-1.5 text-rose-500 hover:bg-rose-100 rounded transition-colors"
                                 title="Hapus Data"
@@ -1800,6 +1824,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   >
                     <Pencil className="w-3.5 h-3.5" />
                     <span>Edit Data</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResetTarget(selectedStudent)}
+                    className="px-4 py-2 text-xs font-bold text-slate-700 border border-slate-300 hover:bg-slate-50 rounded-md inline-flex items-center gap-1.5 transition-colors"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>Reset Password</span>
                   </button>
                   <button
                     type="button"
@@ -2041,6 +2073,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* DIALOG RESET PASSWORD                                                  */}
+      {/* ===================================================================== */}
+      {resetTarget && (
+        <AdminResetPasswordModal
+          student={resetTarget}
+          onClose={() => setResetTarget(null)}
+          onDone={() => setLogRefreshKey((k) => k + 1)}
+        />
       )}
     </div>
   );
