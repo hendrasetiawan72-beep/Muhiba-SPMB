@@ -430,6 +430,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         alert('Asal sekolah wajib diisi.');
         return;
       }
+      
+      // Validasi ketat untuk NISN & KK
+      const cleanNisn = nisn.trim().replace(/\D/g, '');
+      if (cleanNisn.length !== 10) {
+        alert('Peringatan: NISN harus terdiri dari tepat 10 digit angka!');
+        return;
+      }
+      const cleanKk = noKk.trim().replace(/\D/g, '');
+      if (cleanKk.length !== 16) {
+        alert('Peringatan: No Kartu Keluarga (KK) harus terdiri dari tepat 16 digit angka!');
+        return;
+      }
+
       const cleanHp = noHp.trim().replace(/\D/g, '');
       if (cleanHp && (cleanHp.length < 10 || cleanHp.length > 15)) {
         alert('Nomor HP / WhatsApp harus berupa 10 - 15 digit angka.');
@@ -678,6 +691,25 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const handlePrintFormulir = () => {
     window.print();
   };
+
+  // Daftar Sekolah untuk Datalist
+  const daftarSekolahBatang = [
+    "SMP Negeri 1 Batang", "SMP Negeri 2 Batang", "SMP Negeri 3 Batang", "SMP Negeri 4 Batang", "SMP Negeri 6 Batang", "SMP Negeri 7 Batang",
+    "SMP Negeri 1 Bawang", "SMP Negeri 2 Bawang", "SMP Negeri 3 Bawang", "SMP Negeri 4 Bawang",
+    "SMP Negeri 1 Tulis", "SMP Negeri 2 Tulis",
+    "SMP Negeri 1 Bandar", "SMP Negeri 2 Bandar", "SMP Negeri 3 Bandar", "SMP Negeri 4 Bandar",
+    "SMP Negeri 1 Blado", "SMP Negeri 2 Blado", "SMP Negeri 3 Blado",
+    "SMP Negeri 1 Reban", "SMP Negeri 2 Reban", "SMP Negeri 3 Reban",
+    "SMP Negeri 1 Pecalungan",
+    "SMP Negeri 1 Subah", "SMP Negeri 2 Subah", "SMP Negeri 3 Subah",
+    "SMP Negeri 1 Limpung", "SMP Negeri 2 Limpung",
+    "SMP Negeri 1 Gringsing", "SMP Negeri 2 Gringsing", "SMP Negeri 3 Gringsing", "SMP Negeri 4 Gringsing",
+    "SMP Negeri 1 Tersono", "SMP Negeri 2 Tersono",
+    "SMP Negeri 1 Wonotunggal", "SMP Negeri 2 Wonotunggal",
+    "SMP Negeri 1 Kandeman", "SMP Negeri 2 Kandeman",
+    "SMP Negeri 1 Warungasem", "SMP Negeri 2 Warungasem",
+    "MTs Negeri Batang", "MTs Muhammadiyah Batang", "MTs Muhammadiyah Bawang", "MTs NU Batang"
+  ];
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
@@ -1556,8 +1588,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                               <input
                                 type="text"
                                 value={nisn}
-                                onChange={(e) => setNisn(e.target.value)}
-                                placeholder="8729209999"
+                                onChange={(e) => setNisn(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                                placeholder="10 Digit Angka NISN"
                                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded"
                               />
                             </div>
@@ -1577,8 +1609,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                               <input
                                 type="text"
                                 value={noKk}
-                                onChange={(e) => setNoKk(e.target.value)}
-                                placeholder="Nomor Kartu Keluarga"
+                                onChange={(e) => setNoKk(e.target.value.replace(/\D/g, '').slice(0, 16))}
+                                placeholder="16 Digit Nomor KK"
                                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded"
                               />
                             </div>
@@ -1621,6 +1653,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 onChange={(e) => setJenisKelamin(e.target.value as 'Laki-laki' | 'Perempuan')}
                                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded"
                               >
+                                <option value="" disabled>-- Pilih Jenis Kelamin --</option>
                                 <option value="Laki-laki">Laki-laki</option>
                                 <option value="Perempuan">Perempuan</option>
                               </select>
@@ -1655,11 +1688,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                               <label className="block text-xs font-medium text-slate-700 mb-1">Asal Sekolah</label>
                               <input
                                 type="text"
+                                list="list-asal-sekolah"
                                 value={asalSekolah}
                                 onChange={(e) => setAsalSekolah(e.target.value)}
-                                placeholder="SMP NEGERI 1 PLANTUNGAN"
+                                placeholder="Ketik atau Pilih Asal Sekolah..."
                                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded"
                               />
+                              <datalist id="list-asal-sekolah">
+                                {daftarSekolahBatang.map((sekolah, index) => (
+                                  <option key={index} value={sekolah} />
+                                ))}
+                              </datalist>
                             </div>
 
                             <div>
