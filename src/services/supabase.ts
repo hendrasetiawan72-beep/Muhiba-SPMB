@@ -216,6 +216,7 @@ class DatabaseService {
       role: userRole,
       full_name: fullName,
       email: authUser.email || '',
+      must_change_password: !!profileData?.must_change_password,
       created_at: authUser.created_at,
     };
 
@@ -669,9 +670,21 @@ class DatabaseService {
   }
 
   /**
-   * Admin: Reset student password via secure server endpoint /api/admin/reset-password
+   * Admin: Reset password pendaftar lewat endpoint server /api/admin/reset-password.
+   * `verifikasi` adalah jawaban pemohon yang DIKETIK admin; server mencocokkannya dengan data
+   * pendaftaran (nomor pendaftaran + nomor WA wajib cocok, tanggal lahir opsional).
    */
-  public async resetStudentPassword(identifier: { user_id?: string; nik?: string }): Promise<string> {
+  public async resetStudentPassword(
+    identifier: { user_id?: string; nik?: string },
+    verifikasi: { nomor_pendaftaran: string; no_wa: string; tanggal_lahir?: string }
+  ): Promise<{
+    temporaryPassword: string;
+    nama_lengkap: string;
+    nomor_pendaftaran: string;
+    no_wa: string;
+    sessionsRevoked: boolean;
+    logged: boolean;
+  }> {
     if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
 
     const { data: sessionData } = await this.supabase.auth.getSession();
@@ -683,7 +696,7 @@ class DatabaseService {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(identifier),
+      body: JSON.stringify({ ...identifier, verifikasi }),
     });
 
     const resJson = await resp.json().catch(() => ({}));
@@ -691,7 +704,42 @@ class DatabaseService {
       throw new Error(resJson.message || 'Gagal mereset kata sandi siswa.');
     }
 
-    return resJson.temporaryPassword;
+    return {
+      temporaryPassword: resJson.temporaryPassword,
+      nama_lengkap: resJson.nama_lengkap,
+      nomor_pendaftaran: resJson.nomor_pendaftaran,
+      no_wa: resJson.no_wa,
+      sessionsRevoked: !!resJson.sessionsRevoked,
+      logged: resJson.logged !== false,
+    };
+  }
+
+  /**
+   * Siswa: ganti password milik sendiri (sesi harus aktif), lalu hapus penanda wajib-ganti.
+   */
+  public async changeMyPassword(newPassword: string): Promise<void> {
+    if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
+
+    const { error } = await this.supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      const msg = error.message || '';
+      if (/same|different from the old/i.test(msg)) {
+        throw new Error('Password baru tidak boleh sama dengan password lama.');
+      }
+      if (/reauth/i.test(msg)) {
+        throw new Error('Demi keamanan, silakan keluar lalu login ulang sebelum mengganti password.');
+      }
+      if (/weak|at least|short/i.test(msg)) {
+        throw new Error('Password terlalu lemah. Gunakan minimal 8 karakter kombinasi huruf dan angka.');
+      }
+      throw new Error(msg || 'Gagal mengganti password.');
+    }
+
+    const { error: rpcErr } = await this.supabase.rpc('complete_password_change');
+    const rpcMissing = !!rpcErr && /does not exist|could not find|PGRST202|42883/i.test(`${rpcErr.code} ${rpcErr.message}`);
+    if (rpcErr && !rpcMissing) {
+      throw new Error('Password berhasil diganti, tetapi status akun belum diperbarui. Silakan muat ulang halaman.');
+    }
   }
 
   /**
