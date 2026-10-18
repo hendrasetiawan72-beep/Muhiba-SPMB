@@ -15,19 +15,25 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
-// CORS Configuration: Batasi origin ke ALLOWED_ORIGIN atau request origin
+// CORS Configuration: hanya exact origin yang dikonfigurasi.
+// Jangan pernah merefleksikan Origin arbitrer dengan credentials.
 app.use((req: Request, res: Response, next) => {
-  const allowedOrigin = process.env.ALLOWED_ORIGIN || '';
-  const requestOrigin = req.headers?.origin || '';
+  const allowedOrigin = (process.env.ALLOWED_ORIGIN || '').trim();
+  const requestOrigin = String(req.headers?.origin || '').trim();
 
-  if (allowedOrigin) {
+  if (requestOrigin && (!allowedOrigin || requestOrigin !== allowedOrigin)) {
+    if (req.method === 'OPTIONS') {
+      return res.status(403).end();
+    }
+    return res.status(403).json({
+      code: 'CORS_FORBIDDEN',
+      message: 'Origin tidak diizinkan.',
+    });
+  }
+
+  if (allowedOrigin && requestOrigin === allowedOrigin) {
     res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-  } else if (requestOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
   }
 
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
@@ -90,22 +96,29 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
     }
 
     // 1. Verifikasi Cloudflare Turnstile
-    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+    const turnstileSecret = (process.env.TURNSTILE_SECRET_KEY || '').trim();
     const turnstileToken = req.body?.turnstileToken || req.body?.token || req.body?.turnstile_token;
     const clientIp =
       (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
       req.socket?.remoteAddress ||
       '127.0.0.1';
 
-    if (turnstileSecret) {
-      if (!turnstileToken) {
-        return res.status(403).json({
-          code: 'CAPTCHA_FAILED',
-          message: 'Verifikasi keamanan Turnstile wajib diisi.',
-        });
-      }
+    if (!turnstileSecret) {
+      console.error('[Turnstile] TURNSTILE_SECRET_KEY belum dikonfigurasi; menolak pendaftaran.');
+      return res.status(503).json({
+        code: 'SERVER_MISCONFIGURED',
+        message: 'Layanan pendaftaran sementara tidak tersedia.',
+      });
+    }
 
-      try {
+    if (!turnstileToken) {
+      return res.status(403).json({
+        code: 'CAPTCHA_FAILED',
+        message: 'Verifikasi keamanan Turnstile wajib diisi.',
+      });
+    }
+
+    try {
         const verifyFormData = new URLSearchParams();
         verifyFormData.append('secret', turnstileSecret);
         verifyFormData.append('response', String(turnstileToken));
@@ -126,17 +139,23 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
             message: 'Verifikasi keamanan Cloudflare Turnstile gagal. Silakan muat ulang halaman dan coba lagi.',
           });
         }
-      } catch (cfErr) {
+    } catch (cfErr) {
         console.error('[Turnstile] Error saat menghubungi Cloudflare siteverify:', cfErr);
         return res.status(403).json({
           code: 'CAPTCHA_FAILED',
           message: 'Gagal memverifikasi keamanan Turnstile. Silakan coba kembali.',
         });
-      }
     }
 
     // 2. Rate limiting dengan RPC registration_allowed(p_ip_hash text)
-    const salt = process.env.RATE_LIMIT_SALT || 'spmb_default_rate_limit_salt';
+    const salt = (process.env.RATE_LIMIT_SALT || '').trim();
+    if (!salt) {
+      console.error('[RateLimit] RATE_LIMIT_SALT belum dikonfigurasi; menolak pendaftaran.');
+      return res.status(503).json({
+        code: 'SERVER_MISCONFIGURED',
+        message: 'Layanan pendaftaran sementara tidak tersedia.',
+      });
+    }
     const ipHash = crypto.createHash('sha256').update(clientIp + salt).digest('hex');
 
     try {
@@ -144,14 +163,25 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
         p_ip_hash: ipHash,
       });
 
-      if (!rateLimitErr && isAllowed === false) {
+      if (rateLimitErr) {
+        console.error('[RateLimit] RPC registration_allowed gagal:', rateLimitErr);
+        return res.status(503).json({
+          code: 'RATE_LIMIT_UNAVAILABLE',
+          message: 'Layanan pendaftaran sementara tidak tersedia.',
+        });
+      }
+      if (isAllowed === false) {
         return res.status(429).json({
           code: 'RATE_LIMITED',
           message: 'Terlalu banyak percobaan. Coba lagi beberapa menit lagi.',
         });
       }
     } catch (rlEx) {
-      console.warn('[RateLimit] Gagal menjalankan RPC registration_allowed:', rlEx);
+      console.error('[RateLimit] Gagal menjalankan RPC registration_allowed:', rlEx);
+      return res.status(503).json({
+        code: 'RATE_LIMIT_UNAVAILABLE',
+        message: 'Layanan pendaftaran sementara tidak tersedia.',
+      });
     }
 
     const rawNik = req.body?.nik ?? '';
