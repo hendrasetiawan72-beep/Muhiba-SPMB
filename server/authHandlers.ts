@@ -50,7 +50,7 @@ export function formatTanggalDaftarJakarta(date = new Date()): string {
   });
   const parts = formatter.formatToParts(date);
   const get = (type: string) => parts.find((p) => p.type === type)?.value || '00';
-  return `${get('day')}-${get('month')}-${get('year')} ${get('hour')}:${get('minute')}`;
+  return `\( {get('day')}- \){get('month')}-${get('year')} \( {get('hour')}: \){get('minute')}`;
 }
 
 export interface ApiResponse {
@@ -93,7 +93,7 @@ async function rateLimitHit(
   if (!admin) return 'unavailable';
   try {
     const salt = getEnv('RATE_LIMIT_SALT') || getEnv('SUPABASE_SERVICE_ROLE_KEY');
-    const keyHash = await sha256Hex(`${bucket}:${rawKey}:${salt}`);
+    const keyHash = await sha256Hex(`\( {bucket}: \){rawKey}:${salt}`);
     const { data, error } = await admin.rpc('rate_limit_hit', {
       p_bucket: bucket,
       p_key_hash: keyHash,
@@ -138,7 +138,6 @@ async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResp
   const secret = getEnv('TURNSTILE_SECRET_KEY');
 
   if (!secret) {
-    // FAIL-CLOSED: tanpa secret, CAPTCHA tidak boleh dilewati melalui environment flag.
     console.error('[Turnstile] TURNSTILE_SECRET_KEY belum diset (fail-closed).');
     return {
       statusCode: 500,
@@ -184,6 +183,7 @@ async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResp
  * - Verifikasi Cloudflare Turnstile (wajib)
  * - Auth via Supabase
  * - Role diambil dari public.profiles (bukan JWT claim)
+ * - Admin identifier dari env ADMIN_LOGIN_ID (bukan hardcoded "admin")
  */
 export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<ApiResponse> {
   const { supabaseAdmin, supabaseAnon, supabaseUrl } = getSupabaseClients();
@@ -265,10 +265,6 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
 
   // ============================================================
   // 2. CAPTCHA
-  //    Mode default: server memverifikasi Turnstile sendiri.
-  //    Mode SUPABASE_CAPTCHA=true: token diteruskan ke Supabase Auth
-  //    (aktifkan CAPTCHA di dashboard Supabase) sehingga jalur langsung
-  //    ke Supabase dengan anon key pun wajib CAPTCHA.
   // ============================================================
   const supabaseCaptchaMode = getEnv('SUPABASE_CAPTCHA') === 'true';
   if (supabaseCaptchaMode) {
@@ -287,44 +283,53 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     if (captchaError) return captchaError;
   }
 
-  // Identitas login:
-  //  - siswa : NIK 16 digit
-  //  - admin : username "admin" ATAU email akun admin (mis. admin@smkmuhiba.sch.id)
-  // Email sintetis siswa (nik_...@auth...) tidak boleh dipakai untuk login.
+  // ============================================================
+  // 3. Identitas login (S1 FIX)
+  //  - siswa : NIK 16 digit → nik_{NIK}@auth.smkmuhiba.sch.id
+  //  - admin : hanya ADMIN_LOGIN_ID (env) → ADMIN_AUTH_EMAIL (env)
+  //  - TIDAK menerima string hardcoded "admin"
+  //  - TIDAK menerima sembarang email
+  // ============================================================
   const STUDENT_EMAIL_DOMAIN = '@auth.smkmuhiba.sch.id';
   const lowerId = cleanId.toLowerCase();
+
+  const adminLoginId = (getEnv('ADMIN_LOGIN_ID') || '').trim().toLowerCase();
+  const adminAuthEmail = (
+    getEnv('ADMIN_AUTH_EMAIL') || 'admin@smkmuhiba.sch.id'
+  )
+    .trim()
+    .toLowerCase();
+
   const isNik = /^\d{16}$/.test(cleanId);
-  const isEmailId =
-    lowerId.length <= 254 &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lowerId) &&
-    !lowerId.endsWith(STUDENT_EMAIL_DOMAIN);
-  const isAdminIdentifier = lowerId === 'admin' || isEmailId;
+  // Cocok username rahasia ATAU (opsional) ketik tepat email admin yang dikonfigurasi
+  const isAdminIdentifier =
+    Boolean(adminLoginId) &&
+    (lowerId === adminLoginId || lowerId === adminAuthEmail);
 
   let authEmail = '';
   if (isNik) {
-    authEmail = `nik_${cleanId}${STUDENT_EMAIL_DOMAIN}`;
-  } else if (lowerId === 'admin') {
-    authEmail = 'admin@smkmuhiba.sch.id';
-  } else if (isEmailId) {
-    authEmail = lowerId;
+    authEmail = `nik_\( {cleanId} \){STUDENT_EMAIL_DOMAIN}`;
+  } else if (isAdminIdentifier) {
+    authEmail = adminAuthEmail;
   } else {
+    // Jangan bocorkan format username admin
     return {
       statusCode: 400,
       body: {
         success: false,
         code: 'INVALID_IDENTIFIER',
-        error: 'Masukkan NIK 16 digit angka sebagai username anda.',
+        error:
+          'NIK harus 16 digit angka, atau gunakan username admin yang diberikan panitia.',
       },
     };
   }
 
-  // 3. Rate limit per NIK / admin (setelah CAPTCHA lolos, agar bot tanpa CAPTCHA
-  //    tidak bisa mengunci akun orang lain)
+  // 4. Rate limit per NIK / admin id
   const idLimited = rateLimitResponse(
     await rateLimitHit(
       supabaseAdmin,
       'login:id',
-      cleanId.toLowerCase(),
+      lowerId,
       LOGIN_LIMIT_PER_ID,
       LOGIN_WINDOW_SECONDS
     )
@@ -339,7 +344,6 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     });
 
     if (authErr || !authData?.user) {
-      // CAPTCHA Supabase menolak: ini masalah konfigurasi/token, bukan password salah
       if (authErr && /captcha/i.test(authErr.message || '')) {
         console.error('[handleLogin] Supabase menolak karena CAPTCHA:', authErr.message);
         if (supabaseCaptchaMode) {
@@ -348,7 +352,8 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
             body: {
               success: false,
               code: 'CAPTCHA_FAILED',
-              error: 'Verifikasi keamanan gagal atau kedaluwarsa. Selesaikan CAPTCHA lagi lalu coba kembali.',
+              error:
+                'Verifikasi keamanan gagal atau kedaluwarsa. Selesaikan CAPTCHA lagi lalu coba kembali.',
             },
           };
         }
@@ -377,7 +382,6 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     const authUser = authData.user;
     const clientForProfile = supabaseAdmin || supabaseAnon;
 
-    // Source of Truth: role dari public.profiles
     const { data: profileData, error: profileErr } = await clientForProfile
       .from('profiles')
       .select('*')
@@ -460,9 +464,7 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
 
 /**
  * Shared Register Request Handler
- * Catatan: production register utama ada di api/auth/register.ts (lebih lengkap:
- * NIK validation, rate limit, Turnstile, weak password, dll).
- * Handler ini tetap dipertahankan untuk kompatibilitas.
+ * Catatan: production register utama ada di api/auth/register.ts
  */
 export async function handleRegister(body: any): Promise<ApiResponse> {
   const { supabaseAdmin, supabaseAnon, supabaseUrl } = getSupabaseClients();
@@ -569,7 +571,6 @@ export async function handleRegister(body: any): Promise<ApiResponse> {
     }
 
     const internalEmail = `nik_${cleanNik}@auth.smkmuhiba.sch.id`;
-    // JANGAN kirim role di user_metadata (dicegah privilege escalation)
     const { data: authCreated, error: createAuthErr } = await supabaseAdmin.auth.admin.createUser({
       email: internalEmail,
       password: cleanPassword,
@@ -641,7 +642,7 @@ export async function handleRegister(body: any): Promise<ApiResponse> {
           const seq = (count || 0) + 1;
           const seqStr = String(seq).length < 4 ? String(seq).padStart(4, '0') : String(seq);
           const rand = Math.floor(100 + Math.random() * 900);
-          studentPayload.nomor_pendaftaran = `${currentYear}${seqStr}${rand}`;
+          studentPayload.nomor_pendaftaran = `\( {currentYear} \){seqStr}${rand}`;
           const retry = await supabaseAdmin
             .from('students')
             .insert(studentPayload)
@@ -850,7 +851,7 @@ export async function handleDeleteStudent(
         .list(targetUserId);
 
       if (files && files.length > 0) {
-        const paths = files.map((f) => `${targetUserId}/${f.name}`);
+        const paths = files.map((f) => `\( {targetUserId}/ \){f.name}`);
         await supabaseAdmin.storage.from('dokumen-ppdb').remove(paths);
       }
     } catch (storageErr) {
@@ -863,7 +864,7 @@ export async function handleDeleteStudent(
         .list(cleanNik);
 
       if (legacyFiles && legacyFiles.length > 0) {
-        const paths = legacyFiles.map((f) => `${cleanNik}/${f.name}`);
+        const paths = legacyFiles.map((f) => `\( {cleanNik}/ \){f.name}`);
         await supabaseAdmin.storage.from('berkas-spmb').remove(paths);
       }
     } catch (storageErr) {
