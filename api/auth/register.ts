@@ -1,19 +1,28 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
-// Vercel Serverless Function: POST /api/auth/register
+// Vercel / Cloudflare Worker: POST /api/auth/register
 export default async function handler(req: any, res: any) {
-  // CORS setup - Batasi origin ke ALLOWED_ORIGIN atau request origin, hindari wildcard dengan credentials
-  const allowedOrigin = process.env.ALLOWED_ORIGIN || '';
-  const requestOrigin = req.headers?.origin || '';
+  // ============================================================
+  // CORS — HANYA izinkan origin yang dikonfigurasi
+  // ============================================================
+  const allowedOrigin = (process.env.ALLOWED_ORIGIN || '').trim();
+  const requestOrigin = (req.headers?.origin || '').trim();
 
   if (allowedOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  } else if (requestOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // Mode ketat: hanya origin yang diizinkan
+    if (requestOrigin && requestOrigin === allowedOrigin) {
+      res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    } else if (!requestOrigin) {
+      // Same-origin / non-browser call
+      res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    }
+    // Jika origin berbeda → jangan set ACAO (browser akan block)
   } else {
+    // Production WAJIB set ALLOWED_ORIGIN.
+    console.error('[CORS] ALLOWED_ORIGIN belum dikonfigurasi!');
+    // Tanpa credentials agar tidak berbahaya
     res.setHeader('Access-Control-Allow-Origin', '*');
   }
 
@@ -23,6 +32,7 @@ export default async function handler(req: any, res: any) {
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
   res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).json({ success: true });
@@ -44,7 +54,9 @@ export default async function handler(req: any, res: any) {
     '';
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('[API /auth/register] Konfigurasi server belum lengkap: SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY tidak ditemukan.');
+    console.error(
+      '[API /auth/register] Konfigurasi server belum lengkap: SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY tidak ditemukan.'
+    );
     return res.status(500).json({
       code: 'SERVER_ERROR',
       message: 'Layanan pendaftaran sedang tidak dapat diakses (konfigurasi server belum lengkap).',
@@ -62,11 +74,16 @@ export default async function handler(req: any, res: any) {
       try {
         body = JSON.parse(body);
       } catch {
-        return res.status(400).json({ code: 'SERVER_ERROR', message: 'Request body bukan JSON yang valid.' });
+        return res.status(400).json({
+          code: 'SERVER_ERROR',
+          message: 'Request body bukan JSON yang valid.',
+        });
       }
     }
 
+    // ============================================================
     // 1. Verifikasi token Cloudflare Turnstile
+    // ============================================================
     const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
     const turnstileToken = body?.turnstileToken || body?.token || body?.turnstile_token;
     const clientIp =
@@ -90,17 +107,21 @@ export default async function handler(req: any, res: any) {
           verifyFormData.append('remoteip', clientIp);
         }
 
-        const turnstileResp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-          method: 'POST',
-          body: verifyFormData,
-        });
+        const turnstileResp = await fetch(
+          'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+          {
+            method: 'POST',
+            body: verifyFormData,
+          }
+        );
         const turnstileOutcome = await turnstileResp.json();
 
         if (!turnstileOutcome.success) {
           console.warn('[Turnstile] Verifikasi gagal:', turnstileOutcome['error-codes']);
           return res.status(403).json({
             code: 'CAPTCHA_FAILED',
-            message: 'Verifikasi keamanan Cloudflare Turnstile gagal. Silakan muat ulang halaman dan coba lagi.',
+            message:
+              'Verifikasi keamanan Cloudflare Turnstile gagal. Silakan muat ulang halaman dan coba lagi.',
           });
         }
       } catch (cfErr) {
@@ -112,44 +133,71 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // 2. Rate limiting dengan RPC registration_allowed(p_ip_hash text)
+    // ============================================================
+    // 2. Rate limiting — FAIL CLOSED
+    // ============================================================
     const salt = process.env.RATE_LIMIT_SALT || 'spmb_default_rate_limit_salt';
     const ipHash = crypto.createHash('sha256').update(clientIp + salt).digest('hex');
 
     try {
-      const { data: isAllowed, error: rateLimitErr } = await supabaseAdmin.rpc('registration_allowed', {
-        p_ip_hash: ipHash,
-      });
+      const { data: isAllowed, error: rateLimitErr } = await supabaseAdmin.rpc(
+        'registration_allowed',
+        {
+          p_ip_hash: ipHash,
+        }
+      );
 
-      if (!rateLimitErr && isAllowed === false) {
+      if (rateLimitErr) {
+        // FAIL CLOSED: jika RPC error → tolak request
+        console.error('[RateLimit] RPC error (fail-closed):', rateLimitErr);
+        return res.status(503).json({
+          code: 'RATE_LIMIT_UNAVAILABLE',
+          message:
+            'Layanan pendaftaran sementara tidak tersedia. Silakan coba beberapa saat lagi.',
+        });
+      }
+
+      if (isAllowed === false) {
         return res.status(429).json({
           code: 'RATE_LIMITED',
           message: 'Terlalu banyak percobaan. Coba lagi beberapa menit lagi.',
         });
       }
     } catch (rlEx) {
-      console.warn('[RateLimit] Gagal menjalankan RPC registration_allowed:', rlEx);
+      // FAIL CLOSED juga pada exception
+      console.error('[RateLimit] Exception (fail-closed):', rlEx);
+      return res.status(503).json({
+        code: 'RATE_LIMIT_UNAVAILABLE',
+        message:
+          'Layanan pendaftaran sementara tidak tersedia. Silakan coba beberapa saat lagi.',
+      });
     }
 
-    // Ekstraksi & sanitasi input pendaftaran
+    // ============================================================
+    // 3. Ekstraksi & sanitasi input
+    // ============================================================
     const rawNik = body?.nik ?? '';
     const rawNama = body?.nama ?? body?.nama_lengkap ?? '';
     const rawJurusan = body?.jurusan ?? body?.jurusan_pilihan ?? '';
     const rawWa = body?.whatsapp ?? body?.no_wa ?? '';
     const rawPassword = body?.password ?? '';
 
-    const cleanNik = String(rawNik || '').trim().replace(/\D/g, '');
+    const cleanNik = String(rawNik || '')
+      .trim()
+      .replace(/\D/g, '');
     const cleanNama = String(rawNama || '').trim();
     const cleanJurusan = String(rawJurusan || '').trim().toUpperCase();
     const cleanNoWa = String(rawWa || '').trim();
     const cleanPassword = String(rawPassword || '').trim();
 
-    // 3. Validasi NIK di server: tepat 16 digit angka, bukan 16 digit sama, kode provinsi sah, tanggal & bulan valid
+    // ============================================================
+    // 4. Validasi NIK (16 digit, bukan digit sama, kode provinsi, tgl/bln)
+    // ============================================================
     if (!/^\d{16}$/.test(cleanNik)) {
       return res.status(400).json({ code: 'NIK_INVALID', message: 'NIK tidak valid' });
     }
 
-    // Tolak jika 16 digit berupa angka yang sama persis (misal 0000000000000000 atau 1111111111111111)
+    // Tolak jika 16 digit berupa angka yang sama persis
     if (/^(\d)\1{15}$/.test(cleanNik)) {
       return res.status(400).json({ code: 'NIK_INVALID', message: 'NIK tidak valid' });
     }
@@ -169,8 +217,7 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ code: 'NIK_INVALID', message: 'NIK tidak valid' });
     }
 
-    // Validasi tanggal dan bulan lahir pada NIK
-    // Digit 7-8: Tanggal (01-31 untuk laki-laki, 41-71 untuk perempuan)
+    // Digit 7-8: Tanggal (01-31 laki-laki, 41-71 perempuan)
     // Digit 9-10: Bulan (01-12)
     const tglInt = parseInt(cleanNik.slice(6, 8), 10);
     const blnInt = parseInt(cleanNik.slice(8, 10), 10);
@@ -178,19 +225,28 @@ export default async function handler(req: any, res: any) {
     if (blnInt < 1 || blnInt > 12) {
       return res.status(400).json({ code: 'NIK_INVALID', message: 'NIK tidak valid' });
     }
-    const isTglValid = (tglInt >= 1 && tglInt <= 31) || (tglInt >= 41 && tglInt <= 71);
+    const isTglValid =
+      (tglInt >= 1 && tglInt <= 31) || (tglInt >= 41 && tglInt <= 71);
     if (!isTglValid) {
       return res.status(400).json({ code: 'NIK_INVALID', message: 'NIK tidak valid' });
     }
 
     if (!cleanNama) {
-      return res.status(400).json({ code: 'SERVER_ERROR', message: 'Nama lengkap wajib diisi.' });
+      return res.status(400).json({
+        code: 'SERVER_ERROR',
+        message: 'Nama lengkap wajib diisi.',
+      });
     }
     if (!['TO', 'TJKT', 'AKL'].includes(cleanJurusan)) {
-      return res.status(400).json({ code: 'SERVER_ERROR', message: 'Pilihan kompetensi keahlian / jurusan tidak valid.' });
+      return res.status(400).json({
+        code: 'SERVER_ERROR',
+        message: 'Pilihan kompetensi keahlian / jurusan tidak valid.',
+      });
     }
 
-    // 4. Validasi Kata Sandi: minimal 8 karakter dan tolak kata sandi umum
+    // ============================================================
+    // 5. Validasi Kata Sandi
+    // ============================================================
     const lowerPass = cleanPassword.toLowerCase();
     const commonPasswords = [
       '12345678',
@@ -212,11 +268,14 @@ export default async function handler(req: any, res: any) {
     if (cleanPassword.length < 8 || isPasswordCommon) {
       return res.status(400).json({
         code: 'WEAK_PASSWORD',
-        message: 'Kata sandi minimal 8 karakter dan tidak boleh menggunakan kata sandi umum atau NIK.',
+        message:
+          'Kata sandi minimal 8 karakter dan tidak boleh menggunakan kata sandi umum atau NIK.',
       });
     }
 
-    // Cek duplikasi NIK di tabel students
+    // ============================================================
+    // 6. Cek duplikasi NIK
+    // ============================================================
     const { data: existingStudent, error: checkExistErr } = await supabaseAdmin
       .from('students')
       .select('nik')
@@ -234,21 +293,30 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // 5. Buat user dengan auth.admin.createUser (user_metadata HANYA nik dan full_name; JANGAN kirim role)
+    // ============================================================
+    // 7. Buat user auth (role TIDAK dikirim di metadata)
+    // ============================================================
     const internalEmail = `nik_${cleanNik}@auth.smkmuhiba.sch.id`;
-    const { data: authCreated, error: createAuthErr } = await supabaseAdmin.auth.admin.createUser({
-      email: internalEmail,
-      password: cleanPassword,
-      email_confirm: true,
-      user_metadata: {
-        nik: cleanNik,
-        full_name: cleanNama,
-      },
-    });
+    const { data: authCreated, error: createAuthErr } =
+      await supabaseAdmin.auth.admin.createUser({
+        email: internalEmail,
+        password: cleanPassword,
+        email_confirm: true,
+        user_metadata: {
+          nik: cleanNik,
+          full_name: cleanNama,
+        },
+      });
 
     if (createAuthErr || !authCreated?.user) {
-      console.error('[API /auth/register] Supabase auth.admin.createUser error:', createAuthErr);
-      if (createAuthErr?.message?.includes('already been registered') || createAuthErr?.message?.includes('exists')) {
+      console.error(
+        '[API /auth/register] Supabase auth.admin.createUser error:',
+        createAuthErr
+      );
+      if (
+        createAuthErr?.message?.includes('already been registered') ||
+        createAuthErr?.message?.includes('exists')
+      ) {
         return res.status(409).json({
           code: 'NIK_EXISTS',
           message: `Akun untuk NIK ${cleanNik} sudah terdaftar. Silakan login dengan kata sandi Anda.`,
@@ -262,30 +330,42 @@ export default async function handler(req: any, res: any) {
 
     const userId = authCreated.user.id;
 
-    // 6. Nomor pendaftaran dari RPC next_nomor_pendaftaran()
+    // ============================================================
+    // 8. Nomor pendaftaran
+    // ============================================================
     let nomorPendaftaran = '';
     try {
-      const { data: rpcNo, error: rpcErr } = await supabaseAdmin.rpc('next_nomor_pendaftaran');
+      const { data: rpcNo, error: rpcErr } = await supabaseAdmin.rpc(
+        'next_nomor_pendaftaran'
+      );
       if (!rpcErr && rpcNo) {
         nomorPendaftaran = String(rpcNo);
       } else {
-        console.warn('[API /auth/register] RPC next_nomor_pendaftaran belum tersedia / error:', rpcErr);
-        // Fallback jika migrasi RPC belum selesai dijalankan
+        console.warn(
+          '[API /auth/register] RPC next_nomor_pendaftaran belum tersedia / error:',
+          rpcErr
+        );
         const randSalt = Math.floor(10 + Math.random() * 90);
-        nomorPendaftaran = `2026${Date.now().toString().slice(-4)}${randSalt}`;
+        nomorPendaftaran = `2026\( {Date.now().toString().slice(-4)} \){randSalt}`;
       }
     } catch (rpcEx) {
       console.warn('[API /auth/register] RPC call exception:', rpcEx);
       const randSalt = Math.floor(10 + Math.random() * 90);
-      nomorPendaftaran = `2026${Date.now().toString().slice(-4)}${randSalt}`;
+      nomorPendaftaran = `2026\( {Date.now().toString().slice(-4)} \){randSalt}`;
     }
 
     const now = new Date();
-    const dateFormatted = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const dateFormatted = `\( {String(now.getDate()).padStart(2, '0')}- \){String(
+      now.getMonth() + 1
+    ).padStart(2, '0')}-${now.getFullYear()} ${String(now.getHours()).padStart(
+      2,
+      '0'
+    )}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    // 7. Insert baris public.profiles dan public.students dari server (service role) dengan atomic rollback
+    // ============================================================
+    // 9. Insert profiles + students (dengan atomic rollback)
+    // ============================================================
     try {
-      // Upsert profile
       const { error: profileErr } = await supabaseAdmin.from('profiles').upsert({
         id: userId,
         nik: cleanNik,
@@ -294,7 +374,6 @@ export default async function handler(req: any, res: any) {
       });
       if (profileErr) throw profileErr;
 
-      // Insert student record
       const studentPayload = {
         user_id: userId,
         nik: cleanNik,
@@ -322,11 +401,12 @@ export default async function handler(req: any, res: any) {
 
       if (studentErr) throw studentErr;
 
-      // Sign in untuk mendapatkan session token resmi
-      const { data: sessionData, error: signInErr } = await supabaseAnon.auth.signInWithPassword({
-        email: internalEmail,
-        password: cleanPassword,
-      });
+      // Sign-in untuk dapat session resmi
+      const { data: sessionData, error: signInErr } =
+        await supabaseAnon.auth.signInWithPassword({
+          email: internalEmail,
+          password: cleanPassword,
+        });
 
       if (signInErr || !sessionData?.session) {
         return res.status(201).json({
@@ -355,16 +435,23 @@ export default async function handler(req: any, res: any) {
         student: insertedStudent,
       });
     } catch (dbErr: any) {
-      // ROLLBACK ATOMIK: Hapus auth user jika proses simpan data gagal
-      console.error('[API /auth/register] DB insert failed, rolling back auth user:', dbErr);
+      // ROLLBACK ATOMIK: hapus auth user jika DB gagal
+      console.error(
+        '[API /auth/register] DB insert failed, rolling back auth user:',
+        dbErr
+      );
       try {
         await supabaseAdmin.auth.admin.deleteUser(userId);
       } catch (delErr) {
-        console.error('[API /auth/register] Failed to rollback auth user:', delErr);
+        console.error(
+          '[API /auth/register] Failed to rollback auth user:',
+          delErr
+        );
       }
       return res.status(500).json({
         code: 'SERVER_ERROR',
-        message: 'Gagal menyimpan data pendaftaran ke database. Akun telah dibatalkan, silakan coba kembali.',
+        message:
+          'Gagal menyimpan data pendaftaran ke database. Akun telah dibatalkan, silakan coba kembali.',
       });
     }
   } catch (err: any) {
