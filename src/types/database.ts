@@ -17,6 +17,7 @@ export interface User {
   password_hash?: string;
   full_name?: string;
   email?: string;
+  must_change_password?: boolean;
   created_at: string;
 }
 
@@ -25,6 +26,8 @@ export interface ProfileRow {
   nik: string | null;
   full_name: string;
   role: UserRole;
+  must_change_password?: boolean;
+  password_changed_at?: string | null;
   created_at: string;
   updated_at: string;
 }
