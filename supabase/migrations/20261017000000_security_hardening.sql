@@ -74,11 +74,33 @@ BEGIN
   -- 2. Restrict status transitions for students
   IF NEW.status_pendaftaran IS DISTINCT FROM OLD.status_pendaftaran THEN
     IF NOT (
-      (OLD.status_pendaftaran IN ('Belum Lengkap', 'Berkas Fisik')) AND
+      (OLD.status_pendaftaran IN ('Belum Lengkap', 'Berkas Fisik') OR OLD.status_pendaftaran IS NULL) AND
       (NEW.status_pendaftaran = 'Menunggu Verifikasi')
     ) THEN
       RAISE EXCEPTION 'Akses ditolak: Siswa hanya dapat mengubah status menjadi "Menunggu Verifikasi" saat melengkapi berkas.';
     END IF;
+  END IF;
+
+  -- 3. Batasi ukuran JSONB (maksimal 32 KB per kolom) dan validasi struktur
+  IF pg_column_size(NEW.data_diri) > 32768 OR
+     pg_column_size(NEW.data_alamat) > 32768 OR
+     pg_column_size(NEW.data_orang_tua) > 32768 OR
+     pg_column_size(NEW.data_berkas) > 32768 THEN
+    RAISE EXCEPTION 'Akses ditolak: Ukuran data JSON formulir melebihi batas 32 KB.';
+  END IF;
+
+  -- 4. Validasi format no_wa (10-16 digit)
+  IF NEW.no_wa IS NOT NULL AND NEW.no_wa <> '' AND NEW.no_wa !~ '^[0-9+]{10,16}$' THEN
+    RAISE EXCEPTION 'Format nomor WhatsApp tidak valid (harus 10-16 digit angka).';
+  END IF;
+
+  -- 5. Validasi NIK orang tua jika diisi (harus tepat 16 digit angka)
+  IF NEW.data_orang_tua->>'nik_ayah' IS NOT NULL AND NEW.data_orang_tua->>'nik_ayah' <> '' AND NEW.data_orang_tua->>'nik_ayah' !~ '^\d{16}$' THEN
+    RAISE EXCEPTION 'NIK Ayah harus terdiri dari tepat 16 digit angka.';
+  END IF;
+
+  IF NEW.data_orang_tua->>'nik_ibu' IS NOT NULL AND NEW.data_orang_tua->>'nik_ibu' <> '' AND NEW.data_orang_tua->>'nik_ibu' !~ '^\d{16}$' THEN
+    RAISE EXCEPTION 'NIK Ibu harus terdiri dari tepat 16 digit angka.';
   END IF;
 
   -- Students are permitted to update: jurusan_pilihan, nama_lengkap, no_wa, data_diri, data_alamat, data_orang_tua, data_berkas
@@ -268,8 +290,8 @@ DROP INDEX IF EXISTS public.idx_profiles_role;
 
 -- ============================================================================
 -- 6. SEQUENCE-BACKED NOMOR PENDAFTARAN GENERATOR
--- Format: '2026' || 3-digit zero-padded sequence || 2-digit random (10-99)
--- Starts from existing count + 1.
+-- Format: <Tahun Berjalan (4 digit)> || Sequence (min 4 digit, tidak dipotong jika > 999) || Random (3 digit 100-999)
+-- Contoh: 20260001842, 20270125914 (otomatis tahun 2027 di tahun 2027)
 -- ============================================================================
 CREATE SEQUENCE IF NOT EXISTS public.nomor_pendaftaran_seq;
 
@@ -281,13 +303,42 @@ BEGIN
   PERFORM setval('public.nomor_pendaftaran_seq', GREATEST(v_count, 1), true);
 END $$;
 
+CREATE OR REPLACE FUNCTION public.next_nomor_pendaftaran()
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_year TEXT;
+  v_seq BIGINT;
+  v_seq_str TEXT;
+  v_rand TEXT;
+BEGIN
+  -- 1. Awalan otomatis menyesuaikan tahun berjalan (2026, 2027, dst.)
+  v_year := to_char(CURRENT_DATE, 'YYYY');
+  v_seq := nextval('public.nomor_pendaftaran_seq');
+  v_seq_str := v_seq::TEXT;
+  -- 2. Jangan potong urutan jika di atas 999 (minimal 4 digit pad, tidak dipotong jika lebih dari 4 digit)
+  IF length(v_seq_str) < 4 THEN
+    v_seq_str := lpad(v_seq_str, 4, '0');
+  END IF;
+  -- 3. 3-digit acak (100 - 999) agar nomor tidak mudah ditebak
+  v_rand := lpad((floor(random() * 900) + 100)::text, 3, '0');
+  RETURN v_year || v_seq_str || v_rand;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.generate_nomor_pendaftaran()
 RETURNS TEXT
 LANGUAGE sql
 VOLATILE
 AS $$
-  SELECT '2026' || lpad(nextval('public.nomor_pendaftaran_seq')::text, 3, '0') || lpad((floor(random() * 90) + 10)::text, 2, '0');
+  SELECT public.next_nomor_pendaftaran();
 $$;
+
+REVOKE EXECUTE ON FUNCTION public.next_nomor_pendaftaran() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.next_nomor_pendaftaran() TO service_role;
 
 ALTER TABLE public.students 
   ALTER COLUMN nomor_pendaftaran SET DEFAULT public.generate_nomor_pendaftaran();

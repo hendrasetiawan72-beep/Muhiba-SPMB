@@ -473,6 +473,42 @@ class DatabaseService {
   /**
    * Update Student Data Diri directly by id without sending locked columns
    */
+  /**
+   * Helper validasi & pembatasan ukuran payload JSONB (maks 32 KB)
+   */
+  private validateJsonb(payload: any, label: string) {
+    if (!payload) return;
+    const jsonStr = JSON.stringify(payload);
+    if (new TextEncoder().encode(jsonStr).length > 32768) {
+      throw new Error(`Ukuran ${label} melebihi batas maksimal yang diizinkan (32 KB).`);
+    }
+  }
+
+  /**
+   * Helper validasi nomor WhatsApp / telepon (10-15 digit)
+   */
+  private validateNoWa(no: string, label: string = 'Nomor WhatsApp') {
+    const clean = (no || '').trim().replace(/\D/g, '');
+    if (clean && (clean.length < 10 || clean.length > 15)) {
+      throw new Error(`${label} harus berupa 10 - 15 digit angka.`);
+    }
+    return clean;
+  }
+
+  /**
+   * Helper validasi NIK orang tua (16 digit angka, tidak boleh 16 angka sama)
+   */
+  private validateNikOrangTua(nik: string | undefined, label: string) {
+    if (!nik || !nik.trim()) return;
+    const clean = nik.trim().replace(/\D/g, '');
+    if (clean.length !== 16 || /^(\d)\1{15}$/.test(clean)) {
+      throw new Error(`NIK ${label} harus berupa 16 digit angka yang sah.`);
+    }
+  }
+
+  /**
+   * Update Student Data Diri directly by id without sending locked columns
+   */
   public async updateStudentDataDiri(
     studentId: string,
     dataDiri: Partial<Student['data_diri']>,
@@ -482,19 +518,25 @@ class DatabaseService {
   ): Promise<Student> {
     if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
 
+    if (dataDiri.no_hp) {
+      this.validateNoWa(dataDiri.no_hp, 'Nomor HP siswa');
+    }
+
     const mergedDataDiri = {
       ...dataDiri,
-      ...(ukuranBaju ? { ukuran_baju: ukuranBaju } : {}),
-      ...(kodeReferal ? { kode_referal: kodeReferal } : {}),
+      ...(ukuranBaju ? { ukuran_baju: ukuranBaju.slice(0, 10) } : {}),
+      ...(kodeReferal ? { kode_referal: kodeReferal.slice(0, 50) } : {}),
     };
+
+    this.validateJsonb(mergedDataDiri, 'Data Diri');
 
     const updatePayload: any = {
       data_diri: mergedDataDiri,
     };
 
     if (jurusan) updatePayload.jurusan_pilihan = jurusan;
-    if (dataDiri.nama_lengkap) updatePayload.nama_lengkap = dataDiri.nama_lengkap;
-    if (dataDiri.no_hp) updatePayload.no_wa = dataDiri.no_hp;
+    if (dataDiri.nama_lengkap) updatePayload.nama_lengkap = dataDiri.nama_lengkap.slice(0, 100);
+    if (dataDiri.no_hp) updatePayload.no_wa = this.validateNoWa(dataDiri.no_hp);
 
     const { data, error } = await this.supabase
       .from('students')
@@ -517,6 +559,8 @@ class DatabaseService {
   public async updateStudentDataAlamat(studentId: string, dataAlamat: Student['data_alamat']): Promise<Student> {
     if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
 
+    this.validateJsonb(dataAlamat, 'Data Alamat');
+
     const { data, error } = await this.supabase
       .from('students')
       .update({ data_alamat: dataAlamat })
@@ -537,6 +581,18 @@ class DatabaseService {
    */
   public async updateStudentDataOrangTua(studentId: string, dataOrangTua: Student['data_orang_tua']): Promise<Student> {
     if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
+
+    // Validasi NIK orang tua jika diisi
+    this.validateNikOrangTua(dataOrangTua.nik_ayah, 'Ayah');
+    this.validateNikOrangTua(dataOrangTua.nik_ibu, 'Ibu');
+    this.validateNikOrangTua(dataOrangTua.nik_wali, 'Wali');
+
+    // Validasi no WA / HP ortu jika diisi
+    if (dataOrangTua.no_hp_ayah) this.validateNoWa(dataOrangTua.no_hp_ayah, 'Nomor HP Ayah');
+    if (dataOrangTua.no_hp_ibu) this.validateNoWa(dataOrangTua.no_hp_ibu, 'Nomor HP Ibu');
+    if (dataOrangTua.no_hp_wali) this.validateNoWa(dataOrangTua.no_hp_wali, 'Nomor HP Wali');
+
+    this.validateJsonb(dataOrangTua, 'Data Orang Tua');
 
     const { data, error } = await this.supabase
       .from('students')
@@ -571,34 +627,38 @@ class DatabaseService {
   }
 
   /**
-   * Generate temporary Signed URL (valid for 300 seconds) for private storage documents
+   * Generate temporary Signed URL (valid for 300 seconds) for private storage documents.
+   * Hanya menerima path internal berawalan {user_id}/ (menolak URL luar http/https apa pun demi keamanan admin & siswa).
    */
-  public async getSignedFileUrl(filePathOrUrl: string, expiresInSeconds: number = 300): Promise<string> {
+  public async getSignedFileUrl(filePath: string, expiresInSeconds: number = 300, expectedUserId?: string): Promise<string> {
     if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
-    if (!filePathOrUrl) throw new Error('Tautan berkas tidak valid.');
+    if (!filePath || typeof filePath !== 'string') throw new Error('Path berkas tidak valid.');
 
-    // If string is already an http(s) URL, check if it points to Supabase storage to convert to signed URL
-    if (filePathOrUrl.startsWith('http://') || filePathOrUrl.startsWith('https://')) {
-      const match = filePathOrUrl.match(/(?:dokumen-ppdb|berkas-spmb)\/(.+)$/);
-      if (match && match[1]) {
-        const decodedPath = decodeURIComponent(match[1].split('?')[0]);
-        const { data, error } = await this.supabase.storage
-          .from('dokumen-ppdb')
-          .createSignedUrl(decodedPath, expiresInSeconds);
-        if (!error && data?.signedUrl) {
-          return data.signedUrl;
-        }
-      }
-      return filePathOrUrl;
+    // Tolak semua skema URL eksternal (http, https, javascript, data, dll) untuk mencegah phishing / open redirect
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(filePath) || filePath.includes('//')) {
+      throw new Error('Akses ditolak: Hanya path berkas internal yang diizinkan.');
+    }
+
+    const cleanPath = filePath.trim().replace(/^\/+/, '');
+
+    // Validasi bahwa path berawalan {user_id}/
+    if (expectedUserId && !cleanPath.startsWith(`${expectedUserId}/`)) {
+      throw new Error('Akses ditolak: Path berkas tidak sesuai identitas pendaftar.');
+    }
+
+    // Path harus terdiri dari {user_id}/{filename}
+    const segments = cleanPath.split('/');
+    if (segments.length !== 2 || !segments[0] || !segments[1]) {
+      throw new Error('Format path berkas tidak valid.');
     }
 
     const { data, error } = await this.supabase.storage
       .from('dokumen-ppdb')
-      .createSignedUrl(filePathOrUrl, expiresInSeconds);
+      .createSignedUrl(cleanPath, expiresInSeconds);
 
-    if (error) {
+    if (error || !data?.signedUrl) {
       console.error('[Storage SignedUrl] Error creating signed URL:', error);
-      throw new Error(`Gagal membuka berkas: ${error.message}`);
+      throw new Error(`Gagal membuka berkas: ${error?.message || 'File tidak ditemukan'}`);
     }
 
     return data.signedUrl;

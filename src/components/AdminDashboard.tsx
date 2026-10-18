@@ -584,7 +584,7 @@ const BerkasRow: React.FC<{
   <div className="flex items-center justify-between gap-2">
     <span className="text-slate-500 shrink-0">{label}:</span>
     <span className="font-medium text-slate-800 text-right truncate">
-      {item && (item.path || item.url) ? (
+      {item && item.path ? (
         <button
           type="button"
           onClick={() => onOpen(item)}
@@ -1070,8 +1070,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const openBerkas = async (item?: BerkasItem) => {
-    const ref = item?.path || item?.url;
-    if (!ref) return;
+    const rawPath = item?.path;
+    if (!rawPath || typeof rawPath !== 'string') {
+      showToast('Path berkas tidak ditemukan atau belum diunggah.', 'error');
+      return;
+    }
+
+    // Hanya terima path berawalan {user_id}/ untuk mencegah open redirect & phishing
+    const expectedPrefix = `${selectedStudent.user_id}/`;
+    if (!rawPath.startsWith(expectedPrefix)) {
+      showToast('Akses ditolak: Berkas bukan milik pendaftar ini atau format path tidak aman.', 'error');
+      return;
+    }
+
     // Jendela dibuka sinkron (saat klik) agar tidak diblokir pop-up blocker.
     const win = window.open('about:blank', '_blank');
     if (!win) {
@@ -1079,7 +1090,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       return;
     }
     try {
-      const signedUrl = await dbService.getSignedFileUrl(ref, 300);
+      const signedUrl = await dbService.getSignedFileUrl(rawPath, 300, selectedStudent.user_id);
       win.opener = null;
       win.location.href = signedUrl;
     } catch (err: any) {

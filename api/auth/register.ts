@@ -245,6 +245,14 @@ export default async function handler(req: any, res: any) {
       });
     }
 
+    const cleanWaDigits = cleanNoWa.replace(/[-\s]/g, '');
+    if (!cleanWaDigits || !/^(\+?62|0)8[1-9][0-9]{7,12}$/.test(cleanWaDigits)) {
+      return res.status(400).json({
+        code: 'VALIDATION_ERROR',
+        message: 'Nomor WhatsApp tidak valid. Format: 08xxxxxxxxxx atau 628xxxxxxxxxx (10-15 digit).',
+      });
+    }
+
     // ============================================================
     // 5. Validasi Kata Sandi
     // ============================================================
@@ -332,9 +340,10 @@ export default async function handler(req: any, res: any) {
     const userId = authCreated.user.id;
 
     // ============================================================
-    // 8. Nomor pendaftaran
+    // 8. Nomor pendaftaran (Tahun dinamis + sequence min 4 digit + 3 digit acak)
     // ============================================================
     let nomorPendaftaran = '';
+    const currentYear = new Date().getFullYear().toString();
     try {
       const { data: rpcNo, error: rpcErr } = await supabaseAdmin.rpc(
         'next_nomor_pendaftaran'
@@ -346,13 +355,18 @@ export default async function handler(req: any, res: any) {
           '[API /auth/register] RPC next_nomor_pendaftaran belum tersedia / error:',
           rpcErr
         );
-        const randSalt = Math.floor(10 + Math.random() * 90);
-        nomorPendaftaran = `2026${Date.now().toString().slice(-4)}${randSalt}`;
+        const { count } = await supabaseAdmin
+          .from('students')
+          .select('*', { count: 'exact', head: true });
+        const seq = (count || 0) + 1;
+        const seqStr = String(seq).length < 4 ? String(seq).padStart(4, '0') : String(seq);
+        const randSalt = Math.floor(100 + Math.random() * 900);
+        nomorPendaftaran = `${currentYear}${seqStr}${randSalt}`;
       }
     } catch (rpcEx) {
       console.warn('[API /auth/register] RPC call exception:', rpcEx);
-      const randSalt = Math.floor(10 + Math.random() * 90);
-      nomorPendaftaran = `2026${Date.now().toString().slice(-4)}${randSalt}`;
+      const randSalt = Math.floor(100 + Math.random() * 900);
+      nomorPendaftaran = `${currentYear}${Date.now().toString().slice(-4)}${randSalt}`;
     }
 
     const dateFormatted = formatTanggalDaftarJakarta();

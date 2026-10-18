@@ -604,9 +604,11 @@ export async function handleRegister(body: any): Promise<ApiResponse> {
           const { count } = await supabaseAdmin
             .from('students')
             .select('*', { count: 'exact', head: true });
+          const currentYear = new Date().getFullYear().toString();
           const seq = (count || 0) + 1;
-          const rand = Math.floor(10 + Math.random() * 90);
-          studentPayload.nomor_pendaftaran = `2026${String(seq).padStart(3, '0')}${rand}`;
+          const seqStr = String(seq).length < 4 ? String(seq).padStart(4, '0') : String(seq);
+          const rand = Math.floor(100 + Math.random() * 900);
+          studentPayload.nomor_pendaftaran = `${currentYear}${seqStr}${rand}`;
           const retry = await supabaseAdmin
             .from('students')
             .insert(studentPayload)

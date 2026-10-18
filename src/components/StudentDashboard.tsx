@@ -25,17 +25,20 @@ import {
   Download,
   Copy,
   ArrowRight,
-  FileCheck2
+  FileCheck2,
+  KeyRound
 } from 'lucide-react';
 import { Student, User as UserType, JurusanType } from '../types/database';
 import { dbService } from '../services/supabase';
 import { credentialStore } from '../services/credentialStore';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 interface StudentDashboardProps {
   currentUser: UserType;
   initialStudent: Student;
   onLogout: () => void;
   onNavigateHome: () => void;
+  onRequestChangePassword?: () => void;
 }
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -43,6 +46,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   initialStudent,
   onLogout,
   onNavigateHome,
+  onRequestChangePassword,
 }) => {
   const [student, setStudent] = useState<Student>(initialStudent);
   const [activeMenu, setActiveMenu] = useState<'beranda' | 'formulir' | 'pembayaran' | 'pengumuman'>('beranda');
@@ -51,6 +55,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Desktop & tablet sidebar toggle
   const [showWarningBanner, setShowWarningBanner] = useState(true);
   const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [showLocalChangePassword, setShowLocalChangePassword] = useState(false);
 
   // Synchronize student data from Supabase
   useEffect(() => {
@@ -80,14 +85,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [nisn, setNisn] = useState(student.data_diri?.nisn || '');
   const [noKk, setNoKk] = useState(student.data_diri?.no_kk || '');
   const [namaLengkap, setNamaLengkap] = useState(student.nama_lengkap || '');
-  const [tempatLahir, setTempatLahir] = useState(student.data_diri?.tempat_lahir || 'Batang');
-  const [tglLahir, setTglLahir] = useState(student.data_diri?.tanggal_lahir || '2008-09-25');
-  const [jenisKelamin, setJenisKelamin] = useState<'Laki-laki' | 'Perempuan'>(student.data_diri?.jenis_kelamin || 'Laki-laki');
-  const [agama, setAgama] = useState(student.data_diri?.agama || 'Islam');
+  const [tempatLahir, setTempatLahir] = useState(student.data_diri?.tempat_lahir || '');
+  const [tglLahir, setTglLahir] = useState(student.data_diri?.tanggal_lahir || '');
+  const [jenisKelamin, setJenisKelamin] = useState<string>(student.data_diri?.jenis_kelamin || '');
+  const [agama, setAgama] = useState(student.data_diri?.agama || '');
   const [noHp, setNoHp] = useState(student.data_diri?.no_hp || student.no_wa || '');
   const [asalSekolah, setAsalSekolah] = useState(student.data_diri?.asal_sekolah || '');
-  const [anakKe, setAnakKe] = useState(student.data_diri?.anak_ke?.toString() || '1');
-  const [jumlahSaudara, setJumlahSaudara] = useState(student.data_diri?.jumlah_saudara?.toString() || '2');
+  const [anakKe, setAnakKe] = useState(student.data_diri?.anak_ke !== undefined ? String(student.data_diri.anak_ke) : '');
+  const [jumlahSaudara, setJumlahSaudara] = useState(student.data_diri?.jumlah_saudara !== undefined ? String(student.data_diri.jumlah_saudara) : '');
   const [isAnakGuru, setIsAnakGuru] = useState(student.data_diri?.is_anak_guru || false);
   const [tinggiBadan, setTinggiBadan] = useState(student.data_diri?.tinggi_badan?.toString() || '');
   const [beratBadan, setBeratBadan] = useState(student.data_diri?.berat_badan?.toString() || '');
@@ -104,8 +109,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [provinsi, setProvinsi] = useState(student.data_alamat?.provinsi || 'Jawa Tengah');
   const [kabupaten, setKabupaten] = useState(student.data_alamat?.kabupaten || 'Kabupaten Batang');
   const [kecamatan, setKecamatan] = useState(student.data_alamat?.kecamatan || 'Bawang');
-  const [desa, setDesa] = useState(student.data_alamat?.desa || 'Jlamprang');
-  const [kodePos, setKodePos] = useState(student.data_alamat?.kode_pos || '51274');
+  const [desa, setDesa] = useState(student.data_alamat?.desa || '');
+  const [kodePos, setKodePos] = useState(student.data_alamat?.kode_pos || '');
   const [tinggalBersama, setTinggalBersama] = useState(student.data_alamat?.tinggal_bersama || 'Orang Tua');
   const [transportasi, setTransportasi] = useState(student.data_alamat?.transportasi || 'Sepeda Motor');
 
@@ -283,29 +288,67 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   };
 
   // Helper calculation for checklist completeness
+  // Data Diri wajib: nama, tempat lahir, tanggal lahir, jenis kelamin, agama, asal sekolah, kontak
   const isDiriLengkap = Boolean(
-    student.nama_lengkap && 
-    (student.data_diri?.nisn || nisn) && 
-    (student.data_diri?.asal_sekolah || asalSekolah)
+    (student.nama_lengkap || namaLengkap) && 
+    (student.data_diri?.tempat_lahir || tempatLahir) &&
+    (student.data_diri?.tanggal_lahir || tglLahir) &&
+    (student.data_diri?.jenis_kelamin || jenisKelamin) &&
+    (student.data_diri?.agama || agama) &&
+    (student.data_diri?.asal_sekolah || asalSekolah) &&
+    (student.data_diri?.no_hp || student.no_wa || noHp)
   );
 
+  // Data Alamat wajib: desa, kecamatan, kabupaten, provinsi, dukuh/rt/rw
   const isAlamatLengkap = Boolean(
-    student.data_alamat?.dukuh || dukuh
+    (student.data_alamat?.dukuh || dukuh) &&
+    (student.data_alamat?.desa || desa) &&
+    (student.data_alamat?.kecamatan || kecamatan) &&
+    (student.data_alamat?.kabupaten || kabupaten) &&
+    (student.data_alamat?.provinsi || provinsi)
   );
 
-  const isOrtuLengkap = Boolean(
+  // Data Orang Tua wajib: minimal salah satu (Ayah / Ibu) memiliki Nama dan NIK 16 digit yang sah
+  const hasAyah = Boolean(
     (student.data_orang_tua?.nama_ayah || namaAyah) && 
-    (student.data_orang_tua?.nama_ibu || namaIbu)
+    (student.data_orang_tua?.nik_ayah || nikAyah)
   );
+  const hasIbu = Boolean(
+    (student.data_orang_tua?.nama_ibu || namaIbu) && 
+    (student.data_orang_tua?.nik_ibu || nikIbu)
+  );
+  const isOrtuLengkap = Boolean(hasAyah || hasIbu);
 
-  const isBerkasLengkap = Boolean(
-    student.data_berkas?.kartu_keluarga?.nama_file || berkasKK
-  );
+  // Data Berkas wajib: Kartu Keluarga, Ijazah/SKL, Akta Lahir, Pas Foto
+  const hasKK = Boolean(student.data_berkas?.kartu_keluarga?.path || berkasKK);
+  const hasSKL = Boolean(student.data_berkas?.ijazah_skl?.path || berkasSKL);
+  const hasAkta = Boolean(student.data_berkas?.akta_kelahiran?.path || berkasAkta);
+  const hasFoto = Boolean(student.data_berkas?.pas_foto?.path || berkasFoto);
+  const isBerkasLengkap = Boolean(hasKK && hasSKL && hasAkta && hasFoto);
 
   // Semua formulir lengkap (Diri, Alamat, Ortu, Berkas)
   const isSemuaFormLengkap = Boolean(
     isDiriLengkap && isAlamatLengkap && isOrtuLengkap && isBerkasLengkap
   );
+
+  // Otomatis ubah status menjadi Menunggu Verifikasi jika semua formulir dan berkas sudah lengkap
+  useEffect(() => {
+    if (!student?.id) return;
+    const currentStatus = student.status_pendaftaran;
+    if (
+      isSemuaFormLengkap &&
+      (!currentStatus || currentStatus === 'Belum Lengkap' || currentStatus === 'Berkas Fisik')
+    ) {
+      dbService.submitStudentRegistration(student.id)
+        .then((updated) => {
+          setStudent(updated);
+          showNotification('Semua data dan berkas lengkap. Status pendaftaran otomatis menjadi Menunggu Verifikasi.');
+        })
+        .catch((err) => {
+          console.warn('[Auto-Status] Transition notice:', err);
+        });
+    }
+  }, [isSemuaFormLengkap, student?.id, student?.status_pendaftaran]);
 
   // Form Tab Step Guard (Urutan Wajib: 1. Data Diri -> 2. Data Alamat -> 3. Data Ortu -> 4. Data Berkas)
   const isTabAccessible = (targetTab: 'diri' | 'alamat' | 'ortu' | 'berkas'): boolean => {
@@ -367,6 +410,32 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const handleSaveDataDiri = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (!tglLahir || !tglLahir.trim()) {
+        alert('Tanggal lahir wajib diisi.');
+        return;
+      }
+      if (!tempatLahir || !tempatLahir.trim()) {
+        alert('Tempat lahir wajib diisi.');
+        return;
+      }
+      if (!jenisKelamin || !jenisKelamin.trim()) {
+        alert('Jenis kelamin wajib dipilih.');
+        return;
+      }
+      if (!agama || !agama.trim()) {
+        alert('Agama wajib dipilih.');
+        return;
+      }
+      if (!asalSekolah || !asalSekolah.trim()) {
+        alert('Asal sekolah wajib diisi.');
+        return;
+      }
+      const cleanHp = noHp.trim().replace(/\D/g, '');
+      if (cleanHp && (cleanHp.length < 10 || cleanHp.length > 15)) {
+        alert('Nomor HP / WhatsApp harus berupa 10 - 15 digit angka.');
+        return;
+      }
+
       const updated = await dbService.updateStudentDataDiri(
         student.id,
         {
@@ -376,7 +445,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           nama_lengkap: namaLengkap,
           tempat_lahir: tempatLahir,
           tanggal_lahir: tglLahir,
-          jenis_kelamin: jenisKelamin,
+          jenis_kelamin: jenisKelamin as 'Laki-laki' | 'Perempuan',
           agama,
           no_hp: noHp,
           asal_sekolah: asalSekolah,
@@ -429,6 +498,34 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const handleSaveDataOrangTua = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const cleanNikAyah = nikAyah.trim().replace(/\D/g, '');
+      const cleanNikIbu = nikIbu.trim().replace(/\D/g, '');
+      const cleanNikWali = nikWali.trim().replace(/\D/g, '');
+
+      if (nikAyah.trim() && cleanNikAyah.length !== 16) {
+        alert('NIK Ayah harus terdiri dari tepat 16 digit angka.');
+        return;
+      }
+      if (nikIbu.trim() && cleanNikIbu.length !== 16) {
+        alert('NIK Ibu harus terdiri dari tepat 16 digit angka.');
+        return;
+      }
+      if (nikWali.trim() && cleanNikWali.length !== 16) {
+        alert('NIK Wali harus terdiri dari tepat 16 digit angka.');
+        return;
+      }
+
+      const cleanHpAyah = noHpAyah.trim().replace(/\D/g, '');
+      if (noHpAyah.trim() && (cleanHpAyah.length < 10 || cleanHpAyah.length > 15)) {
+        alert('Nomor HP Ayah harus berupa 10 - 15 digit angka.');
+        return;
+      }
+      const cleanHpIbu = noHpIbu.trim().replace(/\D/g, '');
+      if (noHpIbu.trim() && (cleanHpIbu.length < 10 || cleanHpIbu.length > 15)) {
+        alert('Nomor HP Ibu harus berupa 10 - 15 digit angka.');
+        return;
+      }
+
       const updated = await dbService.updateStudentDataOrangTua(student.id, {
         nik_ayah: nikAyah,
         nama_ayah: namaAyah,
@@ -495,7 +592,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       const item = {
         nama_file: res.nama_file,
         path: res.path,
-        url: res.url,
         ukuran: res.ukuran,
         uploaded_at: nowStr,
       };
@@ -506,10 +602,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       if (jenis === 'kartu_kip') setBerkasKIP(res.nama_file);
       if (jenis === 'pas_foto') setBerkasFoto(res.nama_file);
 
-      // Save directly to student data_berkas
-      const updated = await dbService.updateStudentDataBerkas(student.id, {
+      // Gabungkan dengan student.data_berkas yang lama agar metadata berkas lain tidak hilang!
+      const mergedBerkas = {
+        ...(student.data_berkas || {}),
         [jenis]: item,
-      });
+      };
+
+      const updated = await dbService.updateStudentDataBerkas(student.id, mergedBerkas);
       setStudent(updated);
       showNotification(`Berkas ${file.name} berhasil diunggah!`);
     } catch (err: any) {
@@ -526,55 +625,51 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       const nowStr = new Date().toLocaleDateString('id-ID');
       const cur = student.data_berkas || {};
 
-      const updated = await dbService.updateStudentDataBerkas(student.id, {
-        kartu_keluarga: berkasKK
-          ? {
-              nama_file: berkasKK,
-              ukuran: cur.kartu_keluarga?.ukuran || '2 MB',
-              uploaded_at: cur.kartu_keluarga?.uploaded_at || nowStr,
-              path: cur.kartu_keluarga?.path,
-              url: cur.kartu_keluarga?.url,
-            }
-          : undefined,
-        ijazah_skl: berkasSKL
-          ? {
-              nama_file: berkasSKL,
-              ukuran: cur.ijazah_skl?.ukuran || '2 MB',
-              uploaded_at: cur.ijazah_skl?.uploaded_at || nowStr,
-              path: cur.ijazah_skl?.path,
-              url: cur.ijazah_skl?.url,
-            }
-          : undefined,
-        akta_kelahiran: berkasAkta
-          ? {
-              nama_file: berkasAkta,
-              ukuran: cur.akta_kelahiran?.ukuran || '2 MB',
-              uploaded_at: cur.akta_kelahiran?.uploaded_at || nowStr,
-              path: cur.akta_kelahiran?.path,
-              url: cur.akta_kelahiran?.url,
-            }
-          : undefined,
-        kartu_kip: berkasKIP
-          ? {
-              nama_file: berkasKIP,
-              ukuran: cur.kartu_kip?.ukuran || '2 MB',
-              uploaded_at: cur.kartu_kip?.uploaded_at || nowStr,
-              path: cur.kartu_kip?.path,
-              url: cur.kartu_kip?.url,
-            }
-          : undefined,
-        pas_foto: berkasFoto
-          ? {
-              nama_file: berkasFoto,
-              ukuran: cur.pas_foto?.ukuran || '2 MB',
-              uploaded_at: cur.pas_foto?.uploaded_at || nowStr,
-              path: cur.pas_foto?.path,
-              url: cur.pas_foto?.url,
-            }
-          : undefined,
-      });
+      const nextBerkas: any = { ...cur };
+      if (berkasKK && !nextBerkas.kartu_keluarga) {
+        nextBerkas.kartu_keluarga = {
+          nama_file: berkasKK,
+          ukuran: cur.kartu_keluarga?.ukuran || 'File Terunggah',
+          uploaded_at: cur.kartu_keluarga?.uploaded_at || nowStr,
+          path: cur.kartu_keluarga?.path,
+        };
+      }
+      if (berkasSKL && !nextBerkas.ijazah_skl) {
+        nextBerkas.ijazah_skl = {
+          nama_file: berkasSKL,
+          ukuran: cur.ijazah_skl?.ukuran || 'File Terunggah',
+          uploaded_at: cur.ijazah_skl?.uploaded_at || nowStr,
+          path: cur.ijazah_skl?.path,
+        };
+      }
+      if (berkasAkta && !nextBerkas.akta_kelahiran) {
+        nextBerkas.akta_kelahiran = {
+          nama_file: berkasAkta,
+          ukuran: cur.akta_kelahiran?.ukuran || 'File Terunggah',
+          uploaded_at: cur.akta_kelahiran?.uploaded_at || nowStr,
+          path: cur.akta_kelahiran?.path,
+        };
+      }
+      if (berkasKIP && !nextBerkas.kartu_kip) {
+        nextBerkas.kartu_kip = {
+          nama_file: berkasKIP,
+          ukuran: cur.kartu_kip?.ukuran || 'File Terunggah',
+          uploaded_at: cur.kartu_kip?.uploaded_at || nowStr,
+          path: cur.kartu_kip?.path,
+        };
+      }
+      if (berkasFoto && !nextBerkas.pas_foto) {
+        nextBerkas.pas_foto = {
+          nama_file: berkasFoto,
+          ukuran: cur.pas_foto?.ukuran || 'File Terunggah',
+          uploaded_at: cur.pas_foto?.uploaded_at || nowStr,
+          path: cur.pas_foto?.path,
+        };
+      }
+
+      const updated = await dbService.updateStudentDataBerkas(student.id, nextBerkas);
       setStudent(updated);
-      showNotification('Berkas pendaftaran berhasil disimpan & diserahkan untuk verifikasi!');
+      showNotification('Berkas pendaftaran berhasil disimpan!');
     } catch (err: any) {
       alert(err.message || 'Gagal menyimpan berkas');
     }
@@ -723,6 +818,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
           {/* Bottom user / solid red logout card */}
           <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                if (onRequestChangePassword) {
+                  onRequestChangePassword();
+                } else {
+                  setShowLocalChangePassword(true);
+                }
+              }}
+              className="w-full text-left text-xs font-bold text-slate-700 hover:text-blue-700 flex items-center justify-between py-2 px-3 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Ganti kata sandi akun"
+            >
+              <span className="flex items-center gap-2">
+                <KeyRound className="w-3.5 h-3.5 text-slate-500" />
+                <span>Ubah Password</span>
+              </span>
+            </button>
+
             <a
               href="https://www.smkmuhiba.sch.id"
               target="_blank"
@@ -2054,17 +2167,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <span className="text-[11px] text-emerald-600 font-semibold">
                                   ✓ File: {student.data_berkas.kartu_keluarga.nama_file}
                                 </span>
-                                {student.data_berkas.kartu_keluarga.url && (
-                                  <a
-                                    href={student.data_berkas.kartu_keluarga.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5"
-                                  >
-                                    <ExternalLink className="w-2.5 h-2.5" />
-                                    <span>Lihat</span>
-                                  </a>
-                                )}
                               </div>
                             )}
                             <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. PDF maksimum 2 MB. (PDF/JPG/PNG)</p>
@@ -2087,17 +2189,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <span className="text-[11px] text-emerald-600 font-semibold">
                                   ✓ File: {student.data_berkas.ijazah_skl.nama_file}
                                 </span>
-                                {student.data_berkas.ijazah_skl.url && (
-                                  <a
-                                    href={student.data_berkas.ijazah_skl.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5"
-                                  >
-                                    <ExternalLink className="w-2.5 h-2.5" />
-                                    <span>Lihat</span>
-                                  </a>
-                                )}
                               </div>
                             )}
                             <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. PDF maksimum 2 MB.</p>
@@ -2120,17 +2211,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <span className="text-[11px] text-emerald-600 font-semibold">
                                   ✓ File: {student.data_berkas.akta_kelahiran.nama_file}
                                 </span>
-                                {student.data_berkas.akta_kelahiran.url && (
-                                  <a
-                                    href={student.data_berkas.akta_kelahiran.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5"
-                                  >
-                                    <ExternalLink className="w-2.5 h-2.5" />
-                                    <span>Lihat</span>
-                                  </a>
-                                )}
                               </div>
                             )}
                             <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. PDF maksimum 2 MB.</p>
@@ -2153,20 +2233,31 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <span className="text-[11px] text-emerald-600 font-semibold">
                                   ✓ File: {student.data_berkas.kartu_kip.nama_file}
                                 </span>
-                                {student.data_berkas.kartu_kip.url && (
-                                  <a
-                                    href={student.data_berkas.kartu_kip.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5"
-                                  >
-                                    <ExternalLink className="w-2.5 h-2.5" />
-                                    <span>Lihat</span>
-                                  </a>
-                                )}
                               </div>
                             )}
                             <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. PDF maksimum 2 MB.</p>
+                          </div>
+
+                          {/* 5. Pas Foto (3x4) */}
+                          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <label className="block font-bold text-slate-800 mb-1">Pas Foto (3x4)</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="file"
+                                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                                disabled={isUploadingBerkas}
+                                onChange={(e) => handleFileUpload(e, 'pas_foto')}
+                                className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                              />
+                            </div>
+                            {student.data_berkas?.pas_foto?.nama_file && (
+                              <div className="mt-1 flex items-center gap-2">
+                                <span className="text-[11px] text-emerald-600 font-semibold">
+                                  ✓ File: {student.data_berkas.pas_foto.nama_file}
+                                </span>
+                              </div>
+                            )}
+                            <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. Format JPG, JPEG, PNG, WEBP.</p>
                           </div>
                         </div>
 
@@ -2422,8 +2513,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <p className="text-xs text-slate-500">Status kelulusan penerimaan peserta didik baru tahun ajaran 2026/2027</p>
                 </div>
 
-                {/* Kondisi 1: Diterima / Terverifikasi -> Hijau */}
-                {(student.status_pendaftaran === 'Diterima' || student.status_pendaftaran === 'Terverifikasi') && (
+                {/* Kondisi 1: Diterima -> Hijau (hanya untuk status Diterima) */}
+                {student.status_pendaftaran === 'Diterima' && (
                   <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
                       <CheckCircle2 className="w-8 h-8" />
@@ -2445,7 +2536,28 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </div>
                 )}
 
-                {/* Kondisi 2: Cadangan -> Kuning */}
+                {/* Kondisi 2: Terverifikasi -> Teks netral (Berkas Anda sudah terverifikasi) */}
+                {student.status_pendaftaran === 'Terverifikasi' && (
+                  <div className="p-6 rounded-2xl bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
+                    <div className="w-14 h-14 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center mx-auto shadow-inner">
+                      <CheckCircle2 className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-lg font-black text-teal-950 uppercase tracking-wide">
+                      BERKAS TERVERIFIKASI
+                    </h3>
+                    <p className="text-xs text-slate-700 leading-relaxed">
+                      Berkas Anda atas nama <strong>{student.nama_lengkap}</strong> (No. Pendaftaran: <strong>{student.nomor_pendaftaran}</strong>) sudah terverifikasi. Tunggu pengumuman hasil seleksi resmi dari panitia SPMB.
+                    </p>
+                    <div className="inline-block px-4 py-1.5 bg-teal-600 text-white rounded-full text-xs font-bold shadow-sm">
+                      Dokumen Sah & Lengkap
+                    </div>
+                    <p className="text-[11px] text-slate-500 pt-2">
+                      Pengumuman final kelulusan dan pemetaan kelas akan diumumkan sesuai jadwal gelombang.
+                    </p>
+                  </div>
+                )}
+
+                {/* Kondisi 3: Cadangan -> Kuning */}
                 {student.status_pendaftaran === 'Cadangan' && (
                   <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
@@ -2463,8 +2575,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </div>
                 )}
 
-                {/* Kondisi 3: Menunggu Verifikasi -> Biru */}
-                {student.status_pendaftaran === 'Menunggu Verifikasi' && (
+                {/* Kondisi 4: Menunggu Verifikasi ATAU jika semua formulir & berkas sudah terisi -> Biru */}
+                {(student.status_pendaftaran === 'Menunggu Verifikasi' || (isSemuaFormLengkap && student.status_pendaftaran !== 'Diterima' && student.status_pendaftaran !== 'Terverifikasi' && student.status_pendaftaran !== 'Cadangan')) && (
                   <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto shadow-inner">
                       <Clock className="w-8 h-8 animate-spin" />
@@ -2484,8 +2596,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </div>
                 )}
 
-                {/* Kondisi 4: Berkas Fisik / Belum Lengkap / Default -> Orange */}
-                {student.status_pendaftaran !== 'Diterima' && 
+                {/* Kondisi 5: Berkas Fisik / Belum Lengkap (jika belum semua lengkap) -> Orange */}
+                {!isSemuaFormLengkap &&
+                 student.status_pendaftaran !== 'Diterima' && 
                  student.status_pendaftaran !== 'Terverifikasi' && 
                  student.status_pendaftaran !== 'Cadangan' && 
                  student.status_pendaftaran !== 'Menunggu Verifikasi' && (
@@ -2497,7 +2610,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       LENGKAPI BERKAS TERLEBIH DAHULU
                     </h3>
                     <p className="text-xs text-slate-700 leading-relaxed">
-                      Status pendaftaran Anda saat ini adalah <strong>{student.status_pendaftaran || 'Berkas Fisik'}</strong>. Data formulir dan berkas belum lengkap atau belum diserahkan.
+                      Status pendaftaran Anda saat ini adalah <strong>{student.status_pendaftaran || 'Berkas Fisik'}</strong>. Data formulir dan berkas belum lengkap. Setelah semua formulir dan berkas terisi lengkap, pengumuman hasil secara otomatis akan berubah menjadi Menunggu Verifikasi.
                     </p>
                     <div className="pt-2">
                       <button
@@ -2536,6 +2649,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </main>
       </div>
 
+      {/* Modal Ubah Password Mandiri Siswa */}
+      {showLocalChangePassword && (
+        <ChangePasswordModal
+          userId={currentUser.id}
+          nik={student.nik}
+          isOpen={showLocalChangePassword}
+          onClose={() => setShowLocalChangePassword(false)}
+          onSuccess={() => {
+            setShowLocalChangePassword(false);
+            showNotification('Kata sandi berhasil diperbarui.');
+          }}
+        />
+      )}
     </div>
   );
 };

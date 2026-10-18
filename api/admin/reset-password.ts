@@ -197,12 +197,27 @@ export default async function handler(req: any, res: any) {
     const okNomor = nomorInput !== '' && nomorInput === normAlnum(student.nomor_pendaftaran);
 
     const waInput = normPhone(verifikasi.no_wa);
-    const okWa = waInput !== '' && waInput === normPhone(student.no_wa);
+    const dobInput = String(verifikasi.tanggal_lahir ?? '').trim();
+    if (!dobInput) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tanggal lahir pemohon wajib diisi untuk verifikasi keamanan.',
+      });
+    }
 
-    const dobProvided = String(verifikasi.tanggal_lahir ?? '').trim() !== '';
-    const dobOnFile = normDate((student.data_diri as any)?.tanggal_lahir);
-    const okDob = !dobProvided || !dobOnFile ? true : normDate(verifikasi.tanggal_lahir) === dobOnFile;
-    const dobStatus = !dobProvided ? 'tidak diisi' : !dobOnFile ? 'belum tercatat' : 'cocok';
+    let dobOnFile = normDate((student.data_diri as any)?.tanggal_lahir);
+    // Jika belum tercatat di data_diri, turunkan dari 6 digit tanggal lahir di NIK
+    if (!dobOnFile && student.nik && student.nik.length === 16) {
+      let d = parseInt(student.nik.slice(6, 8), 10);
+      if (d > 40) d -= 40; // perempuan
+      const m = student.nik.slice(8, 10);
+      const y = student.nik.slice(10, 12);
+      const fullYear = parseInt(y, 10) > 40 ? `19${y}` : `20${y}`;
+      dobOnFile = `${fullYear}-${m}-${String(d).padStart(2, '0')}`;
+    }
+
+    const okDob = dobOnFile ? normDate(dobInput) === normDate(dobOnFile) : false;
+    const dobStatus = okDob ? 'cocok' : 'tidak cocok';
 
     const logBase = {
       actor_id: callerId,

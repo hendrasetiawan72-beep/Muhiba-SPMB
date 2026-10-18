@@ -142,6 +142,7 @@ export default function App() {
           initialStudent={currentStudent}
           onLogout={handleLogout}
           onNavigateHome={() => setActiveView('home')}
+          onRequestChangePassword={() => setShowChangePassword(true)}
         />
       )}
 
@@ -154,29 +155,17 @@ export default function App() {
         />
       )}
 
-      {/* GANTI PASSWORD (siswa): wajib setelah reset oleh panitia, sukarela lewat tombol */}
+      {/* GANTI PASSWORD (siswa): wajib setelah reset oleh panitia, atau dibuka lewat tombol di bilah sisi */}
       {activeView === 'student-dashboard' && currentUser && currentUser.role === 'student' && (
-        <>
-          {!currentUser.must_change_password && (
-            <button
-              type="button"
-              onClick={() => setShowChangePassword(true)}
-              className="no-print fixed bottom-4 left-4 z-40 inline-flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-slate-700 bg-white/95 border border-slate-300 hover:bg-slate-50 rounded-full shadow-md"
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Ganti Password</span>
-            </button>
-          )}
-          {(currentUser.must_change_password || showChangePassword) && (
-            <ChangePasswordModal
-              forced={!!currentUser.must_change_password}
-              nik={currentUser.nik}
-              onChanged={handlePasswordChanged}
-              onClose={() => setShowChangePassword(false)}
-              onLogout={handleLogout}
-            />
-          )}
-        </>
+        (currentUser.must_change_password || showChangePassword) && (
+          <ChangePasswordModal
+            forced={!!currentUser.must_change_password}
+            nik={currentUser.nik}
+            onChanged={handlePasswordChanged}
+            onClose={() => setShowChangePassword(false)}
+            onLogout={handleLogout}
+          />
+        )
       )}
     </div>
   );

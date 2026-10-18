@@ -202,6 +202,14 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
       return res.status(400).json({ code: 'SERVER_ERROR', message: 'Pilihan jurusan tidak valid.' });
     }
 
+    const cleanWaDigits = cleanNoWa.replace(/[-\s]/g, '');
+    if (!cleanWaDigits || !/^(\+?62|0)8[1-9][0-9]{7,12}$/.test(cleanWaDigits)) {
+      return res.status(400).json({
+        code: 'VALIDATION_ERROR',
+        message: 'Nomor WhatsApp tidak valid. Format: 08xxxxxxxxxx atau 628xxxxxxxxxx (10-15 digit).',
+      });
+    }
+
     // 4. Validasi Kata Sandi: minimal 8 karakter dan tolak kata sandi umum
     const lowerPass = cleanPassword.toLowerCase();
     const commonPasswords = [
@@ -276,17 +284,23 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
 
     // 6. Nomor pendaftaran dari RPC next_nomor_pendaftaran()
     let nomorPendaftaran = '';
+    const currentYear = new Date().getFullYear().toString();
     try {
       const { data: rpcNo, error: rpcErr } = await supabaseAdmin.rpc('next_nomor_pendaftaran');
       if (!rpcErr && rpcNo) {
         nomorPendaftaran = String(rpcNo);
       } else {
-        const randSalt = Math.floor(10 + Math.random() * 90);
-        nomorPendaftaran = `2026${Date.now().toString().slice(-4)}${randSalt}`;
+        const { count } = await supabaseAdmin
+          .from('students')
+          .select('*', { count: 'exact', head: true });
+        const seq = (count || 0) + 1;
+        const seqStr = String(seq).length < 4 ? String(seq).padStart(4, '0') : String(seq);
+        const randSalt = Math.floor(100 + Math.random() * 900);
+        nomorPendaftaran = `${currentYear}${seqStr}${randSalt}`;
       }
     } catch {
-      const randSalt = Math.floor(10 + Math.random() * 90);
-      nomorPendaftaran = `2026${Date.now().toString().slice(-4)}${randSalt}`;
+      const randSalt = Math.floor(100 + Math.random() * 900);
+      nomorPendaftaran = `${currentYear}${Date.now().toString().slice(-4)}${randSalt}`;
     }
 
     const now = new Date();

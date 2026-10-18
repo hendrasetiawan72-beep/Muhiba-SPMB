@@ -50,8 +50,8 @@ export const AdminResetPasswordModal: React.FC<AdminResetPasswordModalProps> = (
     if (loading) return;
     setError('');
 
-    if (!nomor.trim() || !wa.trim()) {
-      setError('Nomor pendaftaran dan nomor WhatsApp yang disebutkan pemohon wajib diisi.');
+    if (!nomor.trim() || !wa.trim() || !tgl.trim()) {
+      setError('Nomor pendaftaran, nomor WhatsApp, dan tanggal lahir pemohon wajib diisi.');
       return;
     }
 
@@ -59,7 +59,7 @@ export const AdminResetPasswordModal: React.FC<AdminResetPasswordModalProps> = (
     try {
       const res = await dbService.resetStudentPassword(
         { user_id: student.user_id, nik: student.nik },
-        { nomor_pendaftaran: nomor.trim(), no_wa: wa.trim(), tanggal_lahir: tgl.trim() || undefined }
+        { nomor_pendaftaran: nomor.trim(), no_wa: wa.trim(), tanggal_lahir: tgl.trim() }
       );
       setResult(res);
       setNomor('');
@@ -234,16 +234,17 @@ export const AdminResetPasswordModal: React.FC<AdminResetPasswordModalProps> = (
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Tanggal lahir (opsional)
+                Tanggal lahir pemohon * (wajib)
               </label>
               <input
                 type="date"
+                required
                 value={tgl}
                 onChange={(e) => setTgl(e.target.value)}
                 className="w-full px-3 py-2.5 text-xs border border-slate-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-slate-800 bg-white"
               />
               <p className="text-[10px] text-slate-400 mt-1">
-                Isi hanya jika siswa sudah melengkapi data diri. Jika diisi dan data tercatat, harus cocok.
+                Wajib diisi sesuai tanggal lahir yang tercatat di akun siswa untuk keamanan.
               </p>
             </div>
 

@@ -155,8 +155,14 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
       return;
     }
 
-    if (!noWa.trim()) {
+    const cleanNoWa = noWa.trim().replace(/[-\s]/g, '');
+    if (!cleanNoWa) {
       setErrorMessage('Nomor WhatsApp wajib diisi untuk konfirmasi info pendaftaran.');
+      return;
+    }
+
+    if (!/^(\+?62|0)8[1-9][0-9]{7,12}$/.test(cleanNoWa)) {
+      setErrorMessage('Nomor WhatsApp tidak valid. Format: 08xxxxxxxxxx atau 628xxxxxxxxxx (10-15 digit).');
       return;
     }
 
@@ -699,9 +705,10 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                   <input
                     type="tel"
                     required
+                    maxLength={16}
                     value={noWa}
                     onChange={(e) => setNoWa(e.target.value)}
-                    placeholder="Contoh: 085582580"
+                    placeholder="Contoh: 081234567890"
                     className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
