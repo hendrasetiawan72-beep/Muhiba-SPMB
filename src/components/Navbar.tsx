@@ -1,38 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import React, { useState } from 'react';
 import { User, Student } from '../types/database';
-
-type View = 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard';
+import { 
+  Menu, 
+  X, 
+  ChevronDown, 
+  UserCheck, 
+  Shield, 
+  ExternalLink, 
+  LogOut, 
+  BookOpen, 
+  Home, 
+  Layers, 
+  ListChecks,
+  Building2
+} from 'lucide-react';
 
 interface NavbarProps {
   currentUser: User | null;
   currentStudent?: Student | null;
-  activeView: View;
-  setActiveView: (view: View) => void;
+  activeView: 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard';
+  setActiveView: (view: 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard') => void;
   onLogout: () => void;
 }
-
-const LOGO_URL =
-  'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgzWdtCjCcX2chJuhLX_26N5MmkVK-1SkyO7kgXznQQJPQa6_TB_EJzD1WWpztg7yX9RBRE7rGn0t2Z3FdG06mwwT6pQix8t6vnlcOBm_EgGl9z0jeJemJkppP0KIIjkXGksQvaCLh2dz-gOF6a2H213VQBL6Am8Elhmd76OOnphogk-EoTTbkYbg0TQJhv/s512/34690.png';
-
-// Urutan menu mengikuti urutan bagian di halaman Beranda
-const NAV_ITEMS: { label: string; id: string; accent?: boolean }[] = [
-  { label: 'Beranda', id: 'top' },
-  { label: 'Profil', id: 'profil-sekolah' },
-  { label: 'Jurusan', id: 'jurusan-section' },
-  { label: 'Fasilitas', id: 'fasilitas-section' },
-  { label: 'Alur Pendaftaran', id: 'alur-pendaftaran', accent: true },
-  { label: 'Kontak', id: 'kontak-section' },
-];
-
-/**
- * Kunci singkat agar skrip "gulir cepat ke Profil Sekolah" di LandingPage
- * tidak membajak gulir yang dipicu menu (penyebab menu Alur Pendaftaran
- * sebelumnya melompat ke Profil Sekolah).
- */
-const lockAutoScroll = (ms = 1800) => {
-  (window as any).__spmbNavLockUntil = Date.now() + ms;
-};
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
@@ -42,274 +31,300 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState('');
+  const [jurusanDropdownOpen, setJurusanDropdownOpen] = useState(false);
 
-  // ---- Navigasi ke bagian halaman -----------------------------------------
-  const scrollToId = (id: string) => {
-    lockAutoScroll();
-    if (id === 'top') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-    // Tunggu bagian ter-render (mis. saat pindah dari halaman Login/Portal)
-    let tries = 0;
-    const attempt = () => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        return;
-      }
-      if (tries++ < 40) window.setTimeout(attempt, 50);
-    };
-    attempt();
-  };
+  const logoUrl =
+    'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgzWdtCjCcX2chJuhLX_26N5MmkVK-1SkyO7kgXznQQJPQa6_TB_EJzD1WWpztg7yX9RBRE7rGn0t2Z3FdG06mwwT6pQix8t6vnlcOBm_EgGl9z0jeJemJkppP0KIIjkXGksQvaCLh2dz-gOF6a2H213VQBL6Am8Elhmd76OOnphogk-EoTTbkYbg0TQJhv/s512/34690.png';
 
-  const goSection = (id: string) => {
-    setMenuOpen(false);
-    if (activeView !== 'home') setActiveView('home');
-    scrollToId(id);
-  };
-
-  const goView = (view: View) => {
-    setMenuOpen(false);
+  const navigateTo = (view: 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard', sectionId?: string) => {
     setActiveView(view);
-    window.scrollTo({ top: 0 });
-  };
-
-  // ---- Menu seluler: kunci gulir latar, Esc menutup, tutup saat layar melebar
-  useEffect(() => {
-    if (!menuOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
-    const onResize = () => window.innerWidth >= 1024 && setMenuOpen(false);
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('resize', onResize);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('resize', onResize);
-    };
-  }, [menuOpen]);
-
-  // ---- Penanda bagian aktif (scroll-spy) ----------------------------------
-  useEffect(() => {
-    if (activeView !== 'home') {
-      setActiveSection('');
-      return;
+    setMenuOpen(false);
+    setJurusanDropdownOpen(false);
+    
+    if (typeof window !== 'undefined') {
+      if (sectionId) {
+        // Bug fixed: Removed fallback to 'profil-sekolah'
+        setTimeout(() => {
+          const el = document.getElementById(sectionId);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      } else if (view === 'home') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
-    const ids = NAV_ITEMS.filter((n) => n.id !== 'top').map((n) => n.id);
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) setActiveSection(e.target.id);
-        });
-      },
-      { rootMargin: '-35% 0px -55% 0px' }
-    );
-    const timer = window.setTimeout(() => {
-      ids.forEach((id) => {
-        const el = document.getElementById(id);
-        if (el) observer.observe(el);
-      });
-    }, 300);
-    const onScroll = () => {
-      if (window.scrollY < 120) setActiveSection('');
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.clearTimeout(timer);
-      observer.disconnect();
-      window.removeEventListener('scroll', onScroll);
-    };
-  }, [activeView]);
-
-  const isActive = (id: string) =>
-    activeView === 'home' && (id === 'top' ? activeSection === '' : activeSection === id);
-
-  const firstName = currentStudent?.nama_lengkap?.split(' ')[0] || 'Siswa';
-  const isAdmin = currentUser?.role === 'admin';
-
-  const linkClass = (id: string, accent?: boolean) =>
-    `relative py-2 text-sm font-semibold transition-colors ${
-      isActive(id)
-        ? 'text-white after:absolute after:left-0 after:right-0 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-yellow-300'
-        : accent
-        ? 'text-yellow-300 hover:text-white'
-        : 'text-blue-100 hover:text-white'
-    }`;
+  };
 
   return (
-    <header className="sticky top-0 z-50 bg-blue-900 text-white border-b border-white/10 shadow-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-        {/* Merek */}
-        <button
-          type="button"
-          onClick={() => goSection('top')}
-          className="flex min-w-0 items-center gap-3 text-left"
-          aria-label="Ke beranda SPMB SMK Muhiba"
-        >
-          <img
-            src={LOGO_URL}
-            alt="Logo SMK Muhammadiyah Bawang"
-            className="h-10 w-10 shrink-0 object-contain"
-            referrerPolicy="no-referrer"
-          />
-          <span className="min-w-0 leading-tight">
-            <span className="block truncate text-[15px] font-extrabold tracking-wide">
-              SPMB <span className="text-yellow-300">SMK MUHIBA</span>
-            </span>
-            <span className="hidden truncate text-[11px] font-medium text-blue-200 sm:block">
-              SMK Muhammadiyah Bawang
-            </span>
-          </span>
-        </button>
-
-        {/* Menu desktop */}
-        <nav className="hidden items-center gap-6 lg:flex" aria-label="Navigasi utama">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => goSection(item.id)}
-              className={linkClass(item.id, item.accent)}
-              aria-current={isActive(item.id) ? 'true' : undefined}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* Aksi */}
-        <div className="flex shrink-0 items-center gap-2">
-          {currentUser ? (
-            <>
-              <button
-                type="button"
-                onClick={() => goView(isAdmin ? 'admin-dashboard' : 'student-dashboard')}
-                className="rounded-lg bg-yellow-300 px-3.5 py-2 text-xs font-bold text-blue-950 transition hover:bg-yellow-200 active:scale-95"
-              >
-                <span className="sm:hidden">Dashboard</span>
-                <span className="hidden sm:inline">
-                  {isAdmin ? 'Panel Admin' : `Dashboard ${firstName}`}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={onLogout}
-                className="hidden rounded-lg px-3 py-2 text-xs font-semibold text-blue-100 transition hover:bg-white/10 hover:text-white lg:block"
-              >
-                Keluar
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => goView('login')}
-                className="hidden rounded-lg border border-white/30 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-white/10 lg:block"
-              >
-                Login Siswa
-              </button>
-              <button
-                type="button"
-                onClick={() => goView('portal')}
-                className="rounded-lg bg-red-600 px-3.5 py-2 text-xs font-extrabold uppercase tracking-wide text-white transition hover:bg-red-500 active:scale-95"
-              >
-                <span className="sm:hidden">Daftar</span>
-                <span className="hidden sm:inline">Daftar Sekarang</span>
-              </button>
-            </>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-white transition hover:bg-white/10 active:scale-95 lg:hidden"
-            aria-label={menuOpen ? 'Tutup menu' : 'Buka menu'}
-            aria-expanded={menuOpen}
-            aria-controls="menu-seluler"
+    <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white shadow-lg border-b border-indigo-900/40 transition-all duration-300">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-18 py-3 lg:py-0">
+          
+          {/* ZONE 1: BRAND LOGO */}
+          <div 
+            onClick={() => navigateTo('home')} 
+            className="flex items-center gap-3 cursor-pointer group"
           >
-            {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
-        </div>
-      </div>
+            <img
+              src={logoUrl}
+              alt="Logo SMK Muhammadiyah Bawang"
+              className="w-10 h-10 lg:w-11 lg:h-11 object-contain drop-shadow"
+              referrerPolicy="no-referrer"
+            />
+            <div className="flex flex-col">
+              <span className="font-extrabold text-sm lg:text-base tracking-wider text-white flex items-center gap-1.5">
+                SPMB <span className="text-yellow-300">SMK MUHIBA</span>
+              </span>
+              <span className="text-[10px] lg:text-[11px] text-blue-200 tracking-tight font-medium">
+                SMK Muhammadiyah Bawang
+              </span>
+            </div>
+          </div>
 
-      {/* Menu seluler (layar penuh di bawah header) */}
-      {menuOpen && (
-        <div
-          id="menu-seluler"
-          className="fixed inset-x-0 bottom-0 top-16 overflow-y-auto bg-blue-950 lg:hidden"
-        >
-          <nav className="mx-auto flex max-w-md flex-col px-5 py-4" aria-label="Navigasi seluler">
-            {NAV_ITEMS.map((item) => (
+          {/* ZONE 2: DESKTOP NAVIGATION (Hidden on mobile/tablet) */}
+          <nav className="hidden lg:flex items-center gap-6 text-sm font-semibold tracking-wide">
+            <button
+              onClick={() => navigateTo('home')}
+              className={`transition-colors py-1 hover:text-yellow-300 ${
+                activeView === 'home' ? 'text-yellow-300 border-b-2 border-yellow-300' : 'text-white/90'
+              }`}
+            >
+              Home
+            </button>
+
+            <button
+              onClick={() => navigateTo('home', 'profil-sekolah')}
+              className="text-white/90 hover:text-yellow-300 transition-colors py-1"
+            >
+              Profil Sekolah
+            </button>
+
+            {/* Jurusan Dropdown */}
+            <div className="relative">
               <button
-                key={item.id}
-                type="button"
-                onClick={() => goSection(item.id)}
-                className={`flex min-h-[52px] items-center justify-between border-b border-white/10 text-left text-base font-semibold ${
-                  isActive(item.id)
-                    ? 'text-yellow-300'
-                    : item.accent
-                    ? 'text-yellow-200'
-                    : 'text-white'
-                }`}
+                onClick={() => setJurusanDropdownOpen(!jurusanDropdownOpen)}
+                className="flex items-center gap-1 text-white/90 hover:text-yellow-300 transition-colors py-1 focus:outline-none"
               >
-                <span>{item.label}</span>
-                {isActive(item.id) && <span className="h-2 w-2 rounded-full bg-yellow-300" />}
+                <span>Jurusan</span>
+                <ChevronDown className="w-4 h-4 transition-transform duration-200" />
               </button>
-            ))}
 
-            <div className="mt-6 flex flex-col gap-3">
-              {currentUser ? (
-                <>
+              {jurusanDropdownOpen && (
+                <div 
+                  className="absolute left-0 mt-2 w-64 bg-white text-slate-800 rounded-lg shadow-xl py-2 z-50 border border-slate-100"
+                  onMouseLeave={() => setJurusanDropdownOpen(false)}
+                >
                   <button
-                    type="button"
-                    onClick={() => goView(isAdmin ? 'admin-dashboard' : 'student-dashboard')}
-                    className="min-h-[48px] rounded-xl bg-yellow-300 text-sm font-bold text-blue-950 active:scale-[0.98]"
+                    onClick={() => navigateTo('home', 'jurusan-to')}
+                    className="w-full text-left px-4 py-2 hover:bg-blue-50 text-xs font-semibold flex items-center justify-between"
                   >
-                    {isAdmin ? 'Buka Panel Admin' : 'Buka Dashboard Siswa'}
+                    <span>Teknik Otomotif</span>
                   </button>
                   <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onLogout();
-                    }}
-                    className="min-h-[48px] rounded-xl border border-white/25 text-sm font-semibold text-rose-200 active:scale-[0.98]"
+                    onClick={() => navigateTo('home', 'jurusan-tjkt')}
+                    className="w-full text-left px-4 py-2 hover:bg-blue-50 text-xs font-semibold flex items-center justify-between"
                   >
-                    Keluar
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => goView('portal')}
-                    className="min-h-[48px] rounded-xl bg-red-600 text-sm font-extrabold uppercase tracking-wide text-white active:scale-[0.98]"
-                  >
-                    Daftar Sekarang
+                    <span>Teknik Komputer & Jaringan</span>
                   </button>
                   <button
-                    type="button"
-                    onClick={() => goView('login')}
-                    className="min-h-[48px] rounded-xl border border-white/30 text-sm font-bold text-white active:scale-[0.98]"
+                    onClick={() => navigateTo('home', 'jurusan-akl')}
+                    className="w-full text-left px-4 py-2 hover:bg-blue-50 text-xs font-semibold flex items-center justify-between"
                   >
-                    Login Siswa
+                    <span>Akuntansi & Keuangan</span>
                   </button>
-                </>
+                </div>
               )}
             </div>
 
-            <a
-              href="https://www.smkmuhiba.sch.id"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 text-center text-xs font-semibold text-blue-300"
+            <button
+              onClick={() => navigateTo('home', 'fasilitas-section')}
+              className="text-white/90 hover:text-yellow-300 transition-colors py-1"
             >
-              Website Resmi smkmuhiba.sch.id
-            </a>
+              Fasilitas
+            </button>
+
+            <button
+              onClick={() => navigateTo('home', 'alur-pendaftaran')}
+              className="relative py-1 font-bold text-yellow-300 hover:text-white transition-colors"
+            >
+              Alur Pendaftaran
+            </button>
+
+            <button
+              onClick={() => navigateTo('home', 'kontak-section')}
+              className="text-white/90 hover:text-yellow-300 transition-colors py-1"
+            >
+              Kontak
+            </button>
           </nav>
+
+          {/* ZONE 3: ACTIONS & MOBILE MENU TOGGLE */}
+          <div className="flex items-center gap-3 h-full">
+            {currentUser ? (
+              <div className="hidden sm:flex items-center gap-2">
+                {currentUser.role === 'admin' ? (
+                  <button
+                    onClick={() => navigateTo('admin-dashboard')}
+                    className="px-3.5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-md shadow-sm transition-all flex items-center gap-1.5"
+                  >
+                    <Shield className="w-3.5 h-3.5 text-yellow-400" />
+                    <span>Panel Admin</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigateTo('student-dashboard')}
+                    className="px-3.5 py-2 text-xs font-bold text-blue-900 bg-yellow-300 hover:bg-yellow-400 rounded-md shadow-sm transition-all flex items-center gap-1.5"
+                  >
+                    <UserCheck className="w-3.5 h-3.5 text-blue-950" />
+                    <span>Dashboard ({currentStudent?.nama_lengkap?.split(' ')[0] || 'Siswa'})</span>
+                  </button>
+                )}
+                <button
+                  onClick={onLogout}
+                  title="Keluar"
+                  className="p-2 text-white/80 hover:text-white hover:bg-blue-700/50 rounded-md transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="hidden sm:flex items-center gap-2">
+                <button
+                  onClick={() => navigateTo('login')}
+                  className="px-4 py-2 text-xs font-bold text-blue-100 hover:text-white hover:bg-blue-700/50 rounded-lg transition-colors border border-blue-400/40"
+                >
+                  Login
+                </button>
+                <button
+                  onClick={() => navigateTo('portal')}
+                  className="px-4 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 rounded-lg shadow-md transition-all active:scale-95"
+                >
+                  DAFTAR SEKARANG
+                </button>
+              </div>
+            )}
+
+            {/* MOBILE MENU TOGGLE (HAMBURGER) */}
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="lg:hidden p-2 text-white bg-blue-800/80 hover:bg-blue-700 active:bg-blue-900 border border-blue-400/50 rounded-lg shadow-sm transition-all focus:outline-none"
+              aria-label="Navigasi Menu"
+            >
+              {menuOpen ? (
+                <X className="w-5 h-5 text-yellow-300" />
+              ) : (
+                <Menu className="w-5 h-5 text-yellow-300" />
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* MOBILE/TABLET DRAWER */}
+      {menuOpen && (
+        <div className="lg:hidden bg-gradient-to-b from-indigo-900/98 via-blue-900/98 to-purple-950/98 backdrop-blur-xl border-t border-indigo-500/30 shadow-2xl px-4 py-6 animate-in slide-in-from-top-3 duration-200">
+          <div className="max-w-7xl mx-auto space-y-6">
+            
+            {/* Navigasi Utama Mobile */}
+            <div className="space-y-2 text-sm font-medium">
+              <p className="text-[11px] font-extrabold text-yellow-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Home className="w-3.5 h-3.5" />
+                <span>Menu Utama</span>
+              </p>
+              
+              <button
+                onClick={() => navigateTo('home')}
+                className="w-full text-left py-2.5 px-3 rounded-md hover:bg-blue-800/80 text-white transition-colors"
+              >
+                Beranda (Home)
+              </button>
+              <button
+                onClick={() => navigateTo('home', 'profil-sekolah')}
+                className="w-full text-left py-2.5 px-3 rounded-md hover:bg-blue-800/80 text-white transition-colors"
+              >
+                Profil Sekolah
+              </button>
+              <button
+                onClick={() => navigateTo('home', 'fasilitas-section')}
+                className="w-full text-left py-2.5 px-3 rounded-md hover:bg-blue-800/80 text-white transition-colors"
+              >
+                Fasilitas & Gedung
+              </button>
+              <button
+                onClick={() => navigateTo('home', 'alur-pendaftaran')}
+                className="w-full text-left py-2.5 px-3 rounded-md hover:bg-blue-800/80 text-yellow-300 font-bold flex items-center gap-2 transition-colors"
+              >
+                <ListChecks className="w-4 h-4" /> Alur Pendaftaran
+              </button>
+              <button
+                onClick={() => navigateTo('home', 'kontak-section')}
+                className="w-full text-left py-2.5 px-3 rounded-md hover:bg-blue-800/80 text-white transition-colors"
+              >
+                Hubungi Kami (Contact)
+              </button>
+            </div>
+
+            {/* Jurusan Mobile */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-extrabold text-yellow-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5" />
+                <span>Jurusan & Keahlian</span>
+              </p>
+              <button
+                onClick={() => navigateTo('home', 'jurusan-to')}
+                className="w-full text-left p-3 rounded-lg bg-blue-800/40 text-white text-sm transition-colors hover:bg-blue-800/90"
+              >
+                Teknik Otomotif (TO)
+              </button>
+              <button
+                onClick={() => navigateTo('home', 'jurusan-tjkt')}
+                className="w-full text-left p-3 rounded-lg bg-blue-800/40 text-white text-sm transition-colors hover:bg-blue-800/90"
+              >
+                Teknik Jaringan Komputer (TJKT)
+              </button>
+              <button
+                onClick={() => navigateTo('home', 'jurusan-akl')}
+                className="w-full text-left p-3 rounded-lg bg-blue-800/40 text-white text-sm transition-colors hover:bg-blue-800/90"
+              >
+                Akuntansi & Keuangan (AKL)
+              </button>
+            </div>
+
+            {/* Aksi Mobile */}
+            <div className="space-y-3 pt-4 border-t border-blue-700/50">
+              {currentUser ? (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => navigateTo(currentUser.role === 'admin' ? 'admin-dashboard' : 'student-dashboard')}
+                    className="w-full py-3 px-3 text-center text-sm font-bold text-blue-900 bg-yellow-300 rounded-lg shadow-md"
+                  >
+                    Buka Dashboard
+                  </button>
+                  <button
+                    onClick={onLogout}
+                    className="w-full py-3 text-center text-sm font-semibold text-rose-300 hover:text-rose-200"
+                  >
+                    Keluar Akun
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3 flex flex-col sm:hidden">
+                  <button
+                    onClick={() => navigateTo('portal')}
+                    className="w-full py-3 px-3 text-center text-sm font-black text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-lg shadow-md uppercase"
+                  >
+                    DAFTAR SEKARANG
+                  </button>
+                  <button
+                    onClick={() => navigateTo('login')}
+                    className="w-full py-3 px-3 text-center text-sm font-bold text-blue-100 bg-blue-700/60 border border-blue-400/40 rounded-lg"
+                  >
+                    Login Siswa
+                  </button>
+                </div>
+              )}
+            </div>
+
+          </div>
         </div>
       )}
     </header>
