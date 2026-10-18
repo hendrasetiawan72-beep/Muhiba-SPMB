@@ -100,12 +100,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [kks, setKks] = useState(student.data_diri?.kks || '');
   const [kis, setKis] = useState(student.data_diri?.kis || '');
 
+  // Kolom Alamat Dikosongkan Default Tanpa Isi Bawaan
   const [dukuh, setDukuh] = useState(student.data_alamat?.dukuh || '');
   const [rt, setRt] = useState(student.data_alamat?.rt || '');
   const [rw, setRw] = useState(student.data_alamat?.rw || '');
-  const [provinsi, setProvinsi] = useState(student.data_alamat?.provinsi || 'Jawa Tengah');
-  const [kabupaten, setKabupaten] = useState(student.data_alamat?.kabupaten || 'Kabupaten Batang');
-  const [kecamatan, setKecamatan] = useState(student.data_alamat?.kecamatan || 'Bawang');
+  const [provinsi, setProvinsi] = useState(student.data_alamat?.provinsi || '');
+  const [kabupaten, setKabupaten] = useState(student.data_alamat?.kabupaten || '');
+  const [kecamatan, setKecamatan] = useState(student.data_alamat?.kecamatan || '');
   const [desa, setDesa] = useState(student.data_alamat?.desa || '');
   const [kodePos, setKodePos] = useState(student.data_alamat?.kode_pos || '');
   const [tinggalBersama, setTinggalBersama] = useState(student.data_alamat?.tinggal_bersama || 'Orang Tua');
@@ -476,20 +477,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const handleSaveDataOrangTua = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Validasi ketat NIK Ayah (16 digit) jika diisi
       const cleanNikAyah = nikAyah.trim().replace(/\D/g, '');
-      const cleanNikIbu = nikIbu.trim().replace(/\D/g, '');
-      const cleanNikWali = nikWali.trim().replace(/\D/g, '');
-
       if (nikAyah.trim() && cleanNikAyah.length !== 16) {
-        alert('NIK Ayah harus terdiri dari tepat 16 digit angka.');
+        alert('Peringatan: NIK Ayah harus terdiri dari tepat 16 digit angka!');
         return;
       }
+
+      // Validasi ketat NIK Ibu (16 digit) jika diisi
+      const cleanNikIbu = nikIbu.trim().replace(/\D/g, '');
       if (nikIbu.trim() && cleanNikIbu.length !== 16) {
-        alert('NIK Ibu harus terdiri dari tepat 16 digit angka.');
+        alert('Peringatan: NIK Ibu harus terdiri dari tepat 16 digit angka!');
         return;
       }
+
+      const cleanNikWali = nikWali.trim().replace(/\D/g, '');
       if (nikWali.trim() && cleanNikWali.length !== 16) {
-        alert('NIK Wali harus terdiri dari tepat 16 digit angka.');
+        alert('Peringatan: NIK Wali harus terdiri dari tepat 16 digit angka!');
         return;
       }
 
@@ -655,9 +659,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     window.print();
   };
 
-  // Daftar Sekolah Terbaru & Lengkap (Menyertakan MTs Sunan Kalijaga, Hasyim Asy'ari, dan MTs/SMP Swasta Lainnya)
   const daftarSekolahBatang = [
-    // SMP Negeri
     "SMP Negeri 1 Batang", "SMP Negeri 2 Batang", "SMP Negeri 3 Batang", "SMP Negeri 4 Batang", "SMP Negeri 6 Batang", "SMP Negeri 7 Batang", "SMP Negeri 8 Batang", "SMP Negeri 9 Batang",
     "SMP Negeri 1 Bawang", "SMP Negeri 2 Bawang", "SMP Negeri 3 Bawang", "SMP Negeri 4 Bawang",
     "SMP Negeri 1 Tulis", "SMP Negeri 2 Tulis",
@@ -674,16 +676,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     "SMP Negeri 1 Warungasem", "SMP Negeri 2 Warungasem", "SMP Negeri 3 Warungasem",
     "SMP Negeri 1 Banyuputih",
 
-    // MTs Negeri
     "MTs Negeri Batang",
 
-    // MTs Swasta / NU / Muhammadiyah / Yayasan
     "MTs Sunan Kalijaga", "MTs Hasyim Asy'ari",
     "MTs NU Batang", "MTs NU 01 Banyuputih", "MTs NU 01 Limpung", "MTs NU 01 Subah", "MTs NU 01 Tersono", "MTs NU 01 Bandar", "MTs NU 01 Blado", "MTs NU 01 Gringsing", "MTs NU Nurul Huda", "MTs NU Al Munawwir",
     "MTs Muhammadiyah Batang", "MTs Muhammadiyah Bawang", "MTs Muhammadiyah Limpung", "MTs Muhammadiyah Tersono", "MTs Muhammadiyah Bandar", "MTs Muhammadiyah Subah",
     "MTs Darul Ulum", "MTs Al Islam", "MTs Al Huda", "MTs Nurul Huda", "MTs Darussalam", "MTs Wahid Hasyim", "MTs Salafiyah", "MTs Al Hikmah", "MTs Tholabuddin", "MTs Takhassus Al-Qur'an", "MTs Maulana Maghribi", "MTs Syarifuddin", "MTs Al-Syafi'iyah",
     
-    // SMP Swasta
     "SMP Muhammadiyah Batang", "SMP Muhammadiyah Bawang", "SMP Muhammadiyah Limpung", "SMP NU Batang"
   ];
 
@@ -1787,6 +1786,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 type="text"
                                 value={provinsi}
                                 onChange={(e) => setProvinsi(e.target.value)}
+                                placeholder="Contoh: Jawa Tengah"
                                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded"
                               />
                             </div>
@@ -1797,6 +1797,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 type="text"
                                 value={kabupaten}
                                 onChange={(e) => setKabupaten(e.target.value)}
+                                placeholder="Contoh: Kabupaten Batang"
                                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded"
                               />
                             </div>
@@ -1807,6 +1808,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 type="text"
                                 value={kecamatan}
                                 onChange={(e) => setKecamatan(e.target.value)}
+                                placeholder="Contoh: Bawang"
                                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded"
                               />
                             </div>
@@ -1817,6 +1819,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 type="text"
                                 value={desa}
                                 onChange={(e) => setDesa(e.target.value)}
+                                placeholder="Nama Desa / Kelurahan"
                                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded"
                               />
                             </div>
@@ -1892,11 +1895,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                             <div>
-                              <label className="block text-slate-600 mb-1">NIK Ayah</label>
+                              <label className="block text-slate-600 mb-1">NIK Ayah (16 Digit Angka)</label>
                               <input
                                 type="text"
                                 value={nikAyah}
-                                onChange={(e) => setNikAyah(e.target.value)}
+                                onChange={(e) => setNikAyah(e.target.value.replace(/\D/g, '').slice(0, 16))}
+                                placeholder="16 Digit NIK Ayah"
                                 className="w-full px-3 py-2 border border-slate-300 rounded"
                               />
                             </div>
@@ -1970,11 +1974,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                             <div>
-                              <label className="block text-slate-600 mb-1">NIK Ibu</label>
+                              <label className="block text-slate-600 mb-1">NIK Ibu (16 Digit Angka)</label>
                               <input
                                 type="text"
                                 value={nikIbu}
-                                onChange={(e) => setNikIbu(e.target.value)}
+                                onChange={(e) => setNikIbu(e.target.value.replace(/\D/g, '').slice(0, 16))}
+                                placeholder="16 Digit NIK Ibu"
                                 className="w-full px-3 py-2 border border-slate-300 rounded"
                               />
                             </div>
@@ -2047,6 +2052,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           </h4>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <label className="block text-slate-600 mb-1">NIK Wali (16 Digit Angka)</label>
+                              <input
+                                type="text"
+                                value={nikWali}
+                                onChange={(e) => setNikWali(e.target.value.replace(/\D/g, '').slice(0, 16))}
+                                placeholder="16 Digit NIK Wali"
+                                className="w-full px-3 py-2 border border-slate-300 rounded"
+                              />
+                            </div>
                             <div>
                               <label className="block text-slate-600 mb-1">Nama Wali</label>
                               <input
