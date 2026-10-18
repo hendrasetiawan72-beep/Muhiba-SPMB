@@ -83,22 +83,29 @@ export default async function handler(req: any, res: any) {
     // ============================================================
     // 1. Verifikasi token Cloudflare Turnstile
     // ============================================================
-    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+    const turnstileSecret = (process.env.TURNSTILE_SECRET_KEY || '').trim();
     const turnstileToken = body?.turnstileToken || body?.token || body?.turnstile_token;
     const clientIp =
       (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
       req.socket?.remoteAddress ||
       '127.0.0.1';
 
-    if (turnstileSecret) {
-      if (!turnstileToken) {
-        return res.status(403).json({
-          code: 'CAPTCHA_FAILED',
-          message: 'Verifikasi keamanan Turnstile wajib diisi.',
-        });
-      }
+    if (!turnstileSecret) {
+      console.error('[Turnstile] TURNSTILE_SECRET_KEY belum dikonfigurasi; menolak pendaftaran.');
+      return res.status(503).json({
+        code: 'SERVER_MISCONFIGURED',
+        message: 'Layanan pendaftaran sementara tidak tersedia.',
+      });
+    }
 
-      try {
+    if (!turnstileToken) {
+      return res.status(403).json({
+        code: 'CAPTCHA_FAILED',
+        message: 'Verifikasi keamanan Turnstile wajib diisi.',
+      });
+    }
+
+    try {
         const verifyFormData = new URLSearchParams();
         verifyFormData.append('secret', turnstileSecret);
         verifyFormData.append('response', String(turnstileToken));
@@ -123,13 +130,12 @@ export default async function handler(req: any, res: any) {
               'Verifikasi keamanan Cloudflare Turnstile gagal. Silakan muat ulang halaman dan coba lagi.',
           });
         }
-      } catch (cfErr) {
+    } catch (cfErr) {
         console.error('[Turnstile] Error saat menghubungi Cloudflare siteverify:', cfErr);
         return res.status(403).json({
           code: 'CAPTCHA_FAILED',
           message: 'Gagal memverifikasi keamanan Turnstile. Silakan coba kembali.',
         });
-      }
     }
 
     // ============================================================
