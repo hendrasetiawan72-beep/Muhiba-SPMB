@@ -869,7 +869,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onLogout,
   onNavigateHome,
 }) => {
+  const PAGE_SIZE = 25;
   const [students, setStudents] = useState<Student[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [isLoadingList, setIsLoadingList] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [stats, setStats] = useState({ total: 0, to: 0, tjkt: 0, akl: 0, lolos: 0 });
+  const loadReqId = useRef(0);
+  const lastAutoRefresh = useRef(0);
+  const debouncedRef = useRef('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterJurusan, setFilterJurusan] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -912,24 +921,76 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     };
   }, []);
 
-  const loadStudents = async () => {
+  const loadStats = async () => {
     try {
-      const list = await dbService.getAllStudents();
-      setStudents(list);
+      setStats(await dbService.getStudentStats());
     } catch (err: any) {
-      console.error('Error loading students:', err);
-      showToast(err.message || 'Gagal memuat data pendaftar dari server', 'error');
+      console.error('Error loading stats:', err);
     }
   };
 
+  const loadStudents = async () => {
+    const reqId = ++loadReqId.current;
+    setIsLoadingList(true);
+    try {
+      const res = await dbService.getStudentsPaginated({
+        page,
+        pageSize: PAGE_SIZE,
+        search: debouncedSearch,
+        jurusan: filterJurusan,
+        status: filterStatus,
+      });
+      if (reqId !== loadReqId.current) return; // abaikan respons usang
+      setStudents(res.students);
+      setTotalCount(res.totalCount);
+      const maxPage = Math.max(1, Math.ceil(res.totalCount / PAGE_SIZE));
+      if (page > maxPage) setPage(maxPage);
+    } catch (err: any) {
+      if (reqId !== loadReqId.current) return;
+      console.error('Error loading students:', err);
+      showToast(err.message || 'Gagal memuat data pendaftar dari server', 'error');
+    } finally {
+      if (reqId === loadReqId.current) setIsLoadingList(false);
+    }
+  };
+
+  const refreshAll = () => {
+    lastAutoRefresh.current = Date.now();
+    void loadStudents();
+    void loadStats();
+  };
+
+  // Debounce pencarian (hemat query) dan kembali ke halaman 1
   useEffect(() => {
-    loadStudents();
-    const unsubscribe = dbService.subscribeToStudents(() => {
-      loadStudents();
-    });
-    return () => {
-      unsubscribe();
+    const t = window.setTimeout(() => {
+      const next = searchQuery.trim();
+      if (next !== debouncedRef.current) {
+        debouncedRef.current = next;
+        setPage(1);
+        setDebouncedSearch(next);
+      }
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [searchQuery]);
+
+  // Muat halaman saat halaman / filter berubah
+  useEffect(() => {
+    void loadStudents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch, filterJurusan, filterStatus]);
+
+  // Statistik: sekali saat dibuka, lalu saat tab kembali aktif (maks. 1x / 60 detik).
+  // Tidak memakai realtime agar tidak mengunduh ulang data setiap ada siswa menyimpan.
+  useEffect(() => {
+    void loadStats();
+    lastAutoRefresh.current = Date.now();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastAutoRefresh.current > 60_000) {
+        refreshAll();
+      }
     };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -982,19 +1043,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // --------------------------------------------------------------------------
   // Filter tabel
   // --------------------------------------------------------------------------
-  const filteredStudents = students.filter((std) => {
-    const query = searchQuery.toLowerCase();
-    const matchSearch =
-      std.nama_lengkap.toLowerCase().includes(query) ||
-      std.nik.includes(query) ||
-      std.nomor_pendaftaran.includes(query) ||
-      (std.data_diri?.asal_sekolah || '').toLowerCase().includes(query);
-
-    const matchJurusan = filterJurusan === 'ALL' || std.jurusan_pilihan === filterJurusan;
-    const matchStatus = filterStatus === 'ALL' || std.status_pendaftaran === filterStatus;
-
-    return matchSearch && matchJurusan && matchStatus;
-  });
+  // Data sudah difilter & dipaginasi di server (lihat loadStudents)
+  const filteredStudents = students;
 
   // --------------------------------------------------------------------------
   // Detail & status
@@ -1011,6 +1061,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const updated = await dbService.updateStudentStatus(selectedStudent.nik, modalStatus, adminNotes);
       setSelectedStudent(updated);
       setStudents((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      void loadStats();
       setLogRefreshKey((k) => k + 1);
       showToast(`Status pendaftaran ${updated.nama_lengkap} berhasil diperbarui menjadi ${modalStatus}`);
     } catch (err: any) {
@@ -1140,6 +1191,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       const updated = data as Student;
       setStudents((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      void loadStats();
       if (selectedStudent?.id === updated.id) {
         setSelectedStudent(updated);
         setModalStatus(updated.status_pendaftaran);
@@ -1194,6 +1246,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       );
 
       setStudents((prev) => prev.filter((s) => s.id !== target.id));
+      void loadStats();
+      void loadStudents();
       if (selectedStudent?.id === target.id) setSelectedStudent(null);
       if (editStudent?.id === target.id) closeEdit();
       setDeleteTarget(null);
@@ -1219,7 +1273,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     cari: searchQuery.trim() || null,
   });
 
-  const handleExportCSV = () => {
+  const fetchExportRows = async (): Promise<Student[] | null> => {
+    try {
+      showToast('Menyiapkan data ekspor...');
+      return await dbService.getStudentsForExport({
+        search: searchQuery.trim(),
+        jurusan: filterJurusan,
+        status: filterStatus,
+      });
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menyiapkan data ekspor.', 'error');
+      return null;
+    }
+  };
+
+  const handleExportCSV = async () => {
+    const exportRows = await fetchExportRows();
+    if (!exportRows) return;
     const headers = [
       'No Pendaftaran',
       'NIK',
@@ -1246,7 +1316,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     const headerRow = headers.map((h) => escapeCsvCell(h)).join(',');
 
-    const rows = filteredStudents.map((s) =>
+    const rows = exportRows.map((s) =>
       [
         escapeCsvCell(s.nomor_pendaftaran),
         escapeCsvCell(s.nik),
@@ -1280,25 +1350,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     void writeLog('EKSPOR_DATA', null, {
       format: 'CSV',
-      jumlah_baris: filteredStudents.length,
+      jumlah_baris: exportRows.length,
       filter: exportFilterInfo(),
     });
   };
 
-  const handleExportJSON = () => {
+  const handleExportJSON = async () => {
+    const exportRows = await fetchExportRows();
+    if (!exportRows) return;
     const jsonContent =
-      'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filteredStudents, null, 2));
+      'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportRows, null, 2));
     const link = document.createElement('a');
     link.setAttribute('href', jsonContent);
     link.setAttribute('download', `DATA_PPDB_SMK_MUHIBA_${new Date().toISOString().slice(0, 10)}.json`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast(`Berhasil mengunduh ${filteredStudents.length} data pendaftar dalam format JSON.`);
+    showToast(`Berhasil mengunduh ${exportRows.length} data pendaftar dalam format JSON.`);
 
     void writeLog('EKSPOR_DATA', null, {
       format: 'JSON',
-      jumlah_baris: filteredStudents.length,
+      jumlah_baris: exportRows.length,
       filter: exportFilterInfo(),
     });
   };
@@ -1417,38 +1489,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
                 <p className="text-[11px] font-semibold text-slate-500 uppercase">Total Pendaftar</p>
-                <p className="text-2xl font-black text-slate-900 mt-1 tabular-nums">{students.length}</p>
+                <p className="text-2xl font-black text-slate-900 mt-1 tabular-nums">{stats.total}</p>
               </div>
 
               <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
                 <p className="text-[11px] font-semibold text-amber-600 uppercase">Teknik Otomotif (TO)</p>
                 <p className="text-2xl font-black text-amber-600 mt-1 tabular-nums">
-                  {students.filter((s) => s.jurusan_pilihan === 'TO').length}
+                  {stats.to}
                 </p>
               </div>
 
               <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
                 <p className="text-[11px] font-semibold text-blue-600 uppercase">TJKT</p>
                 <p className="text-2xl font-black text-blue-600 mt-1 tabular-nums">
-                  {students.filter((s) => s.jurusan_pilihan === 'TJKT').length}
+                  {stats.tjkt}
                 </p>
               </div>
 
               <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
                 <p className="text-[11px] font-semibold text-emerald-600 uppercase">AKL</p>
                 <p className="text-2xl font-black text-emerald-600 mt-1 tabular-nums">
-                  {students.filter((s) => s.jurusan_pilihan === 'AKL').length}
+                  {stats.akl}
                 </p>
               </div>
 
               <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm col-span-2 md:col-span-1">
                 <p className="text-[11px] font-semibold text-purple-600 uppercase">Diterima / Terverifikasi</p>
                 <p className="text-2xl font-black text-purple-600 mt-1 tabular-nums">
-                  {
-                    students.filter(
-                      (s) => s.status_pendaftaran === 'Diterima' || s.status_pendaftaran === 'Terverifikasi'
-                    ).length
-                  }
+                  {stats.lolos}
                 </p>
               </div>
             </div>
@@ -1472,7 +1540,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <span>Jurusan:</span>
                   <select
                     value={filterJurusan}
-                    onChange={(e) => setFilterJurusan(e.target.value)}
+                    onChange={(e) => { setFilterJurusan(e.target.value); setPage(1); }}
                     className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-md bg-white font-semibold"
                   >
                     <option value="ALL">Semua Jurusan</option>
@@ -1486,7 +1554,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <span>Status:</span>
                   <select
                     value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
+                    onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
                     className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-md bg-white font-semibold"
                   >
                     <option value="ALL">Semua Status</option>
@@ -1497,6 +1565,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <option value="Cadangan">Cadangan</option>
                   </select>
                 </div>
+
+                <button
+                  onClick={refreshAll}
+                  disabled={isLoadingList}
+                  className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-md text-xs font-bold transition-colors disabled:opacity-50"
+                  title="Muat ulang data pendaftar"
+                >
+                  {isLoadingList ? 'Memuat...' : 'Muat Ulang'}
+                </button>
 
                 <button
                   onClick={handleExportCSV}
@@ -1628,6 +1705,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 text-xs text-slate-600">
+                <span>
+                  {totalCount === 0
+                    ? 'Tidak ada data'
+                    : `Menampilkan ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, totalCount)} dari ${totalCount} pendaftar`}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1 || isLoadingList}
+                    className="px-3 py-1.5 rounded-md border border-slate-300 bg-white font-semibold disabled:opacity-40"
+                  >
+                    Sebelumnya
+                  </button>
+                  <span className="font-semibold tabular-nums">
+                    Hal {page} / {Math.max(1, Math.ceil(totalCount / PAGE_SIZE))}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={page >= Math.ceil(totalCount / PAGE_SIZE) || isLoadingList}
+                    className="px-3 py-1.5 rounded-md border border-slate-300 bg-white font-semibold disabled:opacity-40"
+                  >
+                    Berikutnya
+                  </button>
+                </div>
               </div>
             </div>
           </>
