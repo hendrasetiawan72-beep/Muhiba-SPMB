@@ -350,6 +350,24 @@ class DatabaseService {
     return (data as Student) || null;
   }
 
+  /** Fetch the student row belonging to the authenticated user. */
+  public async getStudentByUserId(userId: string): Promise<Student | null> {
+    if (!this.supabase) throw new Error('Supabase client tidak terhubung.');
+
+    const { data, error } = await this.supabase
+      .from('students')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('getStudentByUserId error:', error);
+      throw new Error(`Gagal memuat data siswa: ${error.message}`);
+    }
+
+    return (data as Student) || null;
+  }
+
   /**
    * Fetch all students (Admin overview)
    */
@@ -618,7 +636,7 @@ class DatabaseService {
    */
   public async uploadBerkasFile(
     userId: string,
-    jenis: string,
+    jenis: import('../Utils/uploadConfig').BerkasJenis,
     rawFile: File,
     oldPath?: string
   ): Promise<{ path: string; nama_file: string; ukuran: string; url?: string }> {
@@ -768,11 +786,11 @@ class DatabaseService {
   /**
    * Admin: Reset password pendaftar lewat endpoint server /api/admin/reset-password.
    * `verifikasi` adalah jawaban pemohon yang DIKETIK admin; server mencocokkannya dengan data
-   * pendaftaran (nomor pendaftaran + nomor WA wajib cocok, tanggal lahir opsional).
+   * pendaftaran (nomor pendaftaran + nomor WA + tanggal lahir wajib cocok).
    */
   public async resetStudentPassword(
     identifier: { user_id?: string; nik?: string },
-    verifikasi: { nomor_pendaftaran: string; no_wa: string; tanggal_lahir?: string }
+    verifikasi: { nomor_pendaftaran: string; no_wa: string; tanggal_lahir: string }
   ): Promise<{
     temporaryPassword: string;
     nama_lengkap: string;
