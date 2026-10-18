@@ -138,9 +138,7 @@ async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResp
   const secret = getEnv('TURNSTILE_SECRET_KEY');
 
   if (!secret) {
-    // FAIL-CLOSED: tanpa secret, CAPTCHA tidak boleh dilewati diam-diam.
-    // Untuk dev lokal saja, set ALLOW_NO_CAPTCHA=true (jangan di production).
-    if (getEnv('ALLOW_NO_CAPTCHA') === 'true') return null;
+    // FAIL-CLOSED: tanpa secret, CAPTCHA tidak boleh dilewati melalui environment flag.
     console.error('[Turnstile] TURNSTILE_SECRET_KEY belum diset (fail-closed).');
     return {
       statusCode: 500,
@@ -183,7 +181,7 @@ async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResp
 
 /**
  * Shared Login Request Handler
- * - Verifikasi Cloudflare Turnstile (wajib jika TURNSTILE_SECRET_KEY diset)
+ * - Verifikasi Cloudflare Turnstile (wajib)
  * - Auth via Supabase
  * - Role diambil dari public.profiles (bukan JWT claim)
  */
