@@ -315,7 +315,7 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
       body: {
         success: false,
         code: 'INVALID_IDENTIFIER',
-        error: 'Masukkan NIK 16 digit angka. Untuk admin, gunakan username "admin" atau email admin.',
+        error: 'Masukkan NIK 16 digit angka sebagai username anda.',
       },
     };
   }
