@@ -12,16 +12,14 @@ import {
   CheckCircle2, 
   Award, 
   Play, 
-  Pause, 
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   BookOpen,
   ArrowRight,
   ArrowUp,
   Volume2,
   VolumeX,
-  Maximize2,
-  Minimize2,
   X,
   Globe,
   UserPlus,
@@ -468,6 +466,284 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
   );
 };
 
+// ===========================================================================
+// Pembantu gulir: mencegah skrip "gulir cepat ke Profil" membajak gulir menu
+// ===========================================================================
+const lockAutoScroll = (ms = 1800) => {
+  (window as any).__spmbNavLockUntil = Date.now() + ms;
+};
+const isAutoScrollLocked = () => Date.now() < ((window as any).__spmbNavLockUntil || 0);
+const isTouchDevice = () =>
+  typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+
+// ===========================================================================
+// FASILITAS: carousel berurutan, otomatis tiap 5 detik, gambar saja
+// ===========================================================================
+const FACILITIES = [
+  {
+    title: 'Workshop Teknik Otomotif',
+    subtitle: 'Standar Industri & Bengkel Resmi (TSM & TKR)',
+    description:
+      'Workshop Teknik Otomotif SMK Muhammadiyah dirancang sebagai sarana praktik siswa dalam mempelajari perawatan, perbaikan, dan teknologi kendaraan bermotor. Dilengkapi dengan peralatan standar industri, workshop ini membekali siswa dengan keterampilan teknis, kedisiplinan kerja, serta etos profesional sesuai nilai-nilai SOP Perusahaan.',
+    tags: ['TEKNIK OTOMOTIF', 'TSM & TKR', 'UNGGUL'],
+    completionRate: '100%',
+    image: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    title: 'Lab Akuntansi',
+    subtitle: 'Simulasi Perbankan & Software Akuntansi Digital',
+    description:
+      'Laboratorium Akuntansi dilengkapi dengan komputer terintegrasi software Accurate, MYOB, perpajakan digital e-Faktur, dan simulasi kasir modern. Mempersiapkan siswa dengan kecakapan analisis keuangan, pencatatan transaksi terstandar, dan etika profesional perbankan syariah serta konvensional.',
+    tags: ['AKUNTANSI', 'FINTECH', 'DIGITAL'],
+    completionRate: '100%',
+    image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    title: 'Lab Fiber Optic',
+    subtitle: 'Infrastruktur Jaringan Cepat & Mikrotik Academy',
+    description:
+      'Fasilitas mutakhir untuk program keahlian TJKT dengan perangkat Splicer Fiber Optic, OTDR, Routerboard Mikrotik, Cisco, Server Virtualisasi, dan laboratorium komputasi berkecepatan tinggi untuk riset jaringan dan keamanan siber.',
+    tags: ['FIBER OPTIC', 'MIKROTIK', 'CYBER SECURITY'],
+    completionRate: '100%',
+    image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    title: 'Kewirausahaan',
+    subtitle: 'Business Center & Teaching Factory Muhiba',
+    description:
+      'Pusat inkubasi bisnis siswa yang mewadahi unit produksi, minimarket sekolah, jasa servis motor berkala, perakitan PC, dan penjualan produk kreatif karya siswa untuk memupuk jiwa mandiri dan wirausaha tangguh sejak dini.',
+    tags: ['BUSINESS CENTER', 'TEFA', 'WIRAUSAHA'],
+    completionRate: '100%',
+    image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=80',
+  },
+];
+
+const FASILITAS_INTERVAL_MS = 5000;
+
+const FasilitasCarousel: React.FC<{ onRegisterClick: () => void }> = ({ onRegisterClick }) => {
+  const total = FACILITIES.length;
+  const [active, setActive] = useState(0);
+  const [hovered, setHovered] = useState(false);
+  const [touching, setTouching] = useState(false);
+  const [inView, setInView] = useState(true);
+  const [tabVisible, setTabVisible] = useState(true);
+
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const remaining = useRef(FASILITAS_INTERVAL_MS);
+  const startedAt = useRef(0);
+
+  const paused = hovered || touching || !inView || !tabVisible;
+
+  // Slide baru -> hitung ulang 5 detik penuh
+  useEffect(() => {
+    remaining.current = FASILITAS_INTERVAL_MS;
+  }, [active]);
+
+  // Maju otomatis TIAP 5 DETIK, selalu berurutan (1 -> 2 -> 3 -> 4 -> 1 ...).
+  // Saat dijeda (hover / sentuh / di luar layar / tab tersembunyi), sisa waktu disimpan.
+  useEffect(() => {
+    if (paused) return;
+    startedAt.current = Date.now();
+    const timer = window.setTimeout(() => setActive((i) => (i + 1) % total), remaining.current);
+    return () => {
+      window.clearTimeout(timer);
+      remaining.current = Math.max(300, remaining.current - (Date.now() - startedAt.current));
+    };
+  }, [active, paused, total]);
+
+  // Jeda bila carousel tidak terlihat atau tab browser tidak aktif (hemat baterai)
+  useEffect(() => {
+    const node = rootRef.current;
+    let observer: IntersectionObserver | undefined;
+    if (node && 'IntersectionObserver' in window) {
+      observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+        threshold: 0.25,
+      });
+      observer.observe(node);
+    }
+    const onVis = () => setTabVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      observer?.disconnect();
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
+
+  const goNext = () => setActive((i) => (i + 1) % total);
+  const goPrev = () => setActive((i) => (i - 1 + total) % total);
+
+  // Geser jari: hanya satu mekanisme (tanpa drag ganda), abaikan gerakan vertikal
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    setTouching(true);
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    setTouching(false);
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start) return;
+    const dx = e.changedTouches[0].clientX - start.x;
+    const dy = e.changedTouches[0].clientY - start.y;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) goNext();
+      else goPrev();
+    }
+  };
+  const onTouchCancel = () => {
+    touchStart.current = null;
+    setTouching(false);
+  };
+
+  return (
+    <div
+      ref={rootRef}
+      className="relative"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowRight') goNext();
+        if (e.key === 'ArrowLeft') goPrev();
+      }}
+      onPointerEnter={(e) => e.pointerType === 'mouse' && setHovered(true)}
+      onPointerLeave={(e) => e.pointerType === 'mouse' && setHovered(false)}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
+      aria-roledescription="carousel"
+      aria-label="Fasilitas sekolah"
+    >
+      <style>{`@keyframes fasilitas-progress{from{transform:scaleX(0)}to{transform:scaleX(1)}}`}</style>
+
+      <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xl sm:rounded-3xl [touch-action:pan-y]">
+        {/* Semua slide ditumpuk di satu sel: tinggi stabil, tidak pernah kosong */}
+        <div className="grid">
+          {FACILITIES.map((f, i) => {
+            const isCurrent = i === active;
+            return (
+              <article
+                key={f.title}
+                aria-hidden={!isCurrent}
+                inert={!isCurrent}
+                className={`col-start-1 row-start-1 grid grid-cols-1 transition-opacity duration-500 lg:grid-cols-12 ${
+                  isCurrent ? 'z-10 opacity-100' : 'pointer-events-none z-0 opacity-0'
+                }`}
+              >
+                <div className="relative min-h-[220px] overflow-hidden bg-slate-900 sm:min-h-[320px] lg:col-span-6 lg:min-h-[440px]">
+                  <img
+                    src={f.image}
+                    alt={f.title}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover object-center"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute left-4 top-4 rounded-full bg-blue-600/90 px-3 py-1.5 text-xs font-extrabold text-white shadow-lg backdrop-blur-md">
+                    {f.completionRate} SIAP PRAKTIK
+                  </div>
+                </div>
+
+                <div className="flex flex-col justify-between bg-white p-5 sm:p-8 lg:col-span-6 lg:p-10">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-blue-700">
+                        {f.subtitle}
+                      </span>
+                      <span className="shrink-0 font-mono text-xs font-bold text-slate-400">
+                        {String(i + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+                      </span>
+                    </div>
+                    <h3 className="text-2xl font-extrabold leading-snug tracking-tight text-slate-900 sm:text-3xl">
+                      {f.title}
+                    </h3>
+                    <p className="text-sm leading-relaxed text-slate-600">{f.description}</p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {f.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
+                    <button
+                      type="button"
+                      onClick={onRegisterClick}
+                      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 text-xs font-extrabold text-white shadow-md transition hover:from-blue-500 hover:to-indigo-500 active:scale-95 sm:text-sm"
+                    >
+                      <span>Daftar Jurusan Ini</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                    <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      <span>Tersertifikasi LSP & Industri</span>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        {/* Bar waktu 5 detik (CSS murni, ikut berhenti saat dijeda) */}
+        <div className="h-1 bg-slate-100">
+          <div
+            key={active}
+            className="h-full origin-left bg-blue-600"
+            style={{
+              animation: `fasilitas-progress ${FASILITAS_INTERVAL_MS}ms linear forwards`,
+              animationPlayState: paused ? 'paused' : 'running',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Kendali: sebelumnya - titik - berikutnya */}
+      <div className="mt-6 flex items-center justify-center gap-3">
+        <button
+          type="button"
+          onClick={goPrev}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95"
+          aria-label="Fasilitas sebelumnya"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+
+        <div className="flex items-center">
+          {FACILITIES.map((f, idx) => (
+            <button
+              key={f.title}
+              type="button"
+              onClick={() => setActive(idx)}
+              className="flex h-11 w-8 items-center justify-center"
+              aria-label={`Fasilitas ${idx + 1}: ${f.title}`}
+              aria-current={active === idx}
+            >
+              <span
+                className={`h-2.5 rounded-full transition-all duration-300 ${
+                  active === idx ? 'w-8 bg-blue-600' : 'w-2.5 bg-slate-300'
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={goNext}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95"
+          aria-label="Fasilitas berikutnya"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 interface LandingPageProps {
   onRegisterClick: () => void;
   onLoginClick: () => void;
@@ -477,15 +753,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onRegisterClick,
   onLoginClick,
 }) => {
-  const [activeFacility, setActiveFacility] = useState<number>(0);
   const [showBackToTop, setShowBackToTop] = useState<boolean>(false);
-
-  // States & refs for clean looping video in workshop otomotif
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const modalVideoRef = useRef<HTMLVideoElement | null>(null);
-  const [isVideoMuted, setIsVideoMuted] = useState<boolean>(true);
-  const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(true);
-  const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState<boolean>(false);
 
   // States & refs for Profile Video (YouTube)
   const [isYtMuted, setIsYtMuted] = useState<boolean>(true);
@@ -504,6 +772,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const jurusanGlowY = useTransform(scrollY, [800, 2200], [-40, 50]);
 
   const scrollToSection = (sectionId: string) => {
+    lockAutoScroll();
     const el = document.getElementById(sectionId);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -564,6 +833,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     const handleScrollSnap = () => {
       const currentScrollY = window.scrollY;
 
+      // Jangan membajak gulir yang dipicu menu/tombol, atau di layar sentuh (HP/tablet)
+      if (isAutoScrollLocked() || isTouchDevice()) {
+        lastScrollY = currentScrollY;
+        return;
+      }
+
       // Reset kemampuan trigger jika pengguna kembali ke paling atas halaman (< 20px)
       if (currentScrollY <= 20) {
         hasTriggeredQuickScroll.current = false;
@@ -594,6 +869,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     };
 
     const handleWheel = (e: WheelEvent) => {
+      if (isAutoScrollLocked()) return;
       if (
         window.scrollY <= 25 &&
         e.deltaY > 15 &&
@@ -633,163 +909,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsFullscreenModalOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  const toggleVideoPlay = () => {
-    if (videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play().catch(() => {});
-        setIsVideoPlaying(true);
-      } else {
-        videoRef.current.pause();
-        setIsVideoPlaying(false);
-      }
-    }
-  };
-
-  const toggleVideoMute = () => {
-    const nextMuted = !isVideoMuted;
-    setIsVideoMuted(nextMuted);
-    if (videoRef.current) {
-      videoRef.current.muted = nextMuted;
-    }
-    if (modalVideoRef.current) {
-      modalVideoRef.current.muted = nextMuted;
-    }
-  };
-
-  const handleOpenFullscreen = () => {
-    setIsFullscreenModalOpen(true);
-  };
-
   const fallbackHeroImage =
     'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjG8XVKrvlj5jkknTYzKlB2DYIKwYl1h-gKegies3GGfKcyk-1dkSbyfvt4Ghj1yFFkXhzsQ40PCyNUVALlRtkvQmnQtzCJe2vo7XL3Im96N_eQqnsxxRJkirDNC5NorqApzII5S2-bswtbk3wH3eUwOc6JCuHVkpKC3QCxZa2T2JPHtIJ9tvOEaMz45ZRb/s320/44857.png';
-
-  const facilities = [
-    {
-      title: 'Workshop Teknik Otomotif',
-      subtitle: 'Standar Industri & Bengkel Resmi (TSM & TKR)',
-      description:
-        'Workshop Teknik Otomotif SMK Muhammadiyah dirancang sebagai sarana praktik siswa dalam mempelajari perawatan, perbaikan, dan teknologi kendaraan bermotor. Dilengkapi dengan peralatan standar industri, workshop ini membekali siswa dengan keterampilan teknis, kedisiplinan kerja, serta etos profesional sesuai nilai-nilai SOP Perusahaan.',
-      tags: ['TEKNIK OTOMOTIF', 'TSM & TKR', 'UNGGUL'],
-      completionRate: '100%',
-      image: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=900&q=80',
-      isVideo: true,
-      videoId: '7681168904672136468',
-      videoUrl: 'https://vt.tiktok.com/ZSbLkvPQh/',
-    },
-    {
-      title: 'Lab Akuntansi',
-      subtitle: 'Simulasi Perbankan & Software Akuntansi Digital',
-      description:
-        'Laboratorium Akuntansi dilengkapi dengan komputer terintegrasi software Accurate, MYOB, perpajakan digital e-Faktur, dan simulasi kasir modern. Mempersiapkan siswa dengan kecakapan analisis keuangan, pencatatan transaksi terstandar, dan etika profesional perbankan syariah serta konvensional.',
-      tags: ['AKUNTANSI', 'FINTECH', 'DIGITAL'],
-      completionRate: '100%',
-      image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=900&q=80',
-      isVideo: false,
-    },
-    {
-      title: 'Lab Fiber Optic',
-      subtitle: 'Infrastruktur Jaringan Cepat & Mikrotik Academy',
-      description:
-        'Fasilitas mutakhir untuk program keahlian TJKT dengan perangkat Splicer Fiber Optic, OTDR, Routerboard Mikrotik, Cisco, Server Virtualisasi, dan laboratorium komputasi berkecepatan tinggi untuk riset jaringan dan keamanan siber.',
-      tags: ['FIBER OPTIC', 'MIKROTIK', 'CYBER SECURITY'],
-      completionRate: '100%',
-      image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=900&q=80',
-      isVideo: false,
-    },
-    {
-      title: 'Kewirausahaan',
-      subtitle: 'Business Center & Teaching Factory Muhiba',
-      description:
-        'Pusat inkubasi bisnis siswa yang mewadahi unit produksi, minimarket sekolah, jasa servis motor berkala, perakitan PC, dan penjualan produk kreatif karya siswa untuk memupuk jiwa mandiri dan wirausaha tangguh sejak dini.',
-      tags: ['BUSINESS CENTER', 'TEFA', 'WIRAUSAHA'],
-      completionRate: '100%',
-      image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=80',
-      isVideo: false,
-    },
-  ];
-
-  // Carousel Auto-Play and Touch/Swipe States
-  const [isAutoPlayActive, setIsAutoPlayActive] = useState<boolean>(true);
-  const [isCarouselHovered, setIsCarouselHovered] = useState<boolean>(false);
-  const [autoPlayProgress, setAutoPlayProgress] = useState<number>(0);
-  const [swipeDirection, setSwipeDirection] = useState<number>(1);
-
-  // Auto-play timer for Carousel (20 detik / 20000ms duration, pauses on hover / touch)
-  useEffect(() => {
-    if (!isAutoPlayActive || isCarouselHovered || isFullscreenModalOpen) return;
-
-    const intervalDuration = 20000;
-    const stepDuration = 50;
-    let elapsed = 0;
-
-    const timer = setInterval(() => {
-      elapsed += stepDuration;
-      setAutoPlayProgress(Math.min((elapsed / intervalDuration) * 100, 100));
-
-      if (elapsed >= intervalDuration) {
-        elapsed = 0;
-        setAutoPlayProgress(0);
-        setSwipeDirection(1);
-        setActiveFacility((prev) => (prev + 1) % facilities.length);
-      }
-    }, stepDuration);
-
-    return () => clearInterval(timer);
-  }, [isAutoPlayActive, isCarouselHovered, isFullscreenModalOpen, activeFacility, facilities.length]);
-
-  const nextFacility = () => {
-    setSwipeDirection(1);
-    setAutoPlayProgress(0);
-    setActiveFacility((prev) => (prev + 1) % facilities.length);
-  };
-
-  const prevFacility = () => {
-    setSwipeDirection(-1);
-    setAutoPlayProgress(0);
-    setActiveFacility((prev) => (prev - 1 + facilities.length) % facilities.length);
-  };
-
-  const goToFacility = (idx: number) => {
-    setSwipeDirection(idx > activeFacility ? 1 : -1);
-    setAutoPlayProgress(0);
-    setActiveFacility(idx);
-  };
-
-  // Touch Swipe Gesture Fallback
-  const touchStartX = useRef<number | null>(null);
-  const touchEndX = useRef<number | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setIsCarouselHovered(true);
-    touchStartX.current = e.targetTouches[0].clientX;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchEndX.current = e.targetTouches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    setIsCarouselHovered(false);
-    if (touchStartX.current === null || touchEndX.current === null) return;
-    const distance = touchStartX.current - touchEndX.current;
-    if (distance > 40) {
-      nextFacility();
-    } else if (distance < -40) {
-      prevFacility();
-    }
-    touchStartX.current = null;
-    touchEndX.current = null;
-  };
 
   const testimonials = [
     {
@@ -852,32 +973,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         ease: smoothEase,
       },
     },
-  };
-
-  const carouselSlideVariants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 100 : -100,
-      opacity: 0,
-      scale: 0.98,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      scale: 1,
-      transition: {
-        x: { type: 'spring' as const, stiffness: 300, damping: 30 },
-        opacity: { duration: 0.3 },
-      },
-    },
-    exit: (direction: number) => ({
-      x: direction > 0 ? -100 : 100,
-      opacity: 0,
-      scale: 0.98,
-      transition: {
-        x: { type: 'spring' as const, stiffness: 300, damping: 30 },
-        opacity: { duration: 0.25 },
-      },
-    }),
   };
 
   return (
@@ -1352,7 +1447,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ========================================================================= */}
-      {/* 5. FASILITAS & WORKSHOP (RESPONSIVE AUTO-PLAY CAROUSEL WITH TOUCH/SWIPE) */}
+      {/* 5. FASILITAS & WORKSHOP (CAROUSEL BERURUTAN, OTOMATIS 5 DETIK, GAMBAR SAJA) */}
       {/* ========================================================================= */}
       <section id="fasilitas-section" className="py-20 bg-slate-50 border-t border-slate-200 relative scroll-mt-24 section-snap">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1374,201 +1469,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
           </motion.div>
 
-          {/* Responsive Carousel Stage with Touch/Swipe Gestures */}
-          <div
-            className="relative"
-            onMouseEnter={() => setIsCarouselHovered(true)}
-            onMouseLeave={() => setIsCarouselHovered(false)}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            {/* Carousel Slide Card with Framer Motion Drag and AnimatePresence */}
-            <div className="overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xl bg-white">
-              <AnimatePresence mode="wait" custom={swipeDirection}>
-                <motion.div
-                  key={activeFacility}
-                  custom={swipeDirection}
-                  variants={carouselSlideVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  drag="x"
-                  dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.2}
-                  onDragEnd={(_, info) => {
-                    if (info.offset.x < -40 || info.velocity.x < -150) {
-                      nextFacility();
-                    } else if (info.offset.x > 40 || info.velocity.x > 150) {
-                      prevFacility();
-                    }
-                  }}
-                  className="grid grid-cols-1 lg:grid-cols-12 cursor-grab active:cursor-grabbing select-none"
-                >
-                  {/* Media Side - Ukuran Frame Seragam & Video Tercrop Sempurna */}
-                  <div className="lg:col-span-6 relative min-h-[300px] sm:min-h-[380px] lg:min-h-[460px] bg-slate-950 overflow-hidden">
-                    {facilities[activeFacility].isVideo ? (
-                      <div className="absolute inset-0 w-full h-full overflow-hidden bg-slate-950 group">
-                        <video
-                          ref={videoRef}
-                          src="/videos/workshop_otomotif.mp4"
-                          poster="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80"
-                          preload="none"
-                          autoPlay
-                          loop
-                          muted={isVideoMuted}
-                          playsInline
-                          className="absolute inset-0 w-full h-full object-cover object-center cursor-pointer select-none"
-                          onClick={toggleVideoPlay}
-                          title="Klik untuk Jeda / Putar"
-                        />
-
-                        {/* Top Badges */}
-                        <div className="absolute top-4 left-4 bg-red-600/90 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 z-20 pointer-events-none">
-                          <span className="w-2 h-2 rounded-full bg-white animate-ping" />
-                          <span>WORKSHOP OTOMOTIF • LIVE LOOP</span>
-                        </div>
-
-                        {/* Video Controls Bar */}
-                        <div className="absolute inset-x-0 bottom-0 p-3.5 bg-gradient-to-t from-slate-950/95 via-slate-950/55 to-transparent flex items-center justify-between z-20 transition-opacity">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={toggleVideoPlay}
-                              className="p-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md transition-colors cursor-pointer"
-                              title={isVideoPlaying ? 'Jeda Video' : 'Putar Video'}
-                            >
-                              {isVideoPlaying ? (
-                                <Pause className="w-3.5 h-3.5 fill-current" />
-                              ) : (
-                                <Play className="w-3.5 h-3.5 fill-current" />
-                              )}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={toggleVideoMute}
-                              className="p-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md transition-colors cursor-pointer"
-                              title={isVideoMuted ? 'Nyalakan Audio' : 'Bisukan Audio'}
-                            >
-                              {isVideoMuted ? (
-                                <VolumeX className="w-3.5 h-3.5" />
-                              ) : (
-                                <Volume2 className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-
-                            <span className="text-[11px] font-medium text-slate-200 hidden sm:inline">
-                              {isVideoMuted ? 'Audio Bisu' : 'Audio Aktif'}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={handleOpenFullscreen}
-                              className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded-full shadow-md flex items-center gap-1.5 transition-all transform hover:scale-105 cursor-pointer"
-                              title="Tampilkan Layar Penuh (Full Screen)"
-                            >
-                              <Maximize2 className="w-3.5 h-3.5" />
-                              <span>Full Screen</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="absolute inset-0 w-full h-full overflow-hidden bg-slate-900">
-                        <img
-                          src={facilities[activeFacility].image}
-                          alt={facilities[activeFacility].title}
-                          className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 hover:scale-105"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="absolute top-4 left-4 bg-blue-600/90 backdrop-blur-md text-white text-xs font-extrabold px-3 py-1.5 rounded-full shadow-lg">
-                          {facilities[activeFacility].completionRate} SIAP PRAKTIK
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Information Content Side */}
-                  <div className="lg:col-span-6 p-6 sm:p-8 lg:p-10 flex flex-col justify-between bg-white">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-blue-700 uppercase tracking-wider bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                          {facilities[activeFacility].subtitle}
-                        </span>
-                        <span className="text-xs font-mono font-bold text-slate-400">
-                          0{activeFacility + 1} / 0{facilities.length}
-                        </span>
-                      </div>
-
-                      <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug">
-                        {facilities[activeFacility].title}
-                      </h3>
-
-                      <p className="text-sm text-slate-600 leading-relaxed font-normal">
-                        {facilities[activeFacility].description}
-                      </p>
-
-                      <div className="pt-2">
-                        <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
-                          Karakteristik & Keunggulan:
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {facilities[activeFacility].tags.map((tag, tIdx) => (
-                            <span
-                              key={tIdx}
-                              className="text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1 rounded-lg"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-8 pt-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
-                      <button
-                        onClick={onRegisterClick}
-                        className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 cursor-pointer"
-                      >
-                        <span>Daftar Jurusan Ini</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-
-                      <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                        <span>Tersertifikasi LSP & Industri</span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            {/* Navigasi Hanya Melalui Titik-Titik */}
-            <div className="mt-8 flex items-center justify-center gap-3">
-              {facilities.map((_, idx) => {
-                const isActive = activeFacility === idx;
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => goToFacility(idx)}
-                    className={`h-3 rounded-full transition-all duration-300 cursor-pointer ${
-                      isActive
-                        ? 'w-10 bg-blue-600 shadow-md shadow-blue-500/30'
-                        : 'w-3 bg-slate-300 hover:bg-slate-400'
-                    }`}
-                    aria-label={`Pilih fasilitas ${idx + 1}: ${facilities[idx].title}`}
-                    title={facilities[idx].title}
-                  />
-                );
-              })}
-            </div>
-
-          </div>
-
+          <FasilitasCarousel onRegisterClick={onRegisterClick} />
 
         </div>
       </section>
@@ -1739,7 +1640,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <span>SMKS MUHAMMADIYAH BAWANG - Jl. Raya Bawang - Sukorejo KM 01, Jlamprang, Bawang, Batang 51274</span>
                   </div>
                   <a
-                    href="https://share.google/WChfuaQjWqFfda9jZ"
+                    href="https://maps.google.com/?q=SMK+Muhammadiyah+Bawang+Batang"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-800 flex items-center gap-1 font-bold"
@@ -1750,11 +1651,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
 
                 <div className="relative w-full h-[360px]">
-                  {/* Pin otomatis pada tempat "SMK Muhammadiyah Bawang" (tanpa API key).
-                      Untuk pin yang persis dari tautan Google Anda: buka Google Maps > Bagikan > Sematkan peta,
-                      salin isi src="..." lalu tempel menggantikan alamat di bawah ini. */}
                   <iframe
-                    src="https://www.google.com/maps?q=SMK+Muhammadiyah+Bawang+Batang+Jawa+Tengah&z=16&hl=id&output=embed"
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15837.288219468936!2d109.91494559999999!3d-7.0886111!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7073289069d519%3A0xe54efda6cb94ea9c!2sSMK%20Muhammadiyah%20Bawang!5e0!3m2!1sid!2sid!4v1700000000000!5m2!1sid!2sid"
                     width="100%"
                     height="100%"
                     style={{ border: 0 }}
@@ -1837,74 +1735,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
       </footer>
-
-      {/* FULLSCREEN VIDEO MODAL */}
-      {isFullscreenModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col justify-between p-4 sm:p-6 animate-in fade-in duration-200">
-          {/* Header */}
-          <div className="flex items-center justify-between text-white z-20 pb-3 border-b border-white/10">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                <h3 className="text-sm sm:text-base font-bold text-white tracking-wide">
-                  Workshop Teknik Otomotif - SMK Muhammadiyah Bawang
-                </h3>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Pemutaran Bersih Layar Penuh • Loop Berulang Otomatis (Tanpa Watermark/Ikon)
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={toggleVideoMute}
-                className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors border border-white/20 cursor-pointer"
-              >
-                {isVideoMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                <span>{isVideoMuted ? 'Nyalakan Audio' : 'Bisukan Audio'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsFullscreenModalOpen(false)}
-                className="p-2 bg-white/10 hover:bg-red-600 text-white rounded-lg transition-colors border border-white/20 cursor-pointer"
-                title="Tutup Layar Penuh (Esc)"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Full Screen Video Container */}
-          <div className="flex-1 flex items-center justify-center relative overflow-hidden my-3">
-            <video
-              ref={modalVideoRef}
-              src="/videos/workshop_otomotif.mp4"
-              poster="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80"
-              preload="none"
-              autoPlay
-              loop
-              muted={isVideoMuted}
-              playsInline
-              controls
-              className="max-w-full max-h-[80vh] w-auto h-auto rounded-xl shadow-2xl object-contain border border-white/10"
-            />
-          </div>
-
-          {/* Footer bar */}
-          <div className="text-xs text-slate-400 pt-3 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span>Fasilitas Resmi Teknik Otomotif (TBSM) SMK Muhammadiyah Bawang</span>
-            <button
-              onClick={() => setIsFullscreenModalOpen(false)}
-              className="px-3 py-1 bg-white/10 hover:bg-white/20 text-blue-300 hover:text-white rounded text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <Minimize2 className="w-3.5 h-3.5" />
-              <span>Keluar Mode Layar Penuh (Esc)</span>
-            </button>
-          </div>
-        </div>
-      )}
 
     </div>
   );
