@@ -401,10 +401,8 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
   };
 
   return (
-    // Tambahkan class print:bg-white agar background cerah saat mencetak
     <div className="min-h-screen bg-slate-100 py-6 sm:py-10 px-4 sm:px-6 lg:px-8 print:bg-white print:py-0 print:px-0">
       
-      {/* Tambahan class print:hidden untuk membuang semua konten halaman background saat modal bukti pendaftaran dicetak */}
       <div className="max-w-5xl mx-auto space-y-6 print:hidden">
 
         {/* TOP WELCOME BAR */}
@@ -1001,12 +999,22 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
           <style type="text/css" media="print">
             {`
               @page { size: A4 portrait; margin: 15mm; }
-              body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              html, body { 
+                background: white !important; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact;
+                height: 100vh !important; 
+                overflow: hidden !important; 
+              }
+              /* Sembunyikan semua elemen di luar area print agar tidak bertabrakan */
+              body * { visibility: hidden; }
+              /* Munculkan kembali hanya area print beserta isinya */
+              #print-section, #print-section * { visibility: visible; }
             `}
           </style>
 
-          {/* Menghilangkan modal layang pada saat dicetak, dibuat seakan dokumen statis full layar (print:static print:block) */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 overflow-y-auto print:static print:bg-white print:p-0 print:block">
+          {/* Menghilangkan modal layang pada saat dicetak, dibuat seakan dokumen statis full layar */}
+          <div id="print-section" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 overflow-y-auto print:absolute print:inset-0 print:bg-white print:p-0 print:block print:z-[99999]">
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 relative my-8 animate-in fade-in duration-200 print:shadow-none print:m-0 print:max-w-full print:border-none print:p-0 print:block">
               
               <div className="flex items-start justify-between border-b pb-4 mb-5">
