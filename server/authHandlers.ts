@@ -66,13 +66,128 @@ export interface ApiResponse {
   };
 }
 
+// ============================================================================
+// KEAMANAN LOGIN: rate limit (fail-closed) + CAPTCHA (fail-closed)
+// Batas bisa disesuaikan. Sekolah memakai Wi-Fi bersama, jadi batas per IP longgar.
+// ============================================================================
+const LOGIN_WINDOW_SECONDS = 600; // 10 menit
+const LOGIN_LIMIT_PER_IP = 100;
+const LOGIN_LIMIT_PER_ID = 10;
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+type RateResult = 'ok' | 'limited' | 'unavailable';
+
+async function rateLimitHit(
+  admin: SupabaseClient | null,
+  bucket: string,
+  rawKey: string,
+  limit: number,
+  windowSeconds: number
+): Promise<RateResult> {
+  if (!admin) return 'unavailable';
+  try {
+    const salt = getEnv('RATE_LIMIT_SALT') || getEnv('SUPABASE_SERVICE_ROLE_KEY');
+    const keyHash = await sha256Hex(`${bucket}:${rawKey}:${salt}`);
+    const { data, error } = await admin.rpc('rate_limit_hit', {
+      p_bucket: bucket,
+      p_key_hash: keyHash,
+      p_limit: limit,
+      p_window_seconds: windowSeconds,
+    });
+    if (error) {
+      console.error('[RateLimit] RPC error (fail-closed):', error.message);
+      return 'unavailable';
+    }
+    return data === false ? 'limited' : 'ok';
+  } catch (e) {
+    console.error('[RateLimit] Exception (fail-closed):', e);
+    return 'unavailable';
+  }
+}
+
+function rateLimitResponse(result: RateResult): ApiResponse | null {
+  if (result === 'ok') return null;
+  if (result === 'limited') {
+    return {
+      statusCode: 429,
+      body: {
+        success: false,
+        code: 'RATE_LIMITED',
+        error: 'Terlalu banyak percobaan login. Coba lagi dalam beberapa menit.',
+      },
+    };
+  }
+  return {
+    statusCode: 503,
+    body: {
+      success: false,
+      code: 'RATE_LIMIT_UNAVAILABLE',
+      error: 'Layanan login sementara tidak tersedia. Silakan coba beberapa saat lagi.',
+    },
+  };
+}
+
+/** Verifikasi Turnstile manual. Mengembalikan null jika lolos, atau ApiResponse error. */
+async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResponse | null> {
+  const secret = getEnv('TURNSTILE_SECRET_KEY');
+
+  if (!secret) {
+    // FAIL-CLOSED: tanpa secret, CAPTCHA tidak boleh dilewati diam-diam.
+    // Untuk dev lokal saja, set ALLOW_NO_CAPTCHA=true (jangan di production).
+    if (getEnv('ALLOW_NO_CAPTCHA') === 'true') return null;
+    console.error('[Turnstile] TURNSTILE_SECRET_KEY belum diset (fail-closed).');
+    return {
+      statusCode: 500,
+      body: {
+        success: false,
+        code: 'SERVER_MISCONFIGURED',
+        error: 'Konfigurasi keamanan server belum lengkap. Silakan hubungi panitia.',
+      },
+    };
+  }
+
+  const fail = (error: string): ApiResponse => ({
+    statusCode: 403,
+    body: { success: false, code: 'CAPTCHA_FAILED', error },
+  });
+
+  if (!token) return fail('Verifikasi keamanan Turnstile wajib diisi.');
+
+  try {
+    const form = new URLSearchParams();
+    form.append('secret', secret);
+    form.append('response', String(token));
+    if (clientIp) form.append('remoteip', clientIp);
+
+    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: form,
+    });
+    const outcome: any = await resp.json();
+    if (!outcome.success) {
+      console.warn('[Turnstile Login] Gagal:', outcome['error-codes']);
+      return fail('Verifikasi keamanan gagal. Muat ulang halaman dan coba lagi.');
+    }
+    return null;
+  } catch (cfErr) {
+    console.error('[Turnstile Login] Error siteverify:', cfErr);
+    return fail('Gagal memverifikasi keamanan. Silakan coba kembali.');
+  }
+}
+
 /**
  * Shared Login Request Handler
  * - Verifikasi Cloudflare Turnstile (wajib jika TURNSTILE_SECRET_KEY diset)
  * - Auth via Supabase
  * - Role diambil dari public.profiles (bukan JWT claim)
  */
-export async function handleLogin(body: any): Promise<ApiResponse> {
+export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<ApiResponse> {
   const { supabaseAdmin, supabaseAnon, supabaseUrl } = getSupabaseClients();
 
   if (!supabaseUrl || !supabaseAnon) {
@@ -128,10 +243,7 @@ export async function handleLogin(body: any): Promise<ApiResponse> {
     };
   }
 
-  // ============================================================
-  // Verifikasi Cloudflare Turnstile (wajib jika secret diset)
-  // ============================================================
-  const turnstileSecret = getEnv('TURNSTILE_SECRET_KEY');
+  const clientIp = (clientIpRaw || '').trim();
   const turnstileToken =
     parsedBody?.turnstileToken ||
     parsedBody?.token ||
@@ -139,7 +251,29 @@ export async function handleLogin(body: any): Promise<ApiResponse> {
     parsedBody?.captchaToken ||
     '';
 
-  if (turnstileSecret) {
+  // ============================================================
+  // 1. Rate limit per IP (sebelum menyentuh Turnstile/Supabase)
+  // ============================================================
+  const ipLimited = rateLimitResponse(
+    await rateLimitHit(
+      supabaseAdmin,
+      'login:ip',
+      clientIp || 'unknown',
+      LOGIN_LIMIT_PER_IP,
+      LOGIN_WINDOW_SECONDS
+    )
+  );
+  if (ipLimited) return ipLimited;
+
+  // ============================================================
+  // 2. CAPTCHA
+  //    Mode default: server memverifikasi Turnstile sendiri.
+  //    Mode SUPABASE_CAPTCHA=true: token diteruskan ke Supabase Auth
+  //    (aktifkan CAPTCHA di dashboard Supabase) sehingga jalur langsung
+  //    ke Supabase dengan anon key pun wajib CAPTCHA.
+  // ============================================================
+  const supabaseCaptchaMode = getEnv('SUPABASE_CAPTCHA') === 'true';
+  if (supabaseCaptchaMode) {
     if (!turnstileToken) {
       return {
         statusCode: 403,
@@ -150,40 +284,9 @@ export async function handleLogin(body: any): Promise<ApiResponse> {
         },
       };
     }
-
-    try {
-      const verifyFormData = new URLSearchParams();
-      verifyFormData.append('secret', turnstileSecret);
-      verifyFormData.append('response', String(turnstileToken));
-
-      const turnstileResp = await fetch(
-        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-        { method: 'POST', body: verifyFormData }
-      );
-      const turnstileOutcome = await turnstileResp.json();
-
-      if (!turnstileOutcome.success) {
-        console.warn('[Turnstile Login] Gagal:', turnstileOutcome['error-codes']);
-        return {
-          statusCode: 403,
-          body: {
-            success: false,
-            code: 'CAPTCHA_FAILED',
-            error: 'Verifikasi keamanan gagal. Muat ulang halaman dan coba lagi.',
-          },
-        };
-      }
-    } catch (cfErr) {
-      console.error('[Turnstile Login] Error siteverify:', cfErr);
-      return {
-        statusCode: 403,
-        body: {
-          success: false,
-          code: 'CAPTCHA_FAILED',
-          error: 'Gagal memverifikasi keamanan. Silakan coba kembali.',
-        },
-      };
-    }
+  } else {
+    const captchaError = await checkTurnstile(turnstileToken, clientIp);
+    if (captchaError) return captchaError;
   }
 
   const isNik = /^\d{16}$/.test(cleanId);
@@ -205,10 +308,24 @@ export async function handleLogin(body: any): Promise<ApiResponse> {
     };
   }
 
+  // 3. Rate limit per NIK / admin (setelah CAPTCHA lolos, agar bot tanpa CAPTCHA
+  //    tidak bisa mengunci akun orang lain)
+  const idLimited = rateLimitResponse(
+    await rateLimitHit(
+      supabaseAdmin,
+      'login:id',
+      cleanId.toLowerCase(),
+      LOGIN_LIMIT_PER_ID,
+      LOGIN_WINDOW_SECONDS
+    )
+  );
+  if (idLimited) return idLimited;
+
   try {
     const { data: authData, error: authErr } = await supabaseAnon.auth.signInWithPassword({
       email: authEmail,
       password: cleanPass,
+      ...(supabaseCaptchaMode ? { options: { captchaToken: String(turnstileToken) } } : {}),
     });
 
     if (authErr || !authData?.user) {
