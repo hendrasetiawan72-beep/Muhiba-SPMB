@@ -1070,6 +1070,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const openBerkas = async (item?: BerkasItem) => {
+    if (!selectedStudent) {
+      showToast('Pendaftar belum dipilih.', 'error');
+      return;
+    }
     const rawPath = item?.path;
     if (!rawPath || typeof rawPath !== 'string') {
       showToast('Path berkas tidak ditemukan atau belum diunggah.', 'error');
