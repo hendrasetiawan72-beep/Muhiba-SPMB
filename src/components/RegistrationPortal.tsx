@@ -14,7 +14,9 @@ import {
   AlertCircle,
   X,
   Check,
-  ShieldAlert
+  ShieldAlert,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { dbService } from '../services/supabase';
 import { Student, User as UserType, JurusanType } from '../types/database';
@@ -25,43 +27,98 @@ interface RegistrationPortalProps {
   onNavigateHome: () => void;
 }
 
-// Hook kecil untuk widget Cloudflare Turnstile.
+// ---------------------------------------------------------------------------
+// Hook widget Cloudflare Turnstile (dengan status yang terlihat oleh pengguna)
+// status: idle | loading | ready | error ; token hanya berlaku sekali -> reset()
+// ---------------------------------------------------------------------------
+type TsStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 function useTurnstile(active: boolean) {
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const widgetIdRef = React.useRef<string | null>(null);
   const [token, setToken] = React.useState('');
+  const [status, setStatus] = React.useState<TsStatus>('idle');
+  const [errorCode, setErrorCode] = React.useState('');
+  const [attempt, setAttempt] = React.useState(0);
 
   React.useEffect(() => {
-    if (!siteKey || !active) return;
+    if (!siteKey || !active) {
+      setStatus('idle');
+      return;
+    }
     let cancelled = false;
     let tries = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
+    setStatus('loading');
+    setErrorCode('');
+    setToken('');
+
+    const fail = (code: string) => {
+      if (cancelled) return;
+      setToken('');
+      setErrorCode(code);
+      setStatus('error');
+    };
+
     const tryRender = () => {
-      if (cancelled || !containerRef.current) return;
+      if (cancelled) return;
+      if (!containerRef.current) {
+        if (tries++ < 20) timer = setTimeout(tryRender, 100);
+        else fail('no_container');
+        return;
+      }
       const ts = (window as any).turnstile;
       if (!ts) {
-        if (tries++ < 50) timer = setTimeout(tryRender, 200);
+        // Skrip api.js (async defer) mungkin belum selesai dimuat / diblokir
+        if (tries++ < 75) timer = setTimeout(tryRender, 200);
+        else fail('script_blocked');
         return;
       }
       try {
         widgetIdRef.current = ts.render(containerRef.current, {
           sitekey: siteKey,
           theme: 'light',
-          callback: (t: string) => setToken(t),
-          'expired-callback': () => setToken(''),
-          'error-callback': () => setToken(''),
+          callback: (t: string) => {
+            if (cancelled) return;
+            setToken(t);
+            setErrorCode('');
+            setStatus('ready');
+          },
+          'expired-callback': () => {
+            setToken('');
+            setStatus('loading');
+          },
+          'timeout-callback': () => {
+            setToken('');
+            setStatus('loading');
+          },
+          'error-callback': (code?: unknown) => {
+            fail(String(code ?? 'error'));
+            return true;
+          },
+          'unsupported-callback': () => fail('unsupported'),
         });
       } catch (e) {
         console.warn('Turnstile render warning:', e);
+        fail('render_failed');
       }
     };
     tryRender();
 
+    // Pengaman: bila 25 detik belum ada token, tampilkan pesan + tombol "Coba lagi"
+    const watchdog = setTimeout(() => {
+      if (!cancelled) {
+        setStatus((s) => (s === 'ready' ? s : 'error'));
+        setErrorCode((c) => c || 'timeout');
+      }
+    }, 25000);
+
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      clearTimeout(watchdog);
       try {
         const ts = (window as any).turnstile;
         if (ts && widgetIdRef.current) ts.remove(widgetIdRef.current);
@@ -69,17 +126,66 @@ function useTurnstile(active: boolean) {
       widgetIdRef.current = null;
       setToken('');
     };
-  }, [siteKey, active]);
+  }, [siteKey, active, attempt]);
 
   const reset = React.useCallback(() => {
     setToken('');
+    setStatus('loading');
     try {
       const ts = (window as any).turnstile;
       if (ts && widgetIdRef.current) ts.reset(widgetIdRef.current);
     } catch {}
   }, []);
 
-  return { siteKey, containerRef, token, reset };
+  const retry = React.useCallback(() => setAttempt((a) => a + 1), []);
+
+  return { siteKey, containerRef, token, status, errorCode, reset, retry };
+}
+
+function turnstileHint(code: string): string {
+  if (code === 'script_blocked')
+    return 'Skrip keamanan Cloudflare tidak termuat. Matikan pemblokir iklan/pelacak untuk situs ini, periksa koneksi, atau coba browser lain.';
+  if (code === 'timeout')
+    return 'Verifikasi terlalu lama. Periksa koneksi internet lalu ketuk "Coba lagi".';
+  if (/^110(100|110|200|420|500)/.test(code) || code.startsWith('1102'))
+    return 'Domain situs ini belum terdaftar di Cloudflare Turnstile. Hubungi panitia/pengelola situs.';
+  if (code === 'unsupported')
+    return 'Browser tidak mendukung verifikasi keamanan. Gunakan Chrome atau Firefox versi terbaru.';
+  return 'Verifikasi keamanan gagal dimuat. Ketuk "Coba lagi" atau muat ulang halaman.';
+}
+
+// ---------------------------------------------------------------------------
+// Validasi NIK (sama dengan aturan di server /api/auth/register)
+// ---------------------------------------------------------------------------
+const PROVINCE_CODES = new Set([
+  '11','12','13','14','15','16','17','18','19','21','31','32','33','34','35','36',
+  '51','52','53','61','62','63','64','65','71','72','73','74','75','76','81','82',
+  '91','92','93','94','95','96',
+]);
+
+function validateNik(nik: string): string | null {
+  if (!nik) return 'NIK wajib diisi (16 digit angka sesuai KTP / Kartu Keluarga).';
+  if (nik.length < 16) return `NIK belum lengkap: baru ${nik.length} dari 16 digit.`;
+  if (/^(\d)\1{15}$/.test(nik)) return 'NIK tidak valid: tidak boleh 16 angka yang sama.';
+  if (!PROVINCE_CODES.has(nik.slice(0, 2))) return 'NIK tidak valid: 2 digit pertama (kode provinsi) tidak dikenali.';
+  const bln = parseInt(nik.slice(8, 10), 10);
+  if (bln < 1 || bln > 12) return 'NIK tidak valid: digit ke-9 dan 10 (bulan lahir) harus 01–12.';
+  const tgl = parseInt(nik.slice(6, 8), 10);
+  if (!((tgl >= 1 && tgl <= 31) || (tgl >= 41 && tgl <= 71)))
+    return 'NIK tidak valid: digit ke-7 dan 8 (tanggal lahir) harus 01–31 (laki-laki) atau 41–71 (perempuan).';
+  return null;
+}
+
+function passwordStrength(pw: string): { label: string; color: string; width: string } {
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[a-zA-Z]/.test(pw) && /\d/.test(pw)) score++;
+  if (/[^a-zA-Z0-9]/.test(pw)) score++;
+  if (!pw) return { label: '', color: 'bg-slate-200', width: '0%' };
+  if (pw.length < 8) return { label: 'Terlalu pendek', color: 'bg-red-500', width: '25%' };
+  if (score <= 2) return { label: 'Sedang', color: 'bg-amber-500', width: '60%' };
+  return { label: 'Kuat', color: 'bg-emerald-500', width: '100%' };
 }
 
 export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
@@ -103,8 +209,68 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const nikRef = React.useRef<HTMLInputElement | null>(null);
+  const namaRef = React.useRef<HTMLInputElement | null>(null);
+  const waRef = React.useRef<HTMLInputElement | null>(null);
+  const passRef = React.useRef<HTMLInputElement | null>(null);
+  const confirmRef = React.useRef<HTMLInputElement | null>(null);
+  const alertRef = React.useRef<HTMLDivElement | null>(null);
+
   const formTs = useTurnstile(showRegisterForm);
+
+  const touch = (f: string) => setTouched((t) => (t[f] ? t : { ...t, [f]: true }));
+  const normalizeWa = (v: string) => v.trim().replace(/[-\s]/g, '');
+  const waError = (v: string): string | null => {
+    const c = normalizeWa(v);
+    if (!c) return 'Nomor WhatsApp wajib diisi.';
+    if (!/^(\+?62|0)8[1-9][0-9]{7,12}$/.test(c))
+      return 'Nomor WhatsApp tidak valid. Format: 08xxxxxxxxxx atau 628xxxxxxxxxx.';
+    return null;
+  };
+  const passwordError = (v: string): string | null => {
+    if (!v) return 'Password wajib diisi.';
+    if (v.length < 8) return `Password minimal 8 karakter (sekarang ${v.length}).`;
+    const lower = v.toLowerCase();
+    if (
+      ['12345678', '123456789', '1234567890', 'password', 'admin123', 'qwertyui', 'indonesia', 'smkmuhiba'].includes(lower) ||
+      v === nik ||
+      lower.startsWith('muhiba@') ||
+      (namaLengkap && lower === namaLengkap.trim().toLowerCase())
+    )
+      return 'Password terlalu mudah ditebak. Gunakan kombinasi huruf dan angka.';
+    return null;
+  };
+
+  const fieldErrors = {
+    nik: validateNik(nik),
+    nama: namaLengkap.trim() ? null : 'Nama lengkap wajib diisi.',
+    wa: waError(noWa),
+    password: passwordError(password),
+    confirm: password !== confirmPassword ? 'Konfirmasi password belum sama dengan password.' : null,
+  };
+  const strength = passwordStrength(password);
+
+  const raiseError = (field: 'nik' | 'nama' | 'wa' | 'password' | 'confirm' | 'captcha', message: string) => {
+    setErrorMessage(message);
+    const map: Record<string, React.RefObject<HTMLInputElement | null>> = {
+      nik: nikRef, nama: namaRef, wa: waRef, password: passRef, confirm: confirmRef,
+    };
+    window.setTimeout(() => {
+      alertRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      map[field]?.current?.focus({ preventScroll: true });
+    }, 30);
+  };
+
+  const closeRegisterForm = () => {
+    setShowRegisterForm(false);
+    setErrorMessage('');
+    setTouched({});
+    setShowPassword(false);
+    setShowConfirm(false);
+  };
 
   const [needsLogin, setNeedsLogin] = useState(false);
   const enterTs = useTurnstile(!!buktiPendaftaran && needsLogin);
@@ -141,53 +307,23 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
     setErrorMessage('');
 
     const cleanNik = nik.trim();
-    if (!/^\d{16}$/.test(cleanNik)) {
-      setErrorMessage('NIK harus terdiri dari 16 digit angka sesuai KTP / Kartu Keluarga.');
-      return;
-    }
+    setTouched({ nik: true, nama: true, wa: true, password: true, confirm: true });
 
-    if (!namaLengkap.trim()) {
-      setErrorMessage('Nama lengkap wajib diisi.');
-      return;
-    }
-
-    const cleanNoWa = noWa.trim().replace(/[-\s]/g, '');
-    if (!cleanNoWa) {
-      setErrorMessage('Nomor WhatsApp wajib diisi untuk konfirmasi info pendaftaran.');
-      return;
-    }
-
-    if (!/^(\+?62|0)8[1-9][0-9]{7,12}$/.test(cleanNoWa)) {
-      setErrorMessage('Nomor WhatsApp tidak valid. Format: 08xxxxxxxxxx atau 628xxxxxxxxxx (10-15 digit).');
-      return;
-    }
-
-    if (password.length < 8) {
-      setErrorMessage('Kata sandi minimal 8 karakter demi keamanan akun Anda.');
-      return;
-    }
-
-    const lowerPass = password.toLowerCase();
-    const commonPasswords = ['12345678', '123456789', 'password', 'admin123', 'qwertyui', 'indonesia', 'smkmuhiba'];
-    if (
-      commonPasswords.includes(lowerPass) ||
-      password === cleanNik ||
-      lowerPass.startsWith('muhiba@') ||
-      (namaLengkap && lowerPass === namaLengkap.trim().toLowerCase())
-    ) {
-      setErrorMessage('Kata sandi terlalu mudah ditebak. Gunakan minimal 8 karakter kombinasi huruf dan angka.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setErrorMessage('Konfirmasi kata sandi tidak cocok dengan kata sandi yang dibuat.');
-      return;
-    }
+    // Urutan pemeriksaan = urutan kolom; berhenti di kolom pertama yang salah
+    if (fieldErrors.nik) return raiseError('nik', fieldErrors.nik);
+    if (fieldErrors.nama) return raiseError('nama', fieldErrors.nama);
+    if (fieldErrors.wa) return raiseError('wa', fieldErrors.wa);
+    if (fieldErrors.password) return raiseError('password', fieldErrors.password);
+    if (fieldErrors.confirm) return raiseError('confirm', fieldErrors.confirm);
 
     if (formTs.siteKey && !formTs.token) {
-      setErrorMessage('Selesaikan verifikasi keamanan (CAPTCHA) terlebih dahulu.');
-      return;
+      if (formTs.status === 'error') {
+        return raiseError('captcha', `Verifikasi keamanan gagal. ${turnstileHint(formTs.errorCode)}`);
+      }
+      return raiseError('captcha', 'Verifikasi keamanan (CAPTCHA) masih berjalan. Tunggu beberapa detik sampai muncul tanda centang hijau, lalu tekan tombol lagi.');
     }
+
+    const cleanNoWa = normalizeWa(noWa);
 
     setIsSubmitting(true);
     try {
@@ -195,7 +331,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
         nik: cleanNik,
         nama_lengkap: namaLengkap,
         jurusan_pilihan: jurusanPilihan,
-        no_wa: noWa,
+        no_wa: cleanNoWa,
         password: password,
         turnstileToken: formTs.token || undefined,
       });
@@ -204,7 +340,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
         student: res.student,
         rawPassword: password,
       });
-      setShowRegisterForm(false);
+      closeRegisterForm();
     } catch (err: any) {
       formTs.reset();
       if (err.code === 'NIK_EXISTS') {
@@ -579,7 +715,9 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 relative my-8 animate-in fade-in zoom-in-95 duration-200">
             <button
-              onClick={() => setShowRegisterForm(false)}
+              type="button"
+              onClick={closeRegisterForm}
+              aria-label="Tutup formulir"
               className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100"
             >
               <X className="w-5 h-5" />
@@ -596,55 +734,96 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
             </div>
 
             {errorMessage && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-xs text-red-700">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-                <span>{errorMessage}</span>
+              <div
+                ref={alertRef}
+                role="alert"
+                className="mb-4 p-3 bg-red-50 border border-red-300 rounded-lg flex items-start gap-2 text-xs text-red-700"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
+                <span className="font-semibold">{errorMessage}</span>
               </div>
             )}
 
-            <form onSubmit={handleRegisterSubmit} className="space-y-4">
-              {/* Form Input (sama dengan sebelumnya) */}
+            <form onSubmit={handleRegisterSubmit} noValidate className="space-y-4">
+              {/* NIK */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="reg-nik" className="block text-xs font-bold text-slate-700 mb-1">
                   Nomor Induk Kependudukan (NIK) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <CreditCard className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                   <input
+                    id="reg-nik"
+                    ref={nikRef}
                     type="text"
-                    required
+                    inputMode="numeric"
+                    autoComplete="off"
                     maxLength={16}
                     value={nik}
                     onChange={(e) => setNik(e.target.value.replace(/\D/g, ''))}
-                    placeholder="Contoh: 3325028202890001 (16 digit)"
-                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    onBlur={() => touch('nik')}
+                    aria-invalid={!!(touched.nik && fieldErrors.nik)}
+                    placeholder="16 digit angka sesuai KTP / KK"
+                    className={`w-full pl-9 pr-16 py-2 text-xs border rounded-lg focus:ring-2 ${
+                      touched.nik && fieldErrors.nik
+                        ? 'border-red-400 focus:ring-red-400 focus:border-red-400 bg-red-50/40'
+                        : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                   />
+                  <span
+                    className={`absolute right-3 top-2.5 text-[11px] font-bold tabular-nums ${
+                      nik.length === 16 && !fieldErrors.nik
+                        ? 'text-emerald-600'
+                        : touched.nik
+                        ? 'text-red-500'
+                        : 'text-slate-400'
+                    }`}
+                  >
+                    {nik.length}/16
+                  </span>
                 </div>
-                <p className="text-[10px] text-slate-500 mt-1">NIK akan digunakan sebagai username login.</p>
+                {touched.nik && fieldErrors.nik ? (
+                  <p className="text-[11px] font-semibold text-red-600 mt-1">{fieldErrors.nik}</p>
+                ) : (
+                  <p className="text-[10px] text-slate-500 mt-1">NIK akan digunakan sebagai username login.</p>
+                )}
               </div>
 
+              {/* Nama */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="reg-nama" className="block text-xs font-bold text-slate-700 mb-1">
                   Nama Lengkap Siswa <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <User className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                   <input
+                    id="reg-nama"
+                    ref={namaRef}
                     type="text"
-                    required
+                    autoComplete="name"
                     value={namaLengkap}
                     onChange={(e) => setNamaLengkap(e.target.value)}
+                    onBlur={() => touch('nama')}
                     placeholder="Nama lengkap sesuai ijazah / akta"
-                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full pl-9 pr-3 py-2 text-xs border rounded-lg focus:ring-2 ${
+                      touched.nama && fieldErrors.nama
+                        ? 'border-red-400 focus:ring-red-400 focus:border-red-400 bg-red-50/40'
+                        : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                   />
                 </div>
+                {touched.nama && fieldErrors.nama && (
+                  <p className="text-[11px] font-semibold text-red-600 mt-1">{fieldErrors.nama}</p>
+                )}
               </div>
 
+              {/* Jurusan */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="reg-jurusan" className="block text-xs font-bold text-slate-700 mb-1">
                   Pilihan Konsentrasi Keahlian (Jurusan) <span className="text-red-500">*</span>
                 </label>
                 <select
+                  id="reg-jurusan"
                   value={jurusanPilihan}
                   onChange={(e) => setJurusanPilihan(e.target.value as JurusanType)}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-semibold"
@@ -655,67 +834,157 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                 </select>
               </div>
 
+              {/* WhatsApp */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="reg-wa" className="block text-xs font-bold text-slate-700 mb-1">
                   Nomor WhatsApp Siswa / Orang Tua <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Phone className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                   <input
+                    id="reg-wa"
+                    ref={waRef}
                     type="tel"
-                    required
+                    inputMode="tel"
+                    autoComplete="tel"
                     maxLength={16}
                     value={noWa}
                     onChange={(e) => setNoWa(e.target.value)}
+                    onBlur={() => touch('wa')}
                     placeholder="Contoh: 081234567890"
-                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full pl-9 pr-3 py-2 text-xs border rounded-lg focus:ring-2 ${
+                      touched.wa && fieldErrors.wa
+                        ? 'border-red-400 focus:ring-red-400 focus:border-red-400 bg-red-50/40'
+                        : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                   />
                 </div>
+                {touched.wa && fieldErrors.wa && (
+                  <p className="text-[11px] font-semibold text-red-600 mt-1">{fieldErrors.wa}</p>
+                )}
               </div>
 
+              {/* Password */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor="reg-pass" className="block text-xs font-bold text-slate-700 mb-1">
                     Buat Password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                     <input
-                      type="password"
-                      required
+                      id="reg-pass"
+                      ref={passRef}
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Min. 5 karakter"
-                      className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onBlur={() => touch('password')}
+                      placeholder="Min. 8 karakter"
+                      className={`w-full pl-9 pr-10 py-2 text-xs border rounded-lg focus:ring-2 ${
+                        touched.password && fieldErrors.password
+                          ? 'border-red-400 focus:ring-red-400 focus:border-red-400 bg-red-50/40'
+                          : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                      aria-pressed={showPassword}
+                      className="absolute right-1.5 top-1 flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
+                  {password && (
+                    <div className="mt-1.5">
+                      <div className="h-1 w-full rounded-full bg-slate-200 overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${strength.color}`} style={{ width: strength.width }} />
+                      </div>
+                      <p className="text-[10px] font-semibold text-slate-500 mt-0.5">Kekuatan: {strength.label}</p>
+                    </div>
+                  )}
+                  {touched.password && fieldErrors.password && (
+                    <p className="text-[11px] font-semibold text-red-600 mt-1">{fieldErrors.password}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor="reg-confirm" className="block text-xs font-bold text-slate-700 mb-1">
                     Konfirmasi Password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                     <input
-                      type="password"
-                      required
+                      id="reg-confirm"
+                      ref={confirmRef}
+                      type={showConfirm ? 'text' : 'password'}
+                      autoComplete="new-password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
+                      onBlur={() => touch('confirm')}
                       placeholder="Ulangi password"
-                      className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className={`w-full pl-9 pr-10 py-2 text-xs border rounded-lg focus:ring-2 ${
+                        touched.confirm && fieldErrors.confirm
+                          ? 'border-red-400 focus:ring-red-400 focus:border-red-400 bg-red-50/40'
+                          : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm((v) => !v)}
+                      aria-label={showConfirm ? 'Sembunyikan konfirmasi password' : 'Tampilkan konfirmasi password'}
+                      aria-pressed={showConfirm}
+                      className="absolute right-1.5 top-1 flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
+                  {confirmPassword && !fieldErrors.confirm && (
+                    <p className="text-[11px] font-semibold text-emerald-600 mt-1">Password cocok</p>
+                  )}
+                  {touched.confirm && fieldErrors.confirm && (
+                    <p className="text-[11px] font-semibold text-red-600 mt-1">{fieldErrors.confirm}</p>
+                  )}
                 </div>
               </div>
 
-              {formTs.siteKey && <div ref={formTs.containerRef} className="flex justify-center" />}
+              {/* Verifikasi keamanan (Turnstile) dengan status yang jelas */}
+              {formTs.siteKey && (
+                <div className="space-y-2">
+                  <div ref={formTs.containerRef} className="flex justify-center min-h-[4px]" />
+                  {formTs.status === 'loading' && (
+                    <p className="text-center text-[11px] font-semibold text-slate-500">
+                      Memeriksa keamanan, mohon tunggu...
+                    </p>
+                  )}
+                  {formTs.status === 'ready' && (
+                    <p className="text-center text-[11px] font-semibold text-emerald-600">
+                      Verifikasi keamanan berhasil
+                    </p>
+                  )}
+                  {formTs.status === 'error' && (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-[11px] text-amber-800">
+                      <p className="font-semibold">{turnstileHint(formTs.errorCode)}</p>
+                      <p className="mt-1 text-amber-700/80">Kode: {formTs.errorCode || '-'}</p>
+                      <button
+                        type="button"
+                        onClick={formTs.retry}
+                        className="mt-2 rounded-md bg-amber-600 px-3 py-1.5 font-bold text-white hover:bg-amber-700"
+                      >
+                        Coba lagi
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={isSubmitting || (!!formTs.siteKey && !formTs.token)}
-                  className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-lg shadow-md transition-colors disabled:opacity-50"
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-lg shadow-md transition-colors disabled:opacity-60"
                 >
                   {isSubmitting ? 'Memproses Pendaftaran...' : 'Simpan & Dapatkan Bukti Pendaftaran'}
                 </button>
