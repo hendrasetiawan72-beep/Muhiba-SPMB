@@ -52,12 +52,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [activeMenu, setActiveMenu] = useState<'beranda' | 'formulir' | 'pembayaran' | 'pengumuman'>('beranda');
   const [activeFormTab, setActiveFormTab] = useState<'diri' | 'alamat' | 'ortu' | 'berkas'>('diri');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Desktop & tablet sidebar toggle
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showWarningBanner, setShowWarningBanner] = useState(true);
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const [showLocalChangePassword, setShowLocalChangePassword] = useState(false);
 
-  // Synchronize student data from Supabase
   useEffect(() => {
     let isMounted = true;
     const fetchFreshStudent = async () => {
@@ -78,7 +77,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     };
   }, [currentUser.id, student.nik]);
 
-  // Form states for Data Diri
   const [jurusan, setJurusan] = useState<JurusanType>(student.jurusan_pilihan || 'TO');
   const [ukuranBaju, setUkuranBaju] = useState(student.data_diri?.ukuran_baju || 'L');
   const [kodeReferal, setKodeReferal] = useState(student.data_diri?.kode_referal || '');
@@ -102,7 +100,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [kks, setKks] = useState(student.data_diri?.kks || '');
   const [kis, setKis] = useState(student.data_diri?.kis || '');
 
-  // Form states for Data Alamat
   const [dukuh, setDukuh] = useState(student.data_alamat?.dukuh || '');
   const [rt, setRt] = useState(student.data_alamat?.rt || '');
   const [rw, setRw] = useState(student.data_alamat?.rw || '');
@@ -114,7 +111,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [tinggalBersama, setTinggalBersama] = useState(student.data_alamat?.tinggal_bersama || 'Orang Tua');
   const [transportasi, setTransportasi] = useState(student.data_alamat?.transportasi || 'Sepeda Motor');
 
-  // Form states for Data Orang Tua
   const [nikAyah, setNikAyah] = useState(student.data_orang_tua?.nik_ayah || '');
   const [namaAyah, setNamaAyah] = useState(student.data_orang_tua?.nama_ayah || '');
   const [tempatLahirAyah, setTempatLahirAyah] = useState(student.data_orang_tua?.tempat_lahir_ayah || '');
@@ -139,7 +135,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [pekerjaanWali, setPekerjaanWali] = useState(student.data_orang_tua?.pekerjaan_wali || '');
   const [noHpWali, setNoHpWali] = useState(student.data_orang_tua?.no_hp_wali || '');
 
-  // Berkas Upload States (File objects & metadata)
   const [berkasKK, setBerkasKK] = useState<string>(student.data_berkas?.kartu_keluarga?.nama_file || '');
   const [berkasSKL, setBerkasSKL] = useState<string>(student.data_berkas?.ijazah_skl?.nama_file || '');
   const [berkasAkta, setBerkasAkta] = useState<string>(student.data_berkas?.akta_kelahiran?.nama_file || '');
@@ -147,7 +142,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [berkasFoto, setBerkasFoto] = useState<string>(student.data_berkas?.pas_foto?.nama_file || '');
   const [isUploadingBerkas, setIsUploadingBerkas] = useState(false);
 
-  // New credentials warning banner & PDF state
   const [newCredentials, setNewCredentials] = useState<{
     nik: string;
     password: string;
@@ -157,7 +151,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   } | null>(null);
   const [copiedField, setCopiedField] = useState<'username' | 'password' | null>(null);
 
-  // Read new credentials from in-memory credentialStore on mount (once)
   useEffect(() => {
     try {
       const stored = credentialStore.get();
@@ -186,21 +179,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       const { jsPDF } = await import('jspdf');
       const doc = new jsPDF();
       
-      // Header
-      doc.setFillColor(30, 64, 175); // #1e40af
+      doc.setFillColor(30, 64, 175);
       doc.rect(0, 0, 210, 40, 'F');
-      
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
       doc.text('SPMB SMK MUHAMMADIYAH BAWANG', 105, 18, { align: 'center' });
-      
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
       doc.text('Bukti Akun & Kredensial Login Calon Peserta Didik Baru 2026/2027', 105, 27, { align: 'center' });
       doc.text('Website Resmi: www.smkmuhiba.sch.id', 105, 34, { align: 'center' });
 
-      // Body box
       doc.setDrawColor(203, 213, 225);
       doc.setFillColor(248, 250, 252);
       doc.roundedRect(15, 50, 180, 85, 4, 4, 'FD');
@@ -209,17 +198,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('DATA AKUN LOGIN SISWA', 25, 62);
-
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(71, 85, 105);
-
       doc.text('Nama Lengkap', 25, 73);
       doc.text(':', 68, 73);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(15, 23, 42);
       doc.text(newCredentials.nama || student.nama_lengkap, 73, 73);
-
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(71, 85, 105);
       doc.text('No. Pendaftaran', 25, 83);
@@ -227,16 +213,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 64, 175);
       doc.text(newCredentials.nomor_pendaftaran || student.nomor_pendaftaran, 73, 83);
-
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(71, 85, 105);
       doc.text('Username (NIK)', 25, 95);
       doc.text(':', 68, 95);
       doc.setFont('courier', 'bold');
       doc.setFontSize(12);
-      doc.setTextColor(185, 28, 28); // red-700
+      doc.setTextColor(185, 28, 28);
       doc.text(newCredentials.nik, 73, 95);
-
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.setTextColor(71, 85, 105);
@@ -246,7 +230,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       doc.setFontSize(12);
       doc.setTextColor(15, 23, 42);
       doc.text(newCredentials.password, 73, 107);
-
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.setTextColor(71, 85, 105);
@@ -255,31 +238,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       doc.setTextColor(15, 23, 42);
       doc.text(newCredentials.tanggal_daftar || student.tanggal_daftar, 73, 119);
 
-      // Warning Box
-      doc.setFillColor(254, 243, 199); // amber-100
-      doc.setDrawColor(245, 158, 11); // amber-500
+      doc.setFillColor(254, 243, 199);
+      doc.setDrawColor(245, 158, 11);
       doc.roundedRect(15, 145, 180, 42, 3, 3, 'FD');
-
-      doc.setTextColor(146, 64, 14); // amber-800
+      doc.setTextColor(146, 64, 14);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
       doc.text('PENTING / PERHATIAN:', 22, 155);
-
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9.5);
       doc.setTextColor(120, 53, 15);
-      const note1 = '1. Username untuk login siswa adalah 16 digit NIK yang Anda daftarkan.';
-      const note2 = '2. Simpan dokumen PDF ini atau catat Username & Password Anda di tempat yang aman.';
-      const note3 = '3. Gunakan akun ini untuk melengkapi formulir bertahap & melihat pengumuman kelulusan.';
-      doc.text(note1, 22, 163);
-      doc.text(note2, 22, 171);
-      doc.text(note3, 22, 179);
-
-      // Footer
+      doc.text('1. Username untuk login siswa adalah 16 digit NIK yang Anda daftarkan.', 22, 163);
+      doc.text('2. Simpan dokumen PDF ini atau catat Username & Password Anda di tempat yang aman.', 22, 171);
+      doc.text('3. Gunakan akun ini untuk melengkapi formulir bertahap & melihat pengumuman kelulusan.', 22, 179);
+      
       doc.setFontSize(8.5);
       doc.setTextColor(148, 163, 184);
       doc.text('Dicetak otomatis oleh Sistem SPMB SMK Muhammadiyah Bawang | by @hndx07', 105, 280, { align: 'center' });
-
       doc.save(`AKUN_SPMB_MUHIBA_${newCredentials.nik}.pdf`);
     } catch (pdfErr) {
       console.error('Error generating PDF:', pdfErr);
@@ -287,8 +262,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     }
   };
 
-  // Helper calculation for checklist completeness
-  // Data Diri wajib: nama, tempat lahir, tanggal lahir, jenis kelamin, agama, asal sekolah, kontak
   const isDiriLengkap = Boolean(
     (student.nama_lengkap || namaLengkap) && 
     (student.data_diri?.tempat_lahir || tempatLahir) &&
@@ -299,7 +272,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     (student.data_diri?.no_hp || student.no_wa || noHp)
   );
 
-  // Data Alamat wajib: desa, kecamatan, kabupaten, provinsi, dukuh/rt/rw
   const isAlamatLengkap = Boolean(
     (student.data_alamat?.dukuh || dukuh) &&
     (student.data_alamat?.desa || desa) &&
@@ -308,7 +280,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     (student.data_alamat?.provinsi || provinsi)
   );
 
-  // Data Orang Tua wajib: minimal salah satu (Ayah / Ibu) memiliki Nama dan NIK 16 digit yang sah
   const hasAyah = Boolean(
     (student.data_orang_tua?.nama_ayah || namaAyah) && 
     (student.data_orang_tua?.nik_ayah || nikAyah)
@@ -319,19 +290,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   );
   const isOrtuLengkap = Boolean(hasAyah || hasIbu);
 
-  // Data Berkas wajib: Kartu Keluarga, Ijazah/SKL, Akta Lahir, Pas Foto
   const hasKK = Boolean(student.data_berkas?.kartu_keluarga?.path || berkasKK);
   const hasSKL = Boolean(student.data_berkas?.ijazah_skl?.path || berkasSKL);
   const hasAkta = Boolean(student.data_berkas?.akta_kelahiran?.path || berkasAkta);
   const hasFoto = Boolean(student.data_berkas?.pas_foto?.path || berkasFoto);
   const isBerkasLengkap = Boolean(hasKK && hasSKL && hasAkta && hasFoto);
 
-  // Semua formulir lengkap (Diri, Alamat, Ortu, Berkas)
   const isSemuaFormLengkap = Boolean(
     isDiriLengkap && isAlamatLengkap && isOrtuLengkap && isBerkasLengkap
   );
 
-  // Otomatis ubah status menjadi Menunggu Verifikasi jika semua formulir dan berkas sudah lengkap
   useEffect(() => {
     if (!student?.id) return;
     const currentStatus = student.status_pendaftaran;
@@ -350,7 +318,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     }
   }, [isSemuaFormLengkap, student?.id, student?.status_pendaftaran]);
 
-  // Form Tab Step Guard (Urutan Wajib: 1. Data Diri -> 2. Data Alamat -> 3. Data Ortu -> 4. Data Berkas)
   const isTabAccessible = (targetTab: 'diri' | 'alamat' | 'ortu' | 'berkas'): boolean => {
     if (targetTab === 'diri') return true;
     if (targetTab === 'alamat') return isDiriLengkap;
@@ -431,7 +398,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         return;
       }
       
-      // Validasi ketat untuk NISN & KK
       const cleanNisn = nisn.trim().replace(/\D/g, '');
       if (cleanNisn.length !== 10) {
         alert('Peringatan: NISN harus terdiri dari tepat 10 digit angka!');
@@ -442,7 +408,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         alert('Peringatan: No Kartu Keluarga (KK) harus terdiri dari tepat 16 digit angka!');
         return;
       }
-
       const cleanHp = noHp.trim().replace(/\D/g, '');
       if (cleanHp && (cleanHp.length < 10 || cleanHp.length > 15)) {
         alert('Nomor HP / WhatsApp harus berupa 10 - 15 digit angka.');
@@ -587,7 +552,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       return;
     }
 
-    // Foto otomatis dikompres sebelum diunggah, jadi boleh lebih besar; PDF maks. 2 MB.
     const isImageFile = file.type.startsWith('image/');
     if (file.size > (isImageFile ? 10 : 2) * 1024 * 1024) {
       alert(isImageFile ? 'Ukuran foto maksimal adalah 10MB.' : 'Ukuran file PDF maksimal adalah 2MB.');
@@ -615,7 +579,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       if (jenis === 'kartu_kip') setBerkasKIP(res.nama_file);
       if (jenis === 'pas_foto') setBerkasFoto(res.nama_file);
 
-      // Gabungkan dengan student.data_berkas yang lama agar metadata berkas lain tidak hilang!
       const mergedBerkas = {
         ...(student.data_berkas || {}),
         [jenis]: item,
@@ -692,9 +655,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     window.print();
   };
 
-  // Daftar Sekolah untuk Datalist
+  // Daftar Sekolah Terbaru & Lengkap (Menyertakan MTs Sunan Kalijaga, Hasyim Asy'ari, dan MTs/SMP Swasta Lainnya)
   const daftarSekolahBatang = [
-    "SMP Negeri 1 Batang", "SMP Negeri 2 Batang", "SMP Negeri 3 Batang", "SMP Negeri 4 Batang", "SMP Negeri 6 Batang", "SMP Negeri 7 Batang",
+    // SMP Negeri
+    "SMP Negeri 1 Batang", "SMP Negeri 2 Batang", "SMP Negeri 3 Batang", "SMP Negeri 4 Batang", "SMP Negeri 6 Batang", "SMP Negeri 7 Batang", "SMP Negeri 8 Batang", "SMP Negeri 9 Batang",
     "SMP Negeri 1 Bawang", "SMP Negeri 2 Bawang", "SMP Negeri 3 Bawang", "SMP Negeri 4 Bawang",
     "SMP Negeri 1 Tulis", "SMP Negeri 2 Tulis",
     "SMP Negeri 1 Bandar", "SMP Negeri 2 Bandar", "SMP Negeri 3 Bandar", "SMP Negeri 4 Bandar",
@@ -702,19 +666,30 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     "SMP Negeri 1 Reban", "SMP Negeri 2 Reban", "SMP Negeri 3 Reban",
     "SMP Negeri 1 Pecalungan",
     "SMP Negeri 1 Subah", "SMP Negeri 2 Subah", "SMP Negeri 3 Subah",
-    "SMP Negeri 1 Limpung", "SMP Negeri 2 Limpung",
+    "SMP Negeri 1 Limpung", "SMP Negeri 2 Limpung", "SMP Negeri 3 Limpung",
     "SMP Negeri 1 Gringsing", "SMP Negeri 2 Gringsing", "SMP Negeri 3 Gringsing", "SMP Negeri 4 Gringsing",
     "SMP Negeri 1 Tersono", "SMP Negeri 2 Tersono",
     "SMP Negeri 1 Wonotunggal", "SMP Negeri 2 Wonotunggal",
     "SMP Negeri 1 Kandeman", "SMP Negeri 2 Kandeman",
-    "SMP Negeri 1 Warungasem", "SMP Negeri 2 Warungasem",
-    "MTs Negeri Batang", "MTs Muhammadiyah Batang", "MTs Muhammadiyah Bawang", "MTs NU Batang"
+    "SMP Negeri 1 Warungasem", "SMP Negeri 2 Warungasem", "SMP Negeri 3 Warungasem",
+    "SMP Negeri 1 Banyuputih",
+
+    // MTs Negeri
+    "MTs Negeri Batang",
+
+    // MTs Swasta / NU / Muhammadiyah / Yayasan
+    "MTs Sunan Kalijaga", "MTs Hasyim Asy'ari",
+    "MTs NU Batang", "MTs NU 01 Banyuputih", "MTs NU 01 Limpung", "MTs NU 01 Subah", "MTs NU 01 Tersono", "MTs NU 01 Bandar", "MTs NU 01 Blado", "MTs NU 01 Gringsing", "MTs NU Nurul Huda", "MTs NU Al Munawwir",
+    "MTs Muhammadiyah Batang", "MTs Muhammadiyah Bawang", "MTs Muhammadiyah Limpung", "MTs Muhammadiyah Tersono", "MTs Muhammadiyah Bandar", "MTs Muhammadiyah Subah",
+    "MTs Darul Ulum", "MTs Al Islam", "MTs Al Huda", "MTs Nurul Huda", "MTs Darussalam", "MTs Wahid Hasyim", "MTs Salafiyah", "MTs Al Hikmah", "MTs Tholabuddin", "MTs Takhassus Al-Qur'an", "MTs Maulana Maghribi", "MTs Syarifuddin", "MTs Al-Syafi'iyah",
+    
+    // SMP Swasta
+    "SMP Muhammadiyah Batang", "SMP Muhammadiyah Bawang", "SMP Muhammadiyah Limpung", "SMP NU Batang"
   ];
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
       
-      {/* Toast alert */}
       {saveToast && (
         <div className="fixed top-5 right-5 z-50 bg-emerald-600 text-white px-5 py-3 rounded-lg shadow-xl flex items-center gap-2.5 text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200">
           <Check className="w-4 h-4 bg-emerald-700 p-0.5 rounded-full" />
@@ -724,12 +699,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
       <div className="flex-1 flex flex-col md:flex-row">
         
-        {/* ========================================================================= */}
-        {/* ========================================================================= */}
-        {/* LEFT SIDEBAR (Collapsible Desktop & Mobile with Smooth Slide Transition) */}
-        {/* ========================================================================= */}
-        
-        {/* Mobile backdrop */}
         {mobileSidebarOpen && (
           <div 
             onClick={() => setMobileSidebarOpen(false)}
@@ -745,7 +714,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           ${!isSidebarOpen ? 'md:-ml-64' : 'md:ml-0'}
         `}>
           <div>
-            {/* Logo SPMB SMK MUHIBA with Close / Collapse Toggle - Synced with Header Gradient */}
             <div className="h-[61px] px-4 bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white border-b border-indigo-900/40 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2.5">
                 <img
@@ -763,7 +731,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 </div>
               </div>
               
-              {/* Close Button for mobile or collapse on desktop */}
               <button 
                 onClick={() => {
                   setMobileSidebarOpen(false);
@@ -776,7 +743,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               </button>
             </div>
 
-            {/* Menu List */}
             <div className="py-4">
               <p className="px-5 text-[10px] font-black text-slate-500 tracking-wider uppercase mb-2">
                 MAIN MENU
@@ -812,7 +778,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <span>Formulir Pendaftaran</span>
                 </button>
 
-                {/* Menu Biaya & Pembayaran (Disembunyikan sebelum semua formulir lengkap) */}
                 {isSemuaFormLengkap && (
                   <button
                     onClick={() => {
@@ -848,7 +813,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
           </div>
 
-          {/* Bottom user / solid red logout card */}
           <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-2.5">
             <button
               type="button"
@@ -885,7 +849,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               <span>← Beranda PPDB</span>
             </button>
 
-            {/* Poin 2: Tombol Logout merah solid tegas mencolok */}
             <button
               onClick={onLogout}
               className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
@@ -896,15 +859,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
         </aside>
 
-        {/* ========================================================================= */}
-        {/* MAIN CONTENT AREA */}
-        {/* ========================================================================= */}
         <main className="flex-1 flex flex-col min-w-0">
           
-          {/* Top Bar with Modern Gradient & Persistent Hamburger */}
           <header className="sticky top-0 z-30 h-[61px] bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white shadow-md border-b border-indigo-900/40 px-4 sm:px-8 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Tombol Hamburger Selalu Terlihat dan Mudah Diklik */}
               <button
                 type="button"
                 onClick={() => {
@@ -932,13 +890,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Indikator Status Terhubung Hijau */}
               <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 border border-emerald-400/40 rounded-full text-[11px] font-extrabold text-emerald-200 backdrop-blur-xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                 <span>Terhubung</span>
               </div>
 
-              {/* Logout cepat di pojok kanan atas desktop */}
               <button
                 onClick={onLogout}
                 className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all transform hover:scale-105"
@@ -965,9 +921,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
           <div className="p-4 sm:p-8 space-y-6">
 
-            {/* ===================================================================== */}
-            {/* FITUR C: PERINGATAN USERNAME & PASSWORD BARU DAFTAR + UNDUH PDF */}
-            {/* ===================================================================== */}
             {newCredentials && (
               <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white rounded-2xl p-5 sm:p-6 shadow-xl border border-amber-400/50 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/20">
@@ -995,7 +948,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </button>
                 </div>
 
-                {/* Credentials Display Box */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
                   <div className="bg-white/95 rounded-lg p-3.5 text-slate-800 shadow-sm flex items-center justify-between gap-3">
                     <div>
@@ -1034,7 +986,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </div>
                 </div>
 
-                {/* Action buttons */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
                   <p className="text-[11px] text-amber-100">
                     *Username login siswa selalu berupa <strong>16 digit NIK</strong>. Jangan berikan password Anda kepada siapapun.
@@ -1060,13 +1011,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               </div>
             )}
 
-            {/* ===================================================================== */}
-            {/* VIEW 1: BERANDA (Screenshot 9) */}
-            {/* ===================================================================== */}
             {activeMenu === 'beranda' && (
               <div className="space-y-6">
                 
-                {/* Header Welcome Bar */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -1085,10 +1032,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </div>
                 </div>
 
-                {/* 3 Status Cards (Screenshot 9) */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   
-                  {/* Card 1: Data Diri */}
                   <div 
                     onClick={() => {
                       setActiveMenu('formulir');
@@ -1115,7 +1060,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     </div>
                   </div>
 
-                  {/* Card 2: Data Alamat */}
                   <div 
                     onClick={() => {
                       setActiveMenu('formulir');
@@ -1152,7 +1096,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     </div>
                   </div>
 
-                  {/* Card 3: Data Orang Tua */}
                   <div 
                     onClick={() => {
                       setActiveMenu('formulir');
@@ -1191,14 +1134,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                 </div>
 
-                {/* Modern Dynamic Informasi Pendaftaran Card */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden transition-all">
                   
-                  {/* Subtle Top Gradient Accent Line */}
                   <div className="h-1.5 bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800" />
 
                   <div className="p-6 sm:p-8 space-y-6">
-                    {/* Header Meta: Modern announcement header */}
                     <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-sm shadow-blue-500/20">
@@ -1222,7 +1162,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       </div>
                     </div>
 
-                    {/* Welcoming Banner (Modern, Clean, Dynamic) */}
                     <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white p-5 sm:p-6 shadow-md shadow-indigo-900/10">
                       <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto space-y-2">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold bg-white/15 backdrop-blur-xs text-yellow-300 border border-white/20">
@@ -1235,12 +1174,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           Persiapkan masa depan gemilang dengan pendidikan vokasi unggul dan berkarakter islami bersama SMK Muhammadiyah Bawang.
                         </p>
                       </div>
-                      {/* Decorative soft glow circles */}
                       <div className="absolute -top-12 -right-12 w-44 h-44 bg-white/10 rounded-full blur-2xl pointer-events-none" />
                       <div className="absolute -bottom-12 -left-12 w-44 h-44 bg-purple-500/20 rounded-full blur-2xl pointer-events-none" />
                     </div>
 
-                    {/* Section Persyaratan Berkas */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -1251,10 +1188,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </span>
                       </div>
 
-                      {/* Clean Grid Checklist with Modern Checkmarks and Neutral Typography */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                         
-                        {/* 1. KK */}
                         <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
                           <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
                             <Check className="w-3 h-3 stroke-[3]" />
@@ -1270,7 +1205,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* 2. Akta */}
                         <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
                           <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
                             <Check className="w-3 h-3 stroke-[3]" />
@@ -1286,7 +1220,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* 3. NISN */}
                         <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
                           <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
                             <Check className="w-3 h-3 stroke-[3]" />
@@ -1302,7 +1235,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* 4. Ijazah */}
                         <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
                           <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
                             <Check className="w-3 h-3 stroke-[3]" />
@@ -1318,7 +1250,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* 5. KTP Orang Tua */}
                         <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
                           <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
                             <Check className="w-3 h-3 stroke-[3]" />
@@ -1334,7 +1265,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* 6. Kartu Bantuan */}
                         <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
                           <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
                             <Check className="w-3 h-3 stroke-[3]" />
@@ -1350,7 +1280,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* 7. Prestasi */}
                         <div className="md:col-span-2 p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
                           <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
                             <Check className="w-3 h-3 stroke-[3]" />
@@ -1369,7 +1298,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       </div>
                     </div>
 
-                    {/* Simple Modern Callout Banner and Action Button */}
                     <div className="rounded-xl p-4 sm:p-5 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-slate-50 border border-blue-200/70 flex flex-col sm:flex-row items-center justify-between gap-4">
                       <div className="flex items-center gap-3 text-center sm:text-left">
                         <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-500/20 shrink-0">
@@ -1399,13 +1327,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               </div>
             )}
 
-            {/* ===================================================================== */}
-            {/* VIEW 2: FORMULIR MULTI-STEP (Screenshots 10, 11, 12, 13) */}
-            {/* ===================================================================== */}
             {activeMenu === 'formulir' && (
               <div className="space-y-6">
 
-                {/* Orange Top Warning Banner (Screenshot 10) */}
                 {showWarningBanner && (
                   <div className="bg-amber-500 text-white p-3.5 rounded-lg flex items-center justify-between text-xs font-semibold shadow-sm">
                     <div className="flex items-center gap-2">
@@ -1421,13 +1345,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </div>
                 )}
 
-                {/* Grid Container for Form & Progress Sidebar */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   
-                  {/* Left Column: Form Details Card */}
                   <div className="lg:col-span-8 bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
                     
-                    {/* Top User Summary & Tab Selector */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
                       <div className="flex items-center gap-4">
                         <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
@@ -1441,7 +1362,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                       </div>
 
-                      {/* 4 Form Tabs */}
                       <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-lg">
                         <button
                           type="button"
@@ -1506,13 +1426,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       </div>
                     </div>
 
-                    {/* ------------------------------------------------------------- */}
-                    {/* SUB-TAB 1: DATA DIRI (Screenshot 10) */}
-                    {/* ------------------------------------------------------------- */}
                     {activeFormTab === 'diri' && (
                       <form onSubmit={handleSaveDataDiri} className="space-y-6">
                         
-                        {/* Upper Meta Fields */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                           <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">No Pendaftaran</label>
@@ -1575,7 +1491,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* Section Header */}
                         <div>
                           <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-4 pb-2 border-b">
                             <User className="w-4 h-4 text-blue-600" />
@@ -1666,11 +1581,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 onChange={(e) => setAgama(e.target.value)}
                                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded"
                               >
+                                <option value="" disabled>-- Pilih Agama --</option>
                                 <option value="Islam">Islam</option>
                                 <option value="Kristen">Kristen</option>
                                 <option value="Katolik">Katolik</option>
                                 <option value="Hindu">Hindu</option>
                                 <option value="Buddha">Buddha</option>
+                                <option value="Konghucu">Konghucu</option>
                               </select>
                             </div>
 
@@ -1758,7 +1675,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* Program Bantuan Pemerintah */}
                         <div className="pt-4 border-t">
                           <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">
                             Program Bantuan Pemerintah
@@ -1822,9 +1738,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       </form>
                     )}
 
-                    {/* ------------------------------------------------------------- */}
-                    {/* SUB-TAB 2: DATA ALAMAT (Screenshot 11) */}
-                    {/* ------------------------------------------------------------- */}
                     {activeFormTab === 'alamat' && (
                       <form onSubmit={handleSaveDataAlamat} className="space-y-5">
                         <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 pb-2 border-b">
@@ -1968,13 +1881,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       </form>
                     )}
 
-                    {/* ------------------------------------------------------------- */}
-                    {/* SUB-TAB 3: DATA ORANG TUA (Screenshot 12) */}
-                    {/* ------------------------------------------------------------- */}
                     {activeFormTab === 'ortu' && (
                       <form onSubmit={handleSaveDataOrangTua} className="space-y-6">
                         
-                        {/* Section Data Ayah */}
                         <div className="space-y-3">
                           <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b">
                             <User className="w-3.5 h-3.5 text-blue-600" />
@@ -2053,7 +1962,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* Section Data Ibu */}
                         <div className="space-y-3 pt-3 border-t">
                           <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b">
                             <User className="w-3.5 h-3.5 text-rose-600" />
@@ -2132,7 +2040,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* Section Data Wali (Opsional) */}
                         <div className="space-y-3 pt-3 border-t">
                           <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b">
                             <User className="w-3.5 h-3.5 text-purple-600" />
@@ -2178,9 +2085,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       </form>
                     )}
 
-                    {/* ------------------------------------------------------------- */}
-                    {/* SUB-TAB 4: DATA BERKAS (Screenshot 13) */}
-                    {/* ------------------------------------------------------------- */}
                     {activeFormTab === 'berkas' && (
                       <form onSubmit={handleSaveDataBerkas} className="space-y-5">
                         <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 pb-2 border-b">
@@ -2189,7 +2093,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </h3>
 
                         <div className="space-y-4 text-xs">
-                          {/* 1. Kartu Keluarga */}
                           <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                             <label className="block font-bold text-slate-800 mb-1">Kartu Keluarga</label>
                             <div className="flex items-center gap-2">
@@ -2211,7 +2114,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. PDF maksimum 2 MB. (PDF/JPG/PNG)</p>
                           </div>
 
-                          {/* 2. Ijazah / SKL */}
                           <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                             <label className="block font-bold text-slate-800 mb-1">Ijazah / SKL</label>
                             <div className="flex items-center gap-2">
@@ -2233,7 +2135,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. PDF maksimum 2 MB.</p>
                           </div>
 
-                          {/* 3. Akta Kelahiran */}
                           <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                             <label className="block font-bold text-slate-800 mb-1">Akta Lahir</label>
                             <div className="flex items-center gap-2">
@@ -2255,7 +2156,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. PDF maksimum 2 MB.</p>
                           </div>
 
-                          {/* 4. Kartu KIP (jika punya) */}
                           <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                             <label className="block font-bold text-slate-800 mb-1">Kartu KIP (jika punya)</label>
                             <div className="flex items-center gap-2">
@@ -2277,7 +2177,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. PDF maksimum 2 MB.</p>
                           </div>
 
-                          {/* 5. Pas Foto (3x4) */}
                           <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                             <label className="block font-bold text-slate-800 mb-1">Pas Foto (3x4)</label>
                             <div className="flex items-center gap-2">
@@ -2319,14 +2218,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                   </div>
 
-                  {/* Right Column: Progres Pengisian Formulir Sidebar (Exact match to Screenshots 10-13) */}
                   <div className="lg:col-span-4 bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 space-y-6">
                     <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Progres Pengisian Formulir
                     </h3>
 
                     <div className="space-y-4">
-                      {/* Step 1: Data Diri */}
                       <div 
                         onClick={() => handleSelectTab('diri')}
                         className={`p-3.5 rounded-xl border flex items-center gap-3.5 cursor-pointer transition-all ${
@@ -2352,7 +2249,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                       </div>
 
-                      {/* Step 2: Data Alamat */}
                       <div 
                         onClick={() => handleSelectTab('alamat')}
                         className={`p-3.5 rounded-xl border flex items-center gap-3.5 transition-all ${
@@ -2388,7 +2284,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                       </div>
 
-                      {/* Step 3: Data Orang Tua */}
                       <div 
                         onClick={() => handleSelectTab('ortu')}
                         className={`p-3.5 rounded-xl border flex items-center gap-3.5 transition-all ${
@@ -2424,7 +2319,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                       </div>
 
-                      {/* Step 4: Data Berkas */}
                       <div 
                         onClick={() => handleSelectTab('berkas')}
                         className={`p-3.5 rounded-xl border flex items-center gap-3.5 transition-all ${
@@ -2476,9 +2370,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               </div>
             )}
 
-            {/* ===================================================================== */}
-            {/* VIEW 3: PEMBAYARAN (Disembunyikan sebelum semua formulir lengkap) */}
-            {/* ===================================================================== */}
             {activeMenu === 'pembayaran' && isSemuaFormLengkap && (
               <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
                   <div className="flex items-center justify-between pb-4 border-b">
@@ -2509,7 +2400,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     </div>
                   </div>
 
-                  {/* Printable Official Receipt preview */}
                   <div className="border border-slate-200 rounded-xl p-6 bg-slate-50/50 space-y-4">
                     <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
                       Status Pembayaran Siswa
@@ -2542,9 +2432,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 </div>
               )}
 
-            {/* ===================================================================== */}
-            {/* VIEW 4: PENGUMUMAN (Conditional Status: Diterima / Terverifikasi / Cadangan / Menunggu Verifikasi / Berkas Fisik) */}
-            {/* ===================================================================== */}
             {activeMenu === 'pengumuman' && (
               <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
                 <div className="pb-4 border-b">
@@ -2552,7 +2439,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <p className="text-xs text-slate-500">Status kelulusan penerimaan peserta didik baru tahun ajaran 2026/2027</p>
                 </div>
 
-                {/* Kondisi 1: Diterima -> Hijau (hanya untuk status Diterima) */}
                 {student.status_pendaftaran === 'Diterima' && (
                   <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
@@ -2575,7 +2461,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </div>
                 )}
 
-                {/* Kondisi 2: Terverifikasi -> Teks netral (Berkas Anda sudah terverifikasi) */}
                 {student.status_pendaftaran === 'Terverifikasi' && (
                   <div className="p-6 rounded-2xl bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center mx-auto shadow-inner">
@@ -2596,7 +2481,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </div>
                 )}
 
-                {/* Kondisi 3: Cadangan -> Kuning */}
                 {student.status_pendaftaran === 'Cadangan' && (
                   <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
@@ -2614,7 +2498,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </div>
                 )}
 
-                {/* Kondisi 4: Menunggu Verifikasi ATAU jika semua formulir & berkas sudah terisi -> Biru */}
                 {(student.status_pendaftaran === 'Menunggu Verifikasi' || (isSemuaFormLengkap && student.status_pendaftaran !== 'Diterima' && student.status_pendaftaran !== 'Terverifikasi' && student.status_pendaftaran !== 'Cadangan')) && (
                   <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto shadow-inner">
@@ -2635,7 +2518,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </div>
                 )}
 
-                {/* Kondisi 5: Berkas Fisik / Belum Lengkap (jika belum semua lengkap) -> Orange */}
                 {!isSemuaFormLengkap &&
                  student.status_pendaftaran !== 'Diterima' && 
                  student.status_pendaftaran !== 'Terverifikasi' && 
@@ -2672,7 +2554,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
           </div>
 
-          {/* Footer inside Dashboard matching screenshot */}
           <footer className="mt-auto px-4 sm:px-8 py-4 border-t border-slate-200 bg-white text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
             <span>Copyright © 2026 SPMB SMK MUHIBA | by @hndx07</span>
             <a
@@ -2688,7 +2569,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </main>
       </div>
 
-      {/* Modal Ubah Password Mandiri Siswa */}
       {showLocalChangePassword && (
         <ChangePasswordModal
           userId={currentUser.id}
