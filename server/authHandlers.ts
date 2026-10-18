@@ -50,7 +50,7 @@ export function formatTanggalDaftarJakarta(date = new Date()): string {
   });
   const parts = formatter.formatToParts(date);
   const get = (type: string) => parts.find((p) => p.type === type)?.value || '00';
-  return `\( {get('day')}- \){get('month')}-${get('year')} \( {get('hour')}: \){get('minute')}`;
+  return `${get('day')}-${get('month')}-${get('year')} ${get('hour')}:${get('minute')}`;
 }
 
 export interface ApiResponse {
@@ -489,7 +489,7 @@ export async function handleRegister(body: any): Promise<ApiResponse> {
             .select('*', { count: 'exact', head: true });
           const seq = (count || 0) + 1;
           const rand = Math.floor(10 + Math.random() * 90);
-          studentPayload.nomor_pendaftaran = `2026\( {String(seq).padStart(3, '0')} \){rand}`;
+          studentPayload.nomor_pendaftaran = `2026${String(seq).padStart(3, '0')}${rand}`;
           const retry = await supabaseAdmin
             .from('students')
             .insert(studentPayload)
@@ -698,7 +698,7 @@ export async function handleDeleteStudent(
         .list(targetUserId);
 
       if (files && files.length > 0) {
-        const paths = files.map((f) => `\( {targetUserId}/ \){f.name}`);
+        const paths = files.map((f) => `${targetUserId}/${f.name}`);
         await supabaseAdmin.storage.from('dokumen-ppdb').remove(paths);
       }
     } catch (storageErr) {
@@ -711,7 +711,7 @@ export async function handleDeleteStudent(
         .list(cleanNik);
 
       if (legacyFiles && legacyFiles.length > 0) {
-        const paths = legacyFiles.map((f) => `\( {cleanNik}/ \){f.name}`);
+        const paths = legacyFiles.map((f) => `${cleanNik}/${f.name}`);
         await supabaseAdmin.storage.from('berkas-spmb').remove(paths);
       }
     } catch (storageErr) {
