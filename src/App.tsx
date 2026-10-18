@@ -7,11 +7,14 @@ import { RegistrationPortal } from './components/RegistrationPortal';
 import { LoginPage } from './components/LoginPage';
 import { StudentDashboard } from './components/StudentDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
+import { KeyRound } from 'lucide-react';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
   const [activeView, setActiveView] = useState<'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard'>('home');
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   // Check persisted Supabase Auth session & listen to auth state changes
   useEffect(() => {
@@ -84,7 +87,13 @@ export default function App() {
     await dbService.logout();
     setCurrentUser(null);
     setCurrentStudent(null);
+    setShowChangePassword(false);
     setActiveView('home');
+  };
+
+  const handlePasswordChanged = () => {
+    setShowChangePassword(false);
+    setCurrentUser((u) => (u ? { ...u, must_change_password: false } : u));
   };
 
   return (
@@ -143,6 +152,31 @@ export default function App() {
           onLogout={handleLogout}
           onNavigateHome={() => setActiveView('home')}
         />
+      )}
+
+      {/* GANTI PASSWORD (siswa): wajib setelah reset oleh panitia, sukarela lewat tombol */}
+      {activeView === 'student-dashboard' && currentUser && currentUser.role === 'student' && (
+        <>
+          {!currentUser.must_change_password && (
+            <button
+              type="button"
+              onClick={() => setShowChangePassword(true)}
+              className="no-print fixed bottom-4 left-4 z-40 inline-flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-slate-700 bg-white/95 border border-slate-300 hover:bg-slate-50 rounded-full shadow-md"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>Ganti Password</span>
+            </button>
+          )}
+          {(currentUser.must_change_password || showChangePassword) && (
+            <ChangePasswordModal
+              forced={!!currentUser.must_change_password}
+              nik={currentUser.nik}
+              onChanged={handlePasswordChanged}
+              onClose={() => setShowChangePassword(false)}
+              onLogout={handleLogout}
+            />
+          )}
+        </>
       )}
     </div>
   );
