@@ -477,8 +477,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Ukuran file maksimal adalah 2MB.');
+    // Foto otomatis dikompres sebelum diunggah, jadi boleh lebih besar; PDF maks. 2 MB.
+    const isImageFile = file.type.startsWith('image/');
+    if (file.size > (isImageFile ? 10 : 2) * 1024 * 1024) {
+      alert(isImageFile ? 'Ukuran foto maksimal adalah 10MB.' : 'Ukuran file PDF maksimal adalah 2MB.');
       e.target.value = '';
       return;
     }
@@ -486,7 +488,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     try {
       setIsUploadingBerkas(true);
       showNotification(`Mengunggah ${file.name}...`);
-      const res = await dbService.uploadBerkasFile(student.user_id, jenis, file);
+      const oldPath = (student.data_berkas as any)?.[jenis]?.path as string | undefined;
+      const res = await dbService.uploadBerkasFile(student.user_id, jenis, file, oldPath);
       
       const nowStr = new Date().toLocaleDateString('id-ID');
       const item = {
@@ -2064,7 +2067,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 )}
                               </div>
                             )}
-                            <p className="text-[10px] text-slate-400 mt-0.5">Upload yang diperbolehkan ukuran maksimum 2Mb (PDF/JPG/PNG)</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. PDF maksimum 2 MB. (PDF/JPG/PNG)</p>
                           </div>
 
                           {/* 2. Ijazah / SKL */}
@@ -2097,7 +2100,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 )}
                               </div>
                             )}
-                            <p className="text-[10px] text-slate-400 mt-0.5">Upload yang diperbolehkan ukuran maksimum 2Mb</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. PDF maksimum 2 MB.</p>
                           </div>
 
                           {/* 3. Akta Kelahiran */}
@@ -2130,7 +2133,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 )}
                               </div>
                             )}
-                            <p className="text-[10px] text-slate-400 mt-0.5">Upload yang diperbolehkan ukuran maksimum 2Mb</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. PDF maksimum 2 MB.</p>
                           </div>
 
                           {/* 4. Kartu KIP (jika punya) */}
@@ -2163,7 +2166,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 )}
                               </div>
                             )}
-                            <p className="text-[10px] text-slate-400 mt-0.5">Upload yang diperbolehkan ukuran maksimum 2Mb</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">Foto otomatis dikompres. PDF maksimum 2 MB.</p>
                           </div>
                         </div>
 
