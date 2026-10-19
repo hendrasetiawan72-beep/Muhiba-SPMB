@@ -747,11 +747,15 @@ const FasilitasCarousel: React.FC<{ onRegisterClick: () => void }> = ({ onRegist
 interface LandingPageProps {
   onRegisterClick: () => void;
   onLoginClick: () => void;
+  onPreloadRegister?: () => void;
+  onPreloadLogin?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onRegisterClick,
   onLoginClick,
+  onPreloadRegister,
+  onPreloadLogin,
 }) => {
   const [showBackToTop, setShowBackToTop] = useState<boolean>(false);
 
@@ -1012,6 +1016,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               title="TikTok Video Background SMK Muhiba"
               className="w-[120%] h-[120%] -ml-[10%] -mt-[10%] object-cover pointer-events-none border-0"
               allow="autoplay; encrypted-media"
+              loading="lazy"
             />
           </div>
 
@@ -1061,6 +1066,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <motion.div variants={fadeInUpItem} className="pt-2 flex flex-wrap items-center gap-4">
                 <button
                   onClick={onRegisterClick}
+                  onMouseEnter={onPreloadRegister}
+                  onTouchStart={onPreloadRegister}
+                  onFocus={onPreloadRegister}
                   className="px-7 py-3.5 text-sm sm:text-base font-extrabold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-lg shadow-lg hover:shadow-blue-500/30 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                 >
                   DAFTAR SEKARANG !!!
@@ -1068,6 +1076,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                 <button
                   onClick={onLoginClick}
+                  onMouseEnter={onPreloadLogin}
+                  onTouchStart={onPreloadLogin}
+                  onFocus={onPreloadLogin}
                   className="px-6 py-3.5 text-sm sm:text-base font-bold text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600 rounded-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                 >
                   Cek Status / Login Siswa
@@ -1105,6 +1116,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   alt="Gedung SMK Muhammadiyah Bawang"
                   className="w-full h-72 object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
                   referrerPolicy="no-referrer"
+                  loading="lazy"
+                  decoding="async"
                 />
                 <div className="p-5 text-white">
                   <div className="flex items-center justify-between text-xs text-blue-300 font-semibold mb-1">
@@ -1201,6 +1214,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   src="https://www.youtube-nocookie.com/embed/MjqT0ORLm1w?autoplay=1&mute=1&loop=1&playlist=MjqT0ORLm1w&controls=0&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&enablejsapi=1"
                   title="Profil SMK Muhammadiyah Bawang"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  loading="lazy"
                   className="w-full h-full object-cover scale-[1.03] pointer-events-none select-none"
                 />
 

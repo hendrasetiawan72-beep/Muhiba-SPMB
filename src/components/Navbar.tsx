@@ -21,6 +21,8 @@ interface NavbarProps {
   activeView: 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard';
   setActiveView: (view: 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard') => void;
   onLogout: () => void;
+  onPreloadPortal?: () => void;
+  onPreloadLogin?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -29,6 +31,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeView,
   setActiveView,
   onLogout,
+  onPreloadPortal,
+  onPreloadLogin,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [jurusanDropdownOpen, setJurusanDropdownOpen] = useState(false);
@@ -69,6 +73,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               alt="Logo SMK Muhammadiyah Bawang"
               className="w-10 h-10 lg:w-11 lg:h-11 object-contain drop-shadow"
               referrerPolicy="no-referrer"
+              loading="eager"
+              decoding="async"
             />
             <div className="flex flex-col">
               <span className="font-extrabold text-sm lg:text-base tracking-wider text-white flex items-center gap-1.5">
@@ -190,13 +196,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="hidden sm:flex items-center gap-2">
                 <button
                   onClick={() => navigateTo('login')}
-                  className="px-4 py-2 text-xs font-bold text-blue-100 hover:text-white hover:bg-blue-700/50 rounded-lg transition-colors border border-blue-400/40"
+                  onMouseEnter={onPreloadLogin}
+                  onTouchStart={onPreloadLogin}
+                  onFocus={onPreloadLogin}
+                  className="px-4 py-2 text-xs font-bold text-blue-100 hover:text-white hover:bg-blue-700/50 rounded-lg transition-colors border border-blue-400/40 cursor-pointer"
                 >
                   Login
                 </button>
                 <button
                   onClick={() => navigateTo('portal')}
-                  className="px-4 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 rounded-lg shadow-md transition-all active:scale-95"
+                  onMouseEnter={onPreloadPortal}
+                  onTouchStart={onPreloadPortal}
+                  onFocus={onPreloadPortal}
+                  className="px-4 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   DAFTAR SEKARANG
                 </button>
@@ -310,13 +322,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="space-y-3 flex flex-col sm:hidden">
                   <button
                     onClick={() => navigateTo('portal')}
-                    className="w-full py-3 px-3 text-center text-sm font-black text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-lg shadow-md uppercase"
+                    onTouchStart={onPreloadPortal}
+                    onMouseEnter={onPreloadPortal}
+                    className="w-full py-3 px-3 text-center text-sm font-black text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-lg shadow-md uppercase cursor-pointer"
                   >
                     DAFTAR SEKARANG
                   </button>
                   <button
                     onClick={() => navigateTo('login')}
-                    className="w-full py-3 px-3 text-center text-sm font-bold text-blue-100 bg-blue-700/60 border border-blue-400/40 rounded-lg"
+                    onTouchStart={onPreloadLogin}
+                    onMouseEnter={onPreloadLogin}
+                    className="w-full py-3 px-3 text-center text-sm font-bold text-blue-100 bg-blue-700/60 border border-blue-400/40 rounded-lg cursor-pointer"
                   >
                     Login Siswa
                   </button>

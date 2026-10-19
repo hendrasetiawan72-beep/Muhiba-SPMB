@@ -31,7 +31,9 @@ import {
 import { Student, User as UserType, JurusanType } from '../types/database';
 import { dbService } from '../services/supabase';
 import { credentialStore } from '../services/credentialStore';
-import { ChangePasswordModal } from './ChangePasswordModal';
+const ChangePasswordModal = React.lazy(() =>
+  import('./ChangePasswordModal').then((m) => ({ default: m.ChangePasswordModal }))
+);
 
 interface StudentDashboardProps {
   currentUser: UserType;
@@ -2585,15 +2587,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       </div>
 
       {showLocalChangePassword && (
-        <ChangePasswordModal
-          forced={false}
-          nik={student.nik}
-          onClose={() => setShowLocalChangePassword(false)}
-          onChanged={() => {
-            setShowLocalChangePassword(false);
-            showNotification('Kata sandi berhasil diperbarui.');
-          }}
-        />
+        <React.Suspense fallback={null}>
+          <ChangePasswordModal
+            forced={false}
+            nik={student.nik}
+            onClose={() => setShowLocalChangePassword(false)}
+            onChanged={() => {
+              setShowLocalChangePassword(false);
+              showNotification('Kata sandi berhasil diperbarui.');
+            }}
+          />
+        </React.Suspense>
       )}
     </div>
   );

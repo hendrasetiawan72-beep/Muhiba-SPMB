@@ -241,7 +241,9 @@ import {
 } from 'lucide-react';
 import { Student, User, StatusPendaftaran, JurusanType, BerkasItem } from '../types/database';
 import { dbService } from '../services/supabase';
-import { AdminResetPasswordModal } from './AdminResetPasswordModal';
+const AdminResetPasswordModal = React.lazy(() =>
+  import('./AdminResetPasswordModal').then((m) => ({ default: m.AdminResetPasswordModal }))
+);
 
 // ============================================================================
 // KONSTANTA & TIPE
@@ -2198,11 +2200,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* DIALOG RESET PASSWORD                                                  */}
       {/* ===================================================================== */}
       {resetTarget && (
-        <AdminResetPasswordModal
-          student={resetTarget}
-          onClose={() => setResetTarget(null)}
-          onDone={() => setLogRefreshKey((k) => k + 1)}
-        />
+        <React.Suspense fallback={null}>
+          <AdminResetPasswordModal
+            student={resetTarget}
+            onClose={() => setResetTarget(null)}
+            onDone={() => setLogRefreshKey((k) => k + 1)}
+          />
+        </React.Suspense>
       )}
     </div>
   );
