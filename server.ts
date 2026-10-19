@@ -15,13 +15,32 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
-// CORS Configuration: hanya exact origin yang dikonfigurasi.
-// Jangan pernah merefleksikan Origin arbitrer dengan credentials.
+// CORS Configuration: proteksi endpoint /api/*
 app.use((req: Request, res: Response, next) => {
+  // Jangan pernah memblokir asset statis, skrip frontend, atau middleware Vite
+  if (!req.path.startsWith('/api')) {
+    return next();
+  }
+
   const allowedOrigin = (process.env.ALLOWED_ORIGIN || '').trim();
   const requestOrigin = String(req.headers?.origin || '').trim();
 
-  if (requestOrigin && (!allowedOrigin || requestOrigin !== allowedOrigin)) {
+  // Validasi origin yang diizinkan:
+  // - Tanpa header origin (same-origin / direct server call)
+  // - Cocok persis dengan ALLOWED_ORIGIN dari konfigurasi
+  // - Lingkungan dev atau preview Google Cloud Run (*.run.app, localhost, 127.0.0.1)
+  const isDevOrPreview =
+    process.env.NODE_ENV !== 'production' ||
+    requestOrigin.includes('localhost') ||
+    requestOrigin.includes('127.0.0.1') ||
+    requestOrigin.endsWith('.run.app');
+
+  const isAllowed =
+    !requestOrigin ||
+    (allowedOrigin && requestOrigin === allowedOrigin) ||
+    isDevOrPreview;
+
+  if (!isAllowed) {
     if (req.method === 'OPTIONS') {
       return res.status(403).end();
     }
@@ -31,8 +50,9 @@ app.use((req: Request, res: Response, next) => {
     });
   }
 
-  if (allowedOrigin && requestOrigin === allowedOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  if (requestOrigin) {
+    const acao = allowedOrigin && requestOrigin === allowedOrigin ? allowedOrigin : requestOrigin;
+    res.setHeader('Access-Control-Allow-Origin', acao);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
 

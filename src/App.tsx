@@ -6,10 +6,7 @@ import { LoadingFallback } from './components/LoadingFallback';
 import { LazyErrorBoundary } from './components/LazyErrorBoundary';
 import { lazyWithPreload } from './Utils/lazyLoad';
 
-// Route-level code-splitting with preloading capabilities
-const LandingPage = lazyWithPreload(() =>
-  import('./components/LandingPage').then((m) => ({ default: m.LandingPage }))
-);
+import { LandingPage } from './components/LandingPage';
 
 const RegistrationPortal = lazyWithPreload(() =>
   import('./components/RegistrationPortal').then((m) => ({ default: m.RegistrationPortal }))
