@@ -7,10 +7,10 @@
     "dev": "tsx server.ts",
     "start": "tsx server.ts",
     "typecheck": "tsc --noEmit",
-    "build": "npm run typecheck && vite build",
+    "build": "bun run typecheck && vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "npm run typecheck",
+    "lint": "bun run typecheck",
     "deploy": "vite build && wrangler deploy"
   },
   "dependencies": {

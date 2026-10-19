@@ -138,9 +138,6 @@ async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResp
   const secret = getEnv('TURNSTILE_SECRET_KEY');
 
   if (!secret) {
-    // FAIL-CLOSED: tanpa secret, CAPTCHA tidak boleh dilewati diam-diam.
-    // Untuk dev lokal saja, set ALLOW_NO_CAPTCHA=true (jangan di production).
-    if (getEnv('ALLOW_NO_CAPTCHA') === 'true') return null;
     console.error('[Turnstile] TURNSTILE_SECRET_KEY belum diset (fail-closed).');
     return {
       statusCode: 500,
@@ -183,9 +180,10 @@ async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResp
 
 /**
  * Shared Login Request Handler
- * - Verifikasi Cloudflare Turnstile (wajib jika TURNSTILE_SECRET_KEY diset)
+ * - Verifikasi Cloudflare Turnstile (wajib)
  * - Auth via Supabase
  * - Role diambil dari public.profiles (bukan JWT claim)
+ * - Admin identifier dari env ADMIN_LOGIN_ID (bukan hardcoded "admin")
  */
 export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<ApiResponse> {
   const { supabaseAdmin, supabaseAnon, supabaseUrl } = getSupabaseClients();
@@ -267,10 +265,6 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
 
   // ============================================================
   // 2. CAPTCHA
-  //    Mode default: server memverifikasi Turnstile sendiri.
-  //    Mode SUPABASE_CAPTCHA=true: token diteruskan ke Supabase Auth
-  //    (aktifkan CAPTCHA di dashboard Supabase) sehingga jalur langsung
-  //    ke Supabase dengan anon key pun wajib CAPTCHA.
   // ============================================================
   const supabaseCaptchaMode = getEnv('SUPABASE_CAPTCHA') === 'true';
   if (supabaseCaptchaMode) {
@@ -289,32 +283,53 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     if (captchaError) return captchaError;
   }
 
+  // ============================================================
+  // 3. Identitas login (S1 FIX)
+  //  - siswa : NIK 16 digit → nik_{NIK}@auth.smkmuhiba.sch.id
+  //  - admin : hanya ADMIN_LOGIN_ID (env) → ADMIN_AUTH_EMAIL (env)
+  //  - TIDAK menerima string hardcoded "admin"
+  //  - TIDAK menerima sembarang email
+  // ============================================================
+  const STUDENT_EMAIL_DOMAIN = '@auth.smkmuhiba.sch.id';
+  const lowerId = cleanId.toLowerCase();
+
+  const adminLoginId = (getEnv('ADMIN_LOGIN_ID') || '').trim().toLowerCase();
+  const adminAuthEmail = (
+    getEnv('ADMIN_AUTH_EMAIL') || 'admin@smkmuhiba.sch.id'
+  )
+    .trim()
+    .toLowerCase();
+
   const isNik = /^\d{16}$/.test(cleanId);
-  const isAdminIdentifier = cleanId.toLowerCase() === 'admin';
+  // Cocok username rahasia ATAU (opsional) ketik tepat email admin yang dikonfigurasi
+  const isAdminIdentifier =
+    Boolean(adminLoginId) &&
+    (lowerId === adminLoginId || lowerId === adminAuthEmail);
 
   let authEmail = '';
   if (isNik) {
-    authEmail = `nik_${cleanId}@auth.smkmuhiba.sch.id`;
+    authEmail = `nik_${cleanId}${STUDENT_EMAIL_DOMAIN}`;
   } else if (isAdminIdentifier) {
-    authEmail = 'admin@smkmuhiba.sch.id';
+    authEmail = adminAuthEmail;
   } else {
+    // Jangan bocorkan format username admin
     return {
       statusCode: 400,
       body: {
         success: false,
         code: 'INVALID_IDENTIFIER',
-        error: 'NIK harus terdiri dari 16 digit angka atau username "admin".',
+        error:
+          'NIK harus 16 digit angka, atau gunakan username admin yang diberikan panitia.',
       },
     };
   }
 
-  // 3. Rate limit per NIK / admin (setelah CAPTCHA lolos, agar bot tanpa CAPTCHA
-  //    tidak bisa mengunci akun orang lain)
+  // 4. Rate limit per NIK / admin id
   const idLimited = rateLimitResponse(
     await rateLimitHit(
       supabaseAdmin,
       'login:id',
-      cleanId.toLowerCase(),
+      lowerId,
       LOGIN_LIMIT_PER_ID,
       LOGIN_WINDOW_SECONDS
     )
@@ -329,6 +344,29 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     });
 
     if (authErr || !authData?.user) {
+      if (authErr && /captcha/i.test(authErr.message || '')) {
+        console.error('[handleLogin] Supabase menolak karena CAPTCHA:', authErr.message);
+        if (supabaseCaptchaMode) {
+          return {
+            statusCode: 403,
+            body: {
+              success: false,
+              code: 'CAPTCHA_FAILED',
+              error:
+                'Verifikasi keamanan gagal atau kedaluwarsa. Selesaikan CAPTCHA lagi lalu coba kembali.',
+            },
+          };
+        }
+        return {
+          statusCode: 503,
+          body: {
+            success: false,
+            code: 'CAPTCHA_CONFIG',
+            error:
+              'CAPTCHA Supabase aktif tetapi server belum meneruskan token. Atur variabel SUPABASE_CAPTCHA=true pada Worker, lalu coba lagi.',
+          },
+        };
+      }
       return {
         statusCode: 401,
         body: {
@@ -344,7 +382,6 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     const authUser = authData.user;
     const clientForProfile = supabaseAdmin || supabaseAnon;
 
-    // Source of Truth: role dari public.profiles
     const { data: profileData, error: profileErr } = await clientForProfile
       .from('profiles')
       .select('*')
@@ -427,9 +464,7 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
 
 /**
  * Shared Register Request Handler
- * Catatan: production register utama ada di api/auth/register.ts (lebih lengkap:
- * NIK validation, rate limit, Turnstile, weak password, dll).
- * Handler ini tetap dipertahankan untuk kompatibilitas.
+ * Catatan: production register utama ada di api/auth/register.ts
  */
 export async function handleRegister(body: any): Promise<ApiResponse> {
   const { supabaseAdmin, supabaseAnon, supabaseUrl } = getSupabaseClients();
@@ -536,7 +571,6 @@ export async function handleRegister(body: any): Promise<ApiResponse> {
     }
 
     const internalEmail = `nik_${cleanNik}@auth.smkmuhiba.sch.id`;
-    // JANGAN kirim role di user_metadata (dicegah privilege escalation)
     const { data: authCreated, error: createAuthErr } = await supabaseAdmin.auth.admin.createUser({
       email: internalEmail,
       password: cleanPassword,

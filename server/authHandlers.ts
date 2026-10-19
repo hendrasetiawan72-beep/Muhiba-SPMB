@@ -50,7 +50,7 @@ export function formatTanggalDaftarJakarta(date = new Date()): string {
   });
   const parts = formatter.formatToParts(date);
   const get = (type: string) => parts.find((p) => p.type === type)?.value || '00';
-  return `\( {get('day')}- \){get('month')}-${get('year')} \( {get('hour')}: \){get('minute')}`;
+  return `${get('day')}-${get('month')}-${get('year')} ${get('hour')}:${get('minute')}`;
 }
 
 export interface ApiResponse {
@@ -93,7 +93,7 @@ async function rateLimitHit(
   if (!admin) return 'unavailable';
   try {
     const salt = getEnv('RATE_LIMIT_SALT') || getEnv('SUPABASE_SERVICE_ROLE_KEY');
-    const keyHash = await sha256Hex(`\( {bucket}: \){rawKey}:${salt}`);
+    const keyHash = await sha256Hex(`${bucket}:${rawKey}:${salt}`);
     const { data, error } = await admin.rpc('rate_limit_hit', {
       p_bucket: bucket,
       p_key_hash: keyHash,
@@ -308,7 +308,7 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
 
   let authEmail = '';
   if (isNik) {
-    authEmail = `nik_\( {cleanId} \){STUDENT_EMAIL_DOMAIN}`;
+    authEmail = `nik_${cleanId}${STUDENT_EMAIL_DOMAIN}`;
   } else if (isAdminIdentifier) {
     authEmail = adminAuthEmail;
   } else {
@@ -642,7 +642,7 @@ export async function handleRegister(body: any): Promise<ApiResponse> {
           const seq = (count || 0) + 1;
           const seqStr = String(seq).length < 4 ? String(seq).padStart(4, '0') : String(seq);
           const rand = Math.floor(100 + Math.random() * 900);
-          studentPayload.nomor_pendaftaran = `\( {currentYear} \){seqStr}${rand}`;
+          studentPayload.nomor_pendaftaran = `${currentYear}${seqStr}${rand}`;
           const retry = await supabaseAdmin
             .from('students')
             .insert(studentPayload)
@@ -851,7 +851,7 @@ export async function handleDeleteStudent(
         .list(targetUserId);
 
       if (files && files.length > 0) {
-        const paths = files.map((f) => `\( {targetUserId}/ \){f.name}`);
+        const paths = files.map((f) => `${targetUserId}/${f.name}`);
         await supabaseAdmin.storage.from('dokumen-ppdb').remove(paths);
       }
     } catch (storageErr) {
@@ -864,7 +864,7 @@ export async function handleDeleteStudent(
         .list(cleanNik);
 
       if (legacyFiles && legacyFiles.length > 0) {
-        const paths = legacyFiles.map((f) => `\( {cleanNik}/ \){f.name}`);
+        const paths = legacyFiles.map((f) => `${cleanNik}/${f.name}`);
         await supabaseAdmin.storage.from('berkas-spmb').remove(paths);
       }
     } catch (storageErr) {
