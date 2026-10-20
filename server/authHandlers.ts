@@ -68,10 +68,11 @@ export interface ApiResponse {
 
 // ============================================================================
 // KEAMANAN LOGIN: rate limit (fail-closed) + CAPTCHA (fail-closed)
-// Batas bisa disesuaikan. Sekolah memakai Wi-Fi bersama, jadi batas per IP longgar.
+// S2: per-IP diperketat (40/10m). Wi-Fi sekolah tetap longgar lewat CAPTCHA;
+//     serangan dari satu VPS dibatasi lebih ketat. Per-identifier tetap 10.
 // ============================================================================
 const LOGIN_WINDOW_SECONDS = 600; // 10 menit
-const LOGIN_LIMIT_PER_IP = 100;
+const LOGIN_LIMIT_PER_IP = 40;    // S2: turun dari 100 → 40
 const LOGIN_LIMIT_PER_ID = 10;
 
 async function sha256Hex(input: string): Promise<string> {
@@ -91,9 +92,18 @@ async function rateLimitHit(
   windowSeconds: number
 ): Promise<RateResult> {
   if (!admin) return 'unavailable';
+
+  // S2: RATE_LIMIT_SALT wajib — jangan fallback ke SERVICE_ROLE_KEY
+  const salt = (getEnv('RATE_LIMIT_SALT') || '').trim();
+  if (!salt || salt.length < 16) {
+    console.error(
+      '[RateLimit] RATE_LIMIT_SALT belum diset atau terlalu pendek (min. 16 karakter). Fail-closed.'
+    );
+    return 'unavailable';
+  }
+
   try {
-    const salt = getEnv('RATE_LIMIT_SALT') || getEnv('SUPABASE_SERVICE_ROLE_KEY');
-    const keyHash = await sha256Hex(`${bucket}:${rawKey}:${salt}`);
+    const keyHash = await sha256Hex(`\( {bucket}: \){rawKey}:${salt}`);
     const { data, error } = await admin.rpc('rate_limit_hit', {
       p_bucket: bucket,
       p_key_hash: keyHash,
@@ -109,6 +119,28 @@ async function rateLimitHit(
     console.error('[RateLimit] Exception (fail-closed):', e);
     return 'unavailable';
   }
+}
+
+function rateLimitResponse(result: RateResult): ApiResponse | null {
+  if (result === 'ok') return null;
+  if (result === 'limited') {
+    return {
+      statusCode: 429,
+      body: {
+        success: false,
+        code: 'RATE_LIMITED',
+        error: 'Terlalu banyak percobaan login. Coba lagi dalam beberapa menit.',
+      },
+    };
+  }
+  return {
+    statusCode: 503,
+    body: {
+      success: false,
+      code: 'RATE_LIMIT_UNAVAILABLE',
+      error: 'Layanan login sementara tidak tersedia. Silakan coba beberapa saat lagi.',
+    },
+  };
 }
 
 function rateLimitResponse(result: RateResult): ApiResponse | null {
