@@ -1,12 +1,15 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-// Environment variable retrieval
+type JsonRecord = Record<string, unknown>;
+
 function getEnv(key: string, fallbackKey?: string): string {
-  if (typeof process !== 'undefined' && process.env) {
-    if (process.env[key]) return process.env[key]!;
-    if (fallbackKey && process.env[fallbackKey]) return process.env[fallbackKey]!;
+  try {
+    const env = typeof process !== 'undefined' ? process.env : undefined;
+    const value = env?.[key] || (fallbackKey ? env?.[fallbackKey] : '');
+    return typeof value === 'string' ? value.trim() : '';
+  } catch {
+    return '';
   }
-  return '';
 }
 
 export function getSupabaseClients(): {
@@ -20,6 +23,7 @@ export function getSupabaseClients(): {
     getEnv('SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY') ||
     getEnv('VITE_SUPABASE_PUBLISHABLE_KEY');
 
+  // Never use the service-role key as a fallback for the public/anon client.
   const supabaseAdmin =
     supabaseUrl && serviceRoleKey
       ? createClient(supabaseUrl, serviceRoleKey, {
@@ -28,16 +32,16 @@ export function getSupabaseClients(): {
       : null;
 
   const supabaseAnon =
-    supabaseUrl && (anonKey || serviceRoleKey)
-      ? createClient(supabaseUrl, anonKey || serviceRoleKey)
+    supabaseUrl && anonKey
+      ? createClient(supabaseUrl, anonKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        })
       : null;
 
   return { supabaseAdmin, supabaseAnon, supabaseUrl };
 }
 
-/**
- * Formats current date-time in Asia/Jakarta (WIB) with format: dd-mm-yyyy hh:mm
- */
+/** Formats date/time in Asia/Jakarta: dd-mm-yyyy hh:mm. */
 export function formatTanggalDaftarJakarta(date = new Date()): string {
   const formatter = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Jakarta',
@@ -48,8 +52,11 @@ export function formatTanggalDaftarJakarta(date = new Date()): string {
     minute: '2-digit',
     hour12: false,
   });
+
   const parts = formatter.formatToParts(date);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value || '00';
+  const get = (type: string) =>
+    parts.find((part) => part.type === type)?.value || '00';
+
   return `${get('day')}-${get('month')}-${get('year')} ${get('hour')}:${get('minute')}`;
 }
 
@@ -60,24 +67,23 @@ export interface ApiResponse {
     code?: string;
     error?: string;
     message?: string;
-    session?: any;
-    user?: any;
-    student?: any;
+    session?: unknown;
+    user?: unknown;
+    student?: unknown;
   };
 }
 
-// ============================================================================
-// KEAMANAN LOGIN: rate limit (fail-closed) + CAPTCHA (fail-closed)
-// Batas bisa disesuaikan. Sekolah memakai Wi-Fi bersama, jadi batas per IP longgar.
-// ============================================================================
-const LOGIN_WINDOW_SECONDS = 600; // 10 menit
-const LOGIN_LIMIT_PER_IP = 100;
+const LOGIN_WINDOW_SECONDS = 600;
+const LOGIN_LIMIT_PER_IP = 40;
 const LOGIN_LIMIT_PER_ID = 10;
 
 async function sha256Hex(input: string): Promise<string> {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(input),
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
 }
 
@@ -88,11 +94,17 @@ async function rateLimitHit(
   bucket: string,
   rawKey: string,
   limit: number,
-  windowSeconds: number
+  windowSeconds: number,
 ): Promise<RateResult> {
   if (!admin) return 'unavailable';
+
+  const salt = getEnv('RATE_LIMIT_SALT');
+  if (salt.length < 16) {
+    console.error('[RateLimit] RATE_LIMIT_SALT belum diset atau kurang dari 16 karakter.');
+    return 'unavailable';
+  }
+
   try {
-    const salt = getEnv('RATE_LIMIT_SALT') || getEnv('SUPABASE_SERVICE_ROLE_KEY');
     const keyHash = await sha256Hex(`${bucket}:${rawKey}:${salt}`);
     const { data, error } = await admin.rpc('rate_limit_hit', {
       p_bucket: bucket,
@@ -100,19 +112,27 @@ async function rateLimitHit(
       p_limit: limit,
       p_window_seconds: windowSeconds,
     });
+
     if (error) {
-      console.error('[RateLimit] RPC error (fail-closed):', error.message);
+      console.error('[RateLimit] RPC error:', error.message);
       return 'unavailable';
     }
-    return data === false ? 'limited' : 'ok';
-  } catch (e) {
-    console.error('[RateLimit] Exception (fail-closed):', e);
+
+    // RPC is expected to return true when allowed and false when limited.
+    if (data === false) return 'limited';
+    if (data === true) return 'ok';
+
+    console.error('[RateLimit] RPC returned an unexpected value.');
+    return 'unavailable';
+  } catch (error) {
+    console.error('[RateLimit] Exception:', error);
     return 'unavailable';
   }
 }
 
 function rateLimitResponse(result: RateResult): ApiResponse | null {
   if (result === 'ok') return null;
+
   if (result === 'limited') {
     return {
       statusCode: 429,
@@ -123,6 +143,7 @@ function rateLimitResponse(result: RateResult): ApiResponse | null {
       },
     };
   }
+
   return {
     statusCode: 503,
     body: {
@@ -133,571 +154,427 @@ function rateLimitResponse(result: RateResult): ApiResponse | null {
   };
 }
 
-/** Verifikasi Turnstile manual. Mengembalikan null jika lolos, atau ApiResponse error. */
-async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResponse | null> {
-  const secret = getEnv('TURNSTILE_SECRET_KEY');
+function response(
+  statusCode: number,
+  code: string,
+  error: string,
+): ApiResponse {
+  return { statusCode, body: { success: false, code, error } };
+}
 
+/** Verifies Cloudflare Turnstile. Returns null if verification succeeds. */
+async function checkTurnstile(
+  token: unknown,
+  clientIp: string,
+): Promise<ApiResponse | null> {
+  const secret = getEnv('TURNSTILE_SECRET_KEY');
   if (!secret) {
-    console.error('[Turnstile] TURNSTILE_SECRET_KEY belum diset (fail-closed).');
-    return {
-      statusCode: 500,
-      body: {
-        success: false,
-        code: 'SERVER_MISCONFIGURED',
-        error: 'Konfigurasi keamanan server belum lengkap. Silakan hubungi panitia.',
-      },
-    };
+    console.error('[Turnstile] TURNSTILE_SECRET_KEY belum diset.');
+    return response(
+      500,
+      'SERVER_MISCONFIGURED',
+      'Konfigurasi keamanan server belum lengkap. Silakan hubungi panitia.',
+    );
   }
 
-  const fail = (error: string): ApiResponse => ({
-    statusCode: 403,
-    body: { success: false, code: 'CAPTCHA_FAILED', error },
-  });
-
-  if (!token) return fail('Verifikasi keamanan Turnstile wajib diisi.');
+  if (typeof token !== 'string' || !token.trim()) {
+    return response(403, 'CAPTCHA_FAILED', 'Verifikasi keamanan Turnstile wajib diisi.');
+  }
 
   try {
     const form = new URLSearchParams();
-    form.append('secret', secret);
-    form.append('response', String(token));
-    if (clientIp) form.append('remoteip', clientIp);
+    form.set('secret', secret);
+    form.set('response', token.trim());
+    if (clientIp) form.set('remoteip', clientIp);
 
-    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      body: form,
-    });
-    const outcome: any = await resp.json();
-    if (!outcome.success) {
-      console.warn('[Turnstile Login] Gagal:', outcome['error-codes']);
-      return fail('Verifikasi keamanan gagal. Muat ulang halaman dan coba lagi.');
+    const verificationResponse = await fetch(
+      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      { method: 'POST', body: form },
+    );
+
+    if (!verificationResponse.ok) {
+      console.error('[Turnstile] Siteverify HTTP status:', verificationResponse.status);
+      return response(503, 'CAPTCHA_UNAVAILABLE', 'Layanan verifikasi sedang bermasalah. Coba lagi.');
     }
+
+    const result = (await verificationResponse.json()) as {
+      success?: boolean;
+      ['error-codes']?: string[];
+    };
+
+    if (!result.success) {
+      console.warn('[Turnstile] Verification failed:', result['error-codes']);
+      return response(403, 'CAPTCHA_FAILED', 'Verifikasi keamanan gagal. Muat ulang halaman dan coba lagi.');
+    }
+
     return null;
-  } catch (cfErr) {
-    console.error('[Turnstile Login] Error siteverify:', cfErr);
-    return fail('Gagal memverifikasi keamanan. Silakan coba kembali.');
+  } catch (error) {
+    console.error('[Turnstile] Verification exception:', error);
+    return response(503, 'CAPTCHA_UNAVAILABLE', 'Gagal memverifikasi keamanan. Silakan coba kembali.');
   }
 }
 
-/**
- * Shared Login Request Handler
- * - Verifikasi Cloudflare Turnstile (wajib)
- * - Auth via Supabase
- * - Role diambil dari public.profiles (bukan JWT claim)
- * - Admin identifier dari env ADMIN_LOGIN_ID (bukan hardcoded "admin")
- */
-export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<ApiResponse> {
-  const { supabaseAdmin, supabaseAnon, supabaseUrl } = getSupabaseClients();
-
-  if (!supabaseUrl || !supabaseAnon) {
-    return {
-      statusCode: 500,
-      body: {
-        success: false,
-        code: 'SERVER_MISCONFIGURED',
-        error: 'Konfigurasi server belum lengkap. Silakan hubungi panitia.',
-      },
-    };
-  }
-
-  let parsedBody = body;
+function parseBody(body: unknown): { data: JsonRecord | null; error: boolean } {
   if (typeof body === 'string') {
     try {
-      parsedBody = JSON.parse(body);
-    } catch {
+      const parsed: unknown = JSON.parse(body);
       return {
-        statusCode: 400,
-        body: {
-          success: false,
-          code: 'BAD_REQUEST',
-          error: 'Format data permintaan tidak valid.',
-        },
+        data: parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          ? (parsed as JsonRecord)
+          : null,
+        error: false,
       };
+    } catch {
+      return { data: null, error: true };
     }
   }
 
-  const { identifier, password } = parsedBody || {};
-  const cleanId = String(identifier || '').trim();
-  const cleanPass = String(password || '').trim();
-
-  if (!cleanId || !cleanPass) {
-    return {
-      statusCode: 400,
-      body: {
-        success: false,
-        code: 'MISSING_CREDENTIALS',
-        error: 'Username / NIK dan password wajib diisi.',
-      },
-    };
+  if (body && typeof body === 'object' && !Array.isArray(body)) {
+    return { data: body as JsonRecord, error: false };
   }
 
-  if (cleanPass.length < 8) {
-    return {
-      statusCode: 400,
-      body: {
-        success: false,
-        code: 'PASSWORD_TOO_SHORT',
-        error: 'Password minimal 8 karakter.',
-      },
-    };
+  return { data: null, error: false };
+}
+
+/**
+ * Shared login handler.
+ * Required env: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
+ * RATE_LIMIT_SALT, and TURNSTILE_SECRET_KEY unless SUPABASE_CAPTCHA=true.
+ */
+export async function handleLogin(
+  body: unknown,
+  clientIpRaw = '',
+): Promise<ApiResponse> {
+  const { supabaseAdmin, supabaseAnon, supabaseUrl } = getSupabaseClients();
+
+  if (!supabaseUrl || !supabaseAnon || !supabaseAdmin) {
+    return response(
+      500,
+      'SERVER_MISCONFIGURED',
+      'Konfigurasi server belum lengkap. Periksa URL, anon key, dan service-role key.',
+    );
   }
 
-  const clientIp = (clientIpRaw || '').trim();
-  const turnstileToken =
-    parsedBody?.turnstileToken ||
-    parsedBody?.token ||
-    parsedBody?.turnstile_token ||
-    parsedBody?.captchaToken ||
-    '';
+  const parsed = parseBody(body);
+  if (parsed.error) return response(400, 'BAD_REQUEST', 'Format data permintaan tidak valid.');
+  const requestBody = parsed.data || {};
 
-  // ============================================================
-  // 1. Rate limit per IP (sebelum menyentuh Turnstile/Supabase)
-  // ============================================================
-  const ipLimited = rateLimitResponse(
+  const identifier = String(requestBody.identifier ?? '').trim();
+  // Do not trim passwords: whitespace can be part of a legitimate password.
+  const password = typeof requestBody.password === 'string' ? requestBody.password : '';
+
+  if (!identifier || !password) {
+    return response(400, 'MISSING_CREDENTIALS', 'Username / NIK dan password wajib diisi.');
+  }
+  if (password.length < 8) {
+    return response(400, 'PASSWORD_TOO_SHORT', 'Password minimal 8 karakter.');
+  }
+
+  const clientIp = clientIpRaw.trim();
+  const ipLimit = rateLimitResponse(
     await rateLimitHit(
       supabaseAdmin,
       'login:ip',
       clientIp || 'unknown',
       LOGIN_LIMIT_PER_IP,
-      LOGIN_WINDOW_SECONDS
-    )
+      LOGIN_WINDOW_SECONDS,
+    ),
   );
-  if (ipLimited) return ipLimited;
+  if (ipLimit) return ipLimit;
 
-  // ============================================================
-  // 2. CAPTCHA
-  // ============================================================
-  const supabaseCaptchaMode = getEnv('SUPABASE_CAPTCHA') === 'true';
+  const turnstileToken =
+    requestBody.turnstileToken ??
+    requestBody.token ??
+    requestBody.turnstile_token ??
+    requestBody.captchaToken ??
+    '';
+
+  const supabaseCaptchaMode = getEnv('SUPABASE_CAPTCHA').toLowerCase() === 'true';
   if (supabaseCaptchaMode) {
-    if (!turnstileToken) {
-      return {
-        statusCode: 403,
-        body: {
-          success: false,
-          code: 'CAPTCHA_FAILED',
-          error: 'Verifikasi keamanan Turnstile wajib diisi.',
-        },
-      };
+    if (typeof turnstileToken !== 'string' || !turnstileToken.trim()) {
+      return response(403, 'CAPTCHA_FAILED', 'Verifikasi keamanan Turnstile wajib diisi.');
     }
   } else {
     const captchaError = await checkTurnstile(turnstileToken, clientIp);
     if (captchaError) return captchaError;
   }
 
-  // ============================================================
-  // 3. Identitas login (S1 FIX)
-  //  - siswa : NIK 16 digit → nik_{NIK}@auth.smkmuhiba.sch.id
-  //  - admin : hanya ADMIN_LOGIN_ID (env) → ADMIN_AUTH_EMAIL (env)
-  //  - TIDAK menerima string hardcoded "admin"
-  //  - TIDAK menerima sembarang email
-  // ============================================================
-  const STUDENT_EMAIL_DOMAIN = '@auth.smkmuhiba.sch.id';
-  const lowerId = cleanId.toLowerCase();
-
-  const adminLoginId = (getEnv('ADMIN_LOGIN_ID') || '').trim().toLowerCase();
-  const adminAuthEmail = (
-    getEnv('ADMIN_AUTH_EMAIL') || 'admin@smkmuhiba.sch.id'
-  )
-    .trim()
-    .toLowerCase();
-
-  const isNik = /^\d{16}$/.test(cleanId);
-  // Cocok username rahasia ATAU (opsional) ketik tepat email admin yang dikonfigurasi
+  const studentEmailDomain = '@auth.smkmuhiba.sch.id';
+  const lowerId = identifier.toLowerCase();
+  const adminLoginId = getEnv('ADMIN_LOGIN_ID').toLowerCase();
+  const adminAuthEmail = (getEnv('ADMIN_AUTH_EMAIL') || 'admin@smkmuhiba.sch.id').toLowerCase();
+  const isNik = /^\d{16}$/.test(identifier);
   const isAdminIdentifier =
     Boolean(adminLoginId) &&
     (lowerId === adminLoginId || lowerId === adminAuthEmail);
 
-  let authEmail = '';
+  let authEmail: string;
   if (isNik) {
-    authEmail = `nik_${cleanId}${STUDENT_EMAIL_DOMAIN}`;
+    authEmail = `nik_${identifier}${studentEmailDomain}`;
   } else if (isAdminIdentifier) {
     authEmail = adminAuthEmail;
   } else {
-    // Jangan bocorkan format username admin
-    return {
-      statusCode: 400,
-      body: {
-        success: false,
-        code: 'INVALID_IDENTIFIER',
-        error:
-          'NIK harus 16 digit angka, atau gunakan username admin yang diberikan panitia.',
-      },
-    };
+    return response(
+      400,
+      'INVALID_IDENTIFIER',
+      'NIK harus 16 digit angka, atau gunakan username admin yang diberikan panitia.',
+    );
   }
 
-  // 4. Rate limit per NIK / admin id
-  const idLimited = rateLimitResponse(
+  const idLimit = rateLimitResponse(
     await rateLimitHit(
       supabaseAdmin,
       'login:id',
       lowerId,
       LOGIN_LIMIT_PER_ID,
-      LOGIN_WINDOW_SECONDS
-    )
+      LOGIN_WINDOW_SECONDS,
+    ),
   );
-  if (idLimited) return idLimited;
+  if (idLimit) return idLimit;
 
   try {
-    const { data: authData, error: authErr } = await supabaseAnon.auth.signInWithPassword({
-      email: authEmail,
-      password: cleanPass,
-      ...(supabaseCaptchaMode ? { options: { captchaToken: String(turnstileToken) } } : {}),
-    });
+    const { data: authData, error: authError } =
+      await supabaseAnon.auth.signInWithPassword({
+        email: authEmail,
+        password,
+        ...(supabaseCaptchaMode
+          ? { options: { captchaToken: String(turnstileToken) } }
+          : {}),
+      });
 
-    if (authErr || !authData?.user) {
-      if (authErr && /captcha/i.test(authErr.message || '')) {
-        console.error('[handleLogin] Supabase menolak karena CAPTCHA:', authErr.message);
-        if (supabaseCaptchaMode) {
-          return {
-            statusCode: 403,
-            body: {
-              success: false,
-              code: 'CAPTCHA_FAILED',
-              error:
-                'Verifikasi keamanan gagal atau kedaluwarsa. Selesaikan CAPTCHA lagi lalu coba kembali.',
-            },
-          };
-        }
-        return {
-          statusCode: 503,
-          body: {
-            success: false,
-            code: 'CAPTCHA_CONFIG',
-            error:
-              'CAPTCHA Supabase aktif tetapi server belum meneruskan token. Atur variabel SUPABASE_CAPTCHA=true pada Worker, lalu coba lagi.',
-          },
-        };
+    if (authError || !authData.user || !authData.session) {
+      if (authError && /captcha/i.test(authError.message)) {
+        return response(
+          403,
+          'CAPTCHA_FAILED',
+          'Verifikasi keamanan gagal atau kedaluwarsa. Selesaikan CAPTCHA lagi lalu coba kembali.',
+        );
       }
-      return {
-        statusCode: 401,
-        body: {
-          success: false,
-          code: 'INVALID_CREDENTIALS',
-          error: isNik
-            ? 'NIK atau password yang Anda masukkan salah. Pastikan 16 digit NIK dan password sesuai saat pendaftaran.'
-            : 'Username atau password admin salah.',
-        },
-      };
+      return response(
+        401,
+        'INVALID_CREDENTIALS',
+        isNik
+          ? 'NIK atau password yang Anda masukkan salah.'
+          : 'Username atau password admin salah.',
+      );
     }
 
     const authUser = authData.user;
-    const clientForProfile = supabaseAdmin || supabaseAnon;
-
-    const { data: profileData, error: profileErr } = await clientForProfile
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('*')
+      .select('id, nik, full_name, role, must_change_password')
       .eq('id', authUser.id)
       .maybeSingle();
 
-    if (profileErr) {
-      console.warn('[handleLogin] Profile query notice:', profileErr.message);
+    if (profileError) {
+      console.error('[handleLogin] Profile query failed:', profileError.message);
+      return response(500, 'PROFILE_LOOKUP_FAILED', 'Gagal memverifikasi profil akun.');
     }
 
-    const verifiedRole = profileData?.role === 'admin' ? 'admin' : 'student';
-
-    if (isAdminIdentifier && verifiedRole !== 'admin') {
-      return {
-        statusCode: 403,
-        body: {
-          success: false,
-          code: 'FORBIDDEN',
-          error: 'Akses ditolak: Akun ini tidak memiliki hak akses administrator di database.',
-        },
-      };
+    // Fail closed if the profile is missing; never infer an admin role from metadata.
+    if (!profile) {
+      return response(403, 'PROFILE_NOT_FOUND', 'Profil akun belum tersedia. Hubungi panitia.');
     }
 
-    const userObj = {
+    const role = profile.role === 'admin' ? 'admin' : 'student';
+    if (isAdminIdentifier && role !== 'admin') {
+      return response(403, 'FORBIDDEN', 'Akun ini tidak memiliki hak akses administrator.');
+    }
+
+    const user = {
       id: authUser.id,
-      nik: profileData?.nik || authUser.user_metadata?.nik || (isNik ? cleanId : ''),
-      role: verifiedRole,
-      full_name:
-        profileData?.full_name ||
-        authUser.user_metadata?.full_name ||
-        (verifiedRole === 'admin' ? 'Administrator' : 'Siswa'),
+      nik: profile.nik || (isNik ? identifier : ''),
+      role,
+      full_name: profile.full_name || (role === 'admin' ? 'Administrator' : 'Siswa'),
       email: authUser.email || authEmail,
-      must_change_password: !!(profileData as any)?.must_change_password,
+      must_change_password: Boolean(profile.must_change_password),
       created_at: authUser.created_at,
     };
 
-    let studentData: any = undefined;
-    if (verifiedRole === 'student') {
-      const { data: stdRecord } = await clientForProfile
+    let student: unknown;
+    if (role === 'student') {
+      const { data: studentRecord, error: studentError } = await supabaseAdmin
         .from('students')
         .select('*')
         .eq('user_id', authUser.id)
         .maybeSingle();
 
-      if (!stdRecord) {
-        await supabaseAnon.auth.signOut();
-        return {
-          statusCode: 404,
-          body: {
-            success: false,
-            code: 'STUDENT_NOT_FOUND',
-            error: 'Data pendaftaran tidak ditemukan. Hubungi panitia.',
-          },
-        };
+      if (studentError) {
+        console.error('[handleLogin] Student query failed:', studentError.message);
+        return response(500, 'STUDENT_LOOKUP_FAILED', 'Gagal memuat data pendaftaran.');
       }
-      studentData = stdRecord;
+      if (!studentRecord) {
+        return response(404, 'STUDENT_NOT_FOUND', 'Data pendaftaran tidak ditemukan. Hubungi panitia.');
+      }
+      student = studentRecord;
     }
 
     return {
       statusCode: 200,
-      body: {
-        success: true,
-        session: authData.session,
-        user: userObj,
-        student: studentData,
-      },
+      body: { success: true, session: authData.session, user, student },
     };
-  } catch (err: any) {
-    console.error('[handleLogin] Internal error:', err);
-    return {
-      statusCode: 500,
-      body: {
-        success: false,
-        code: 'INTERNAL_SERVER_ERROR',
-        error: 'Terjadi gangguan internal pada server saat login. Silakan coba kembali.',
-      },
-    };
+  } catch (error) {
+    console.error('[handleLogin] Internal error:', error);
+    return response(500, 'INTERNAL_SERVER_ERROR', 'Terjadi gangguan internal saat login. Silakan coba kembali.');
   }
 }
 
-/**
- * Shared Register Request Handler
- * Catatan: production register utama ada di api/auth/register.ts
- */
-export async function handleRegister(body: any): Promise<ApiResponse> {
+/** Shared registration handler. Registration must only be called by the intended public API endpoint. */
+export async function handleRegister(body: unknown): Promise<ApiResponse> {
   const { supabaseAdmin, supabaseAnon, supabaseUrl } = getSupabaseClients();
 
   if (!supabaseUrl || !supabaseAdmin || !supabaseAnon) {
-    return {
-      statusCode: 500,
-      body: {
-        success: false,
-        code: 'SERVER_MISCONFIGURED',
-        error:
-          'Konfigurasi server belum lengkap: SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY belum diatur.',
-      },
-    };
+    return response(
+      500,
+      'SERVER_MISCONFIGURED',
+      'Konfigurasi server belum lengkap: periksa SUPABASE_URL, anon key, dan service-role key.',
+    );
   }
 
-  let parsedBody = body;
-  if (typeof body === 'string') {
-    try {
-      parsedBody = JSON.parse(body);
-    } catch {
-      return {
-        statusCode: 400,
-        body: {
-          success: false,
-          code: 'BAD_REQUEST',
-          error: 'Format data permintaan pendaftaran tidak valid.',
-        },
-      };
-    }
-  }
+  const parsed = parseBody(body);
+  if (parsed.error) return response(400, 'BAD_REQUEST', 'Format data pendaftaran tidak valid.');
+  const requestBody = parsed.data || {};
 
-  const rawNik = parsedBody?.nik ?? '';
-  const rawNama = parsedBody?.nama ?? parsedBody?.nama_lengkap ?? '';
-  const rawJurusan = parsedBody?.jurusan ?? parsedBody?.jurusan_pilihan ?? '';
-  const rawWa = parsedBody?.whatsapp ?? parsedBody?.no_wa ?? '';
-  const rawPassword = parsedBody?.password ?? '';
-
-  const cleanNik = String(rawNik || '')
+  const cleanNik = String(requestBody.nik ?? '').trim().replace(/\D/g, '');
+  const cleanNama = String(requestBody.nama ?? requestBody.nama_lengkap ?? '').trim();
+  const cleanJurusan = String(requestBody.jurusan ?? requestBody.jurusan_pilihan ?? '')
     .trim()
-    .replace(/\D/g, '');
-  const cleanNama = String(rawNama || '').trim();
-  const cleanJurusan = String(rawJurusan || '').trim().toUpperCase();
-  const cleanNoWa = String(rawWa || '').trim();
-  const cleanPassword = String(rawPassword || '').trim();
+    .toUpperCase();
+  const cleanNoWa = String(requestBody.whatsapp ?? requestBody.no_wa ?? '').trim();
+  const cleanPassword = typeof requestBody.password === 'string' ? requestBody.password : '';
 
   if (!/^\d{16}$/.test(cleanNik)) {
-    return {
-      statusCode: 400,
-      body: {
-        success: false,
-        code: 'INVALID_NIK',
-        error: 'NIK harus terdiri dari 16 digit angka sesuai KTP / Kartu Keluarga.',
-      },
-    };
+    return response(400, 'INVALID_NIK', 'NIK harus terdiri dari 16 digit angka.');
   }
-  if (!cleanNama) {
-    return {
-      statusCode: 400,
-      body: {
-        success: false,
-        code: 'INVALID_NAMA',
-        error: 'Nama lengkap wajib diisi.',
-      },
-    };
+  if (!cleanNama || cleanNama.length > 150) {
+    return response(400, 'INVALID_NAMA', 'Nama lengkap wajib diisi (maksimal 150 karakter).');
   }
   if (!['TO', 'TJKT', 'AKL'].includes(cleanJurusan)) {
-    return {
-      statusCode: 400,
-      body: {
-        success: false,
-        code: 'INVALID_JURUSAN',
-        error: 'Pilihan kompetensi keahlian / jurusan tidak valid.',
-      },
-    };
+    return response(400, 'INVALID_JURUSAN', 'Pilihan jurusan tidak valid.');
   }
-  if (cleanPassword.length < 8) {
-    return {
-      statusCode: 400,
-      body: {
-        success: false,
-        code: 'PASSWORD_TOO_SHORT',
-        error: 'Password minimal 8 karakter demi keamanan akun Anda.',
-      },
-    };
+  if (cleanNoWa.length > 30) {
+    return response(400, 'INVALID_WHATSAPP', 'Nomor WhatsApp terlalu panjang.');
+  }
+  if (cleanPassword.length < 8 || cleanPassword.length > 128) {
+    return response(400, 'PASSWORD_TOO_SHORT', 'Password harus terdiri dari 8–128 karakter.');
   }
 
   try {
-    const { data: existingStudent } = await supabaseAdmin
+    const { data: existingStudent, error: existingError } = await supabaseAdmin
       .from('students')
       .select('nik')
       .eq('nik', cleanNik)
       .maybeSingle();
 
+    if (existingError) {
+      console.error('[handleRegister] Duplicate check failed:', existingError.message);
+      return response(500, 'DATABASE_LOOKUP_FAILED', 'Gagal memeriksa data pendaftaran.');
+    }
     if (existingStudent) {
-      return {
-        statusCode: 409,
-        body: {
-          success: false,
-          code: 'NIK_ALREADY_REGISTERED',
-          error: `NIK ${cleanNik} sudah terdaftar di sistem SPMB. Silakan langsung login.`,
-        },
-      };
+      return response(409, 'NIK_ALREADY_REGISTERED', 'NIK sudah terdaftar. Silakan login atau hubungi panitia.');
     }
 
     const internalEmail = `nik_${cleanNik}@auth.smkmuhiba.sch.id`;
-    const { data: authCreated, error: createAuthErr } = await supabaseAdmin.auth.admin.createUser({
-      email: internalEmail,
-      password: cleanPassword,
-      email_confirm: true,
-      user_metadata: {
-        nik: cleanNik,
-        full_name: cleanNama,
-      },
-    });
+    const { data: createdAuth, error: createAuthError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email: internalEmail,
+        password: cleanPassword,
+        email_confirm: true,
+        user_metadata: { nik: cleanNik, full_name: cleanNama },
+      });
 
-    if (createAuthErr || !authCreated?.user) {
-      if (
-        createAuthErr?.message?.includes('already been registered') ||
-        createAuthErr?.message?.includes('exists')
-      ) {
-        return {
-          statusCode: 409,
-          body: {
-            success: false,
-            code: 'AUTH_USER_EXISTS',
-            error: `Akun Auth untuk NIK ${cleanNik} sudah terdaftar. Silakan login dengan password Anda.`,
-          },
-        };
+    if (createAuthError || !createdAuth.user) {
+      const message = createAuthError?.message || '';
+      if (/already been registered|already exists|duplicate/i.test(message)) {
+        return response(409, 'AUTH_USER_EXISTS', 'Akun untuk NIK ini sudah ada. Silakan login atau hubungi panitia.');
       }
-      return {
-        statusCode: 500,
-        body: {
-          success: false,
-          code: 'AUTH_PROVISION_FAILED',
-          error: 'Gagal membuat akun autentikasi. Silakan hubungi panitia.',
-        },
-      };
+      console.error('[handleRegister] Auth creation failed:', message);
+      return response(500, 'AUTH_PROVISION_FAILED', 'Gagal membuat akun autentikasi. Silakan hubungi panitia.');
     }
 
-    const userId = authCreated.user.id;
-    const tanggalDaftar = formatTanggalDaftarJakarta();
+    const userId = createdAuth.user.id;
+    const studentPayload: Record<string, unknown> = {
+      user_id: userId,
+      nik: cleanNik,
+      nama_lengkap: cleanNama,
+      jurusan_pilihan: cleanJurusan,
+      no_wa: cleanNoWa,
+      status_pendaftaran: 'Berkas Fisik',
+      tanggal_daftar: formatTanggalDaftarJakarta(),
+      data_diri: { nik: cleanNik, nama_lengkap: cleanNama, no_hp: cleanNoWa },
+      data_alamat: {},
+      data_orang_tua: {},
+      data_berkas: {},
+    };
+
+    let insertedStudent: Record<string, unknown> | null = null;
 
     try {
-      const studentPayload: Record<string, any> = {
-        user_id: userId,
-        nik: cleanNik,
-        nama_lengkap: cleanNama,
-        jurusan_pilihan: cleanJurusan,
-        no_wa: cleanNoWa,
-        status_pendaftaran: 'Berkas Fisik',
-        tanggal_daftar: tanggalDaftar,
-        data_diri: {
-          nik: cleanNik,
-          nama_lengkap: cleanNama,
-          no_hp: cleanNoWa,
-        },
-        data_alamat: {},
-        data_orang_tua: {},
-        data_berkas: {},
-      };
-
-      const { data: insertedStudent, error: studentErr } = await supabaseAdmin
+      const { data, error } = await supabaseAdmin
         .from('students')
         .insert(studentPayload)
         .select()
         .single();
 
-      if (studentErr) {
-        if (studentErr.message?.includes('nomor_pendaftaran')) {
-          const { count } = await supabaseAdmin
-            .from('students')
-            .select('*', { count: 'exact', head: true });
-          const currentYear = new Date().getFullYear().toString();
-          const seq = (count || 0) + 1;
-          const seqStr = String(seq).length < 4 ? String(seq).padStart(4, '0') : String(seq);
-          const rand = Math.floor(100 + Math.random() * 900);
-          studentPayload.nomor_pendaftaran = `${currentYear}${seqStr}${rand}`;
-          const retry = await supabaseAdmin
-            .from('students')
-            .insert(studentPayload)
-            .select()
-            .single();
-          if (retry.error) throw retry.error;
-          return await completeRegistrationSession(
-            supabaseAnon,
-            internalEmail,
-            cleanPassword,
-            userId,
-            cleanNik,
-            cleanNama,
-            retry.data
-          );
-        }
-        throw studentErr;
+      if (!error && data) {
+        insertedStudent = data as Record<string, unknown>;
+      } else if (error && /nomor_pendaftaran/i.test(error.message)) {
+        // Compatibility fallback for schemas where nomor_pendaftaran is required
+        // and has no database default. Prefer a database sequence/trigger if available.
+        const { count, error: countError } = await supabaseAdmin
+          .from('students')
+          .select('*', { count: 'exact', head: true });
+
+        if (countError) throw countError;
+
+        const currentYear = new Date().getFullYear();
+        const seqStr = String((count || 0) + 1).padStart(4, '0');
+        const randomSuffix = String(crypto.getRandomValues(new Uint32Array(1))[0] % 900 + 100);
+        studentPayload.nomor_pendaftaran = `${currentYear}${seqStr}${randomSuffix}`;
+
+        const retry = await supabaseAdmin
+          .from('students')
+          .insert(studentPayload)
+          .select()
+          .single();
+
+        if (retry.error || !retry.data) throw retry.error || new Error('Insert student returned no data.');
+        insertedStudent = retry.data as Record<string, unknown>;
+      } else {
+        throw error || new Error('Insert student returned no data.');
       }
 
-      return await completeRegistrationSession(
+      // The database should create the profiles row through a trusted trigger or
+      // a separate controlled provisioning step. Do not assign the role in user metadata.
+      const sessionResponse = await completeRegistrationSession(
         supabaseAnon,
         internalEmail,
         cleanPassword,
         userId,
         cleanNik,
         cleanNama,
-        insertedStudent
+        insertedStudent,
       );
-    } catch (dbErr: any) {
-      console.error('[handleRegister] DB insert failed, rolling back auth user:', dbErr);
-      try {
-        await supabaseAdmin.auth.admin.deleteUser(userId);
-      } catch (rollbackErr) {
-        console.error('[handleRegister] Rollback error:', rollbackErr);
+
+      if (sessionResponse.statusCode >= 500) {
+        console.warn('[handleRegister] Account/data created but session sign-in failed.');
       }
-      return {
-        statusCode: 500,
-        body: {
-          success: false,
-          code: 'DATABASE_INSERT_FAILED',
-          error:
-            'Gagal menyimpan data pendaftaran ke database. Pendaftaran telah di-rollback, silakan coba kembali.',
-        },
-      };
+      return sessionResponse;
+    } catch (databaseError) {
+      console.error('[handleRegister] Student insert failed; rolling back auth user:', databaseError);
+      const { error: rollbackError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (rollbackError) {
+        console.error('[handleRegister] Auth rollback failed:', rollbackError.message);
+      }
+      return response(
+        500,
+        'DATABASE_INSERT_FAILED',
+        'Gagal menyimpan data pendaftaran. Silakan coba kembali atau hubungi panitia.',
+      );
     }
-  } catch (err: any) {
-    console.error('[handleRegister] Unexpected error:', err);
-    return {
-      statusCode: 500,
-      body: {
-        success: false,
-        code: 'INTERNAL_SERVER_ERROR',
-        error: 'Terjadi kesalahan internal pada proses registrasi.',
-      },
-    };
+  } catch (error) {
+    console.error('[handleRegister] Unexpected error:', error);
+    return response(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan internal pada proses registrasi.');
   }
 }
 
@@ -708,193 +585,210 @@ async function completeRegistrationSession(
   userId: string,
   cleanNik: string,
   cleanNama: string,
-  studentData: any
+  studentData: unknown,
 ): Promise<ApiResponse> {
-  const { data: sessionData } = await supabaseAnon.auth.signInWithPassword({
-    email: internalEmail,
-    password: cleanPassword,
-  });
+  try {
+    const { data, error } = await supabaseAnon.auth.signInWithPassword({
+      email: internalEmail,
+      password: cleanPassword,
+    });
 
-  return {
-    statusCode: 201,
-    body: {
-      success: true,
-      session: sessionData?.session || null,
-      user: {
-        id: userId,
-        nik: cleanNik,
-        role: 'student',
-        full_name: cleanNama,
-        email: internalEmail,
-      },
-      student: studentData,
-    },
-  };
-}
-
-/**
- * Shared Admin Delete Student Request Handler
- */
-export async function handleDeleteStudent(
-  authHeader: string | undefined,
-  body: any
-): Promise<ApiResponse> {
-  const { supabaseAdmin, supabaseAnon } = getSupabaseClients();
-
-  if (!supabaseAdmin) {
-    return {
-      statusCode: 500,
-      body: {
-        success: false,
-        code: 'SERVER_MISCONFIGURED',
-        error: 'Konfigurasi server belum lengkap.',
-      },
-    };
-  }
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return {
-      statusCode: 401,
-      body: {
-        success: false,
-        code: 'UNAUTHORIZED',
-        error: 'Token otorisasi diperlukan.',
-      },
-    };
-  }
-
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const clientForAuth = supabaseAnon || supabaseAdmin;
-  const { data: authUserResult, error: authUserErr } = await clientForAuth.auth.getUser(token);
-
-  if (authUserErr || !authUserResult?.user) {
-    return {
-      statusCode: 401,
-      body: {
-        success: false,
-        code: 'INVALID_TOKEN',
-        error: 'Sesi login tidak valid atau sudah kedaluwarsa.',
-      },
-    };
-  }
-
-  const callerUser = authUserResult.user;
-
-  const { data: callerProfile, error: profileErr } = await supabaseAdmin
-    .from('profiles')
-    .select('role')
-    .eq('id', callerUser.id)
-    .maybeSingle();
-
-  if (profileErr || callerProfile?.role !== 'admin') {
-    return {
-      statusCode: 403,
-      body: {
-        success: false,
-        code: 'FORBIDDEN',
-        error: 'Akses ditolak: Hanya administrator yang dapat menghapus data siswa.',
-      },
-    };
-  }
-
-  let parsedBody = body;
-  if (typeof body === 'string') {
-    try {
-      parsedBody = JSON.parse(body);
-    } catch {
+    if (error || !data.session) {
+      console.error('[completeRegistrationSession] Sign-in failed:', error?.message);
       return {
-        statusCode: 400,
+        statusCode: 201,
         body: {
-          success: false,
-          code: 'BAD_REQUEST',
-          error: 'Format data permintaan tidak valid.',
+          success: true,
+          message: 'Pendaftaran tersimpan. Silakan login menggunakan NIK dan password Anda.',
+          user: {
+            id: userId,
+            nik: cleanNik,
+            role: 'student',
+            full_name: cleanNama,
+            email: internalEmail,
+          },
+          student: studentData,
         },
       };
     }
-  }
 
-  const cleanNik = String(parsedBody?.nik || '').trim();
-  if (!cleanNik) {
     return {
-      statusCode: 400,
+      statusCode: 201,
       body: {
-        success: false,
-        code: 'MISSING_NIK',
-        error: 'NIK siswa yang akan dihapus wajib disertakan.',
+        success: true,
+        session: data.session,
+        user: {
+          id: userId,
+          nik: cleanNik,
+          role: 'student',
+          full_name: cleanNama,
+          email: internalEmail,
+        },
+        student: studentData,
+      },
+    };
+  } catch (error) {
+    console.error('[completeRegistrationSession] Unexpected error:', error);
+    return {
+      statusCode: 201,
+      body: {
+        success: true,
+        message: 'Pendaftaran tersimpan. Silakan login menggunakan NIK dan password Anda.',
+        user: {
+          id: userId,
+          nik: cleanNik,
+          role: 'student',
+          full_name: cleanNama,
+          email: internalEmail,
+        },
+        student: studentData,
       },
     };
   }
+}
 
-  const { data: targetStudent, error: findErr } = await supabaseAdmin
-    .from('students')
-    .select('id, user_id, nik, nama_lengkap')
-    .eq('nik', cleanNik)
-    .maybeSingle();
+/** Deletes a student only after validating the bearer token and database role. */
+export async function handleDeleteStudent(
+  authHeader: string | undefined,
+  body: unknown,
+): Promise<ApiResponse> {
+  const { supabaseAdmin, supabaseAnon, supabaseUrl } = getSupabaseClients();
 
-  if (findErr || !targetStudent) {
-    return {
-      statusCode: 404,
-      body: {
-        success: false,
-        code: 'STUDENT_NOT_FOUND',
-        error: `Data siswa dengan NIK ${cleanNik} tidak ditemukan.`,
-      },
-    };
+  if (!supabaseUrl || !supabaseAdmin || !supabaseAnon) {
+    return response(500, 'SERVER_MISCONFIGURED', 'Konfigurasi server belum lengkap.');
   }
 
-  const targetUserId = targetStudent.user_id;
+  if (!authHeader || !/^Bearer\s+\S+/i.test(authHeader)) {
+    return response(401, 'UNAUTHORIZED', 'Token otorisasi diperlukan.');
+  }
+
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
 
   try {
-    try {
-      const { data: files } = await supabaseAdmin.storage
-        .from('dokumen-ppdb')
-        .list(targetUserId);
-
-      if (files && files.length > 0) {
-        const paths = files.map((f) => `${targetUserId}/${f.name}`);
-        await supabaseAdmin.storage.from('dokumen-ppdb').remove(paths);
-      }
-    } catch (storageErr) {
-      console.warn('[handleDeleteStudent] Storage cleanup notice (dokumen-ppdb):', storageErr);
+    const { data: authResult, error: authError } = await supabaseAnon.auth.getUser(token);
+    if (authError || !authResult.user) {
+      return response(401, 'INVALID_TOKEN', 'Sesi login tidak valid atau sudah kedaluwarsa.');
     }
 
-    try {
-      const { data: legacyFiles } = await supabaseAdmin.storage
-        .from('berkas-spmb')
-        .list(cleanNik);
+    const callerId = authResult.user.id;
+    const { data: callerProfile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', callerId)
+      .maybeSingle();
 
-      if (legacyFiles && legacyFiles.length > 0) {
-        const paths = legacyFiles.map((f) => `${cleanNik}/${f.name}`);
-        await supabaseAdmin.storage.from('berkas-spmb').remove(paths);
-      }
-    } catch (storageErr) {
-      console.warn('[handleDeleteStudent] Storage cleanup notice (berkas-spmb):', storageErr);
+    if (profileError) {
+      console.error('[handleDeleteStudent] Admin profile lookup failed:', profileError.message);
+      return response(500, 'PROFILE_LOOKUP_FAILED', 'Gagal memverifikasi hak akses administrator.');
+    }
+    if (callerProfile?.role !== 'admin') {
+      return response(403, 'FORBIDDEN', 'Hanya administrator yang dapat menghapus data siswa.');
     }
 
-    await supabaseAdmin.from('pembayaran').delete().eq('user_id', targetUserId);
-    await supabaseAdmin.from('students').delete().eq('user_id', targetUserId);
-    await supabaseAdmin.from('profiles').delete().eq('id', targetUserId);
+    const parsed = parseBody(body);
+    if (parsed.error) return response(400, 'BAD_REQUEST', 'Format data permintaan tidak valid.');
 
-    if (targetUserId) {
-      await supabaseAdmin.auth.admin.deleteUser(targetUserId);
+    const cleanNik = String(parsed.data?.nik ?? '').trim();
+    if (!/^\d{16}$/.test(cleanNik)) {
+      return response(400, 'INVALID_NIK', 'NIK siswa harus terdiri dari 16 digit angka.');
+    }
+
+    const { data: targetStudent, error: findError } = await supabaseAdmin
+      .from('students')
+      .select('id, user_id, nik, nama_lengkap')
+      .eq('nik', cleanNik)
+      .maybeSingle();
+
+    if (findError) {
+      console.error('[handleDeleteStudent] Student lookup failed:', findError.message);
+      return response(500, 'STUDENT_LOOKUP_FAILED', 'Gagal mencari data siswa.');
+    }
+    if (!targetStudent) {
+      return response(404, 'STUDENT_NOT_FOUND', 'Data siswa tidak ditemukan.');
+    }
+
+    const targetUserId = targetStudent.user_id as string | null;
+    if (!targetUserId) {
+      return response(500, 'STUDENT_USER_ID_MISSING', 'Data akun siswa tidak lengkap; penghapusan dibatalkan.');
+    }
+
+    // Delete files first. Fail the operation if Storage reports an error so the
+    // admin knows cleanup was not completed; this is not a database transaction.
+    const storageTargets = [
+      { bucket: 'dokumen-ppdb', folder: targetUserId },
+      { bucket: 'berkas-spmb', folder: cleanNik },
+    ];
+
+    for (const target of storageTargets) {
+      const { data: files, error: listError } = await supabaseAdmin.storage
+        .from(target.bucket)
+        .list(target.folder);
+
+      if (listError) {
+        console.error(`[handleDeleteStudent] Storage list failed (${target.bucket}):`, listError.message);
+        return response(500, 'STORAGE_LIST_FAILED', 'Gagal memeriksa berkas siswa. Tidak ada data database yang dihapus.');
+      }
+
+      const filePaths = (files || [])
+        .filter((file) => file.name && !file.id?.startsWith('folder-placeholder'))
+        .map((file) => `${target.folder}/${file.name}`);
+
+      if (filePaths.length > 0) {
+        const { error: removeError } = await supabaseAdmin.storage
+          .from(target.bucket)
+          .remove(filePaths);
+
+        if (removeError) {
+          console.error(`[handleDeleteStudent] Storage removal failed (${target.bucket}):`, removeError.message);
+          return response(500, 'STORAGE_DELETE_FAILED', 'Gagal menghapus berkas siswa. Data database belum dihapus.');
+        }
+      }
+    }
+
+    // Check every database delete. This sequence is not transactional; if a later
+    // operation fails, inspect the logs and reconcile the affected records.
+    const { error: paymentError } = await supabaseAdmin
+      .from('pembayaran')
+      .delete()
+      .eq('user_id', targetUserId);
+    if (paymentError) {
+      console.error('[handleDeleteStudent] Payment delete failed:', paymentError.message);
+      return response(500, 'PAYMENT_DELETE_FAILED', 'Gagal menghapus data pembayaran siswa.');
+    }
+
+    const { error: studentDeleteError } = await supabaseAdmin
+      .from('students')
+      .delete()
+      .eq('user_id', targetUserId);
+    if (studentDeleteError) {
+      console.error('[handleDeleteStudent] Student delete failed:', studentDeleteError.message);
+      return response(500, 'STUDENT_DELETE_FAILED', 'Gagal menghapus data pendaftaran siswa.');
+    }
+
+    const { error: profileDeleteError } = await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .eq('id', targetUserId);
+    if (profileDeleteError) {
+      console.error('[handleDeleteStudent] Profile delete failed:', profileDeleteError.message);
+      return response(500, 'PROFILE_DELETE_FAILED', 'Data siswa terhapus, tetapi profil gagal dihapus. Perlu pemeriksaan admin.');
+    }
+
+    const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
+    if (authDeleteError) {
+      console.error('[handleDeleteStudent] Auth delete failed:', authDeleteError.message);
+      return response(500, 'AUTH_DELETE_FAILED', 'Data siswa terhapus, tetapi akun Auth gagal dihapus. Perlu pemeriksaan admin.');
     }
 
     return {
       statusCode: 200,
       body: {
         success: true,
-        message: `Data pendaftar ${targetStudent.nama_lengkap} (NIK: ${cleanNik}) berhasil dihapus permanen.`,
+        message: `Data pendaftar ${String(targetStudent.nama_lengkap || '')} berhasil dihapus permanen.`,
       },
     };
-  } catch (deleteErr: any) {
-    console.error('[handleDeleteStudent] Delete execution error:', deleteErr);
-    return {
-      statusCode: 500,
-      body: {
-        success: false,
-        code: 'DELETE_FAILED',
-        error: 'Terjadi kesalahan saat menghapus data siswa.',
-      },
-    };
+  } catch (error) {
+    console.error('[handleDeleteStudent] Unexpected error:', error);
+    return response(500, 'DELETE_FAILED', 'Terjadi kesalahan saat menghapus data siswa.');
   }
 }
