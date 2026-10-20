@@ -36,7 +36,7 @@ export function getSupabaseClients(): {
 }
 
 /**
- * Formats current date-time in Asia/Jakarta (WIB) with format: dd-mm-yyyy hh:mm
+ * Formats current date-time in Asia/Jakarta (WIB): dd-mm-yyyy hh:mm
  */
 export function formatTanggalDaftarJakarta(date = new Date()): string {
   const formatter = new Intl.DateTimeFormat('en-GB', {
@@ -68,9 +68,9 @@ export interface ApiResponse {
 
 // ============================================================================
 // KEAMANAN LOGIN: rate limit (fail-closed) + CAPTCHA (fail-closed)
-// S2: per-IP 40/10m; RATE_LIMIT_SALT wajib (min 16 karakter)
+// S2: per-IP 40/10 menit; RATE_LIMIT_SALT wajib (min. 16 karakter)
 // ============================================================================
-const LOGIN_WINDOW_SECONDS = 600; // 10 menit
+const LOGIN_WINDOW_SECONDS = 600;
 const LOGIN_LIMIT_PER_IP = 40;
 const LOGIN_LIMIT_PER_ID = 10;
 
@@ -141,7 +141,7 @@ function rateLimitResponse(result: RateResult): ApiResponse | null {
   };
 }
 
-/** Verifikasi Turnstile manual. null = lolos; ApiResponse = error. */
+/** Verifikasi Turnstile. null = lolos; ApiResponse = error. */
 async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResponse | null> {
   const secret = getEnv('TURNSTILE_SECRET_KEY');
 
@@ -188,6 +188,7 @@ async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResp
 
 /**
  * Shared Login Request Handler
+ * S1: admin via ADMIN_LOGIN_ID / ADMIN_AUTH_EMAIL (bukan hardcoded "admin")
  */
 export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<ApiResponse> {
   const { supabaseAdmin, supabaseAnon, supabaseUrl } = getSupabaseClients();
@@ -283,7 +284,7 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     if (captchaError) return captchaError;
   }
 
-  // 3. Identitas (S1): NIK atau ADMIN_LOGIN_ID — bukan hardcoded "admin"
+  // 3. Identitas login
   const STUDENT_EMAIL_DOMAIN = '@auth.smkmuhiba.sch.id';
   const lowerId = cleanId.toLowerCase();
 
