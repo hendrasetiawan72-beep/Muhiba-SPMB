@@ -557,8 +557,8 @@ export async function handleRegister(body: any): Promise<ApiResponse> {
         statusCode: 409,
         body: {
           success: false,
-          code: 'NIK_ALREADY_REGISTERED',
-          error: `NIK ${cleanNik} sudah terdaftar di sistem SPMB. Silakan langsung login.`,
+          code: 'REGISTRATION_EXISTS',
+          error: 'Data pendaftaran sudah ada atau tidak dapat diproses. Silakan login atau hubungi panitia.',
         },
       };
     }
@@ -583,8 +583,8 @@ export async function handleRegister(body: any): Promise<ApiResponse> {
           statusCode: 409,
           body: {
             success: false,
-            code: 'AUTH_USER_EXISTS',
-            error: `Akun Auth untuk NIK ${cleanNik} sudah terdaftar. Silakan login dengan password Anda.`,
+            code: 'REGISTRATION_EXISTS',
+            error: 'Data pendaftaran sudah ada atau tidak dapat diproses. Silakan login atau hubungi panitia.',
           },
         };
       }
@@ -620,6 +620,24 @@ export async function handleRegister(body: any): Promise<ApiResponse> {
         data_berkas: {},
       };
 
+      const { data: rpcNo, error: rpcErr } = await supabaseAdmin.rpc('next_nomor_pendaftaran');
+      if (rpcErr || !rpcNo) {
+        console.error('[handleRegister] RPC next_nomor_pendaftaran gagal:', rpcErr);
+        try {
+          await supabaseAdmin.auth.admin.deleteUser(userId);
+        } catch {}
+        return {
+          statusCode: 503,
+          body: {
+            success: false,
+            code: 'SERVICE_UNAVAILABLE',
+            error: 'Layanan pendaftaran sementara tidak tersedia. Silakan coba beberapa saat lagi.',
+          },
+        };
+      }
+
+      studentPayload.nomor_pendaftaran = String(rpcNo);
+
       const { data: insertedStudent, error: studentErr } = await supabaseAdmin
         .from('students')
         .insert(studentPayload)
@@ -627,31 +645,6 @@ export async function handleRegister(body: any): Promise<ApiResponse> {
         .single();
 
       if (studentErr) {
-        if (studentErr.message?.includes('nomor_pendaftaran')) {
-          const { count } = await supabaseAdmin
-            .from('students')
-            .select('*', { count: 'exact', head: true });
-          const currentYear = new Date().getFullYear().toString();
-          const seq = (count || 0) + 1;
-          const seqStr = String(seq).length < 4 ? String(seq).padStart(4, '0') : String(seq);
-          const rand = Math.floor(100 + Math.random() * 900);
-          studentPayload.nomor_pendaftaran = `${currentYear}${seqStr}${rand}`;
-          const retry = await supabaseAdmin
-            .from('students')
-            .insert(studentPayload)
-            .select()
-            .single();
-          if (retry.error) throw retry.error;
-          return await completeRegistrationSession(
-            supabaseAnon,
-            internalEmail,
-            cleanPassword,
-            userId,
-            cleanNik,
-            cleanNama,
-            retry.data
-          );
-        }
         throw studentErr;
       }
 
@@ -881,12 +874,24 @@ export async function handleDeleteStudent(
       console.warn('[handleDeleteStudent] Storage cleanup notice (berkas-spmb):', storageErr);
     }
 
-    await supabaseAdmin.from('pembayaran').delete().eq('user_id', targetUserId);
-    await supabaseAdmin.from('students').delete().eq('user_id', targetUserId);
-    await supabaseAdmin.from('profiles').delete().eq('id', targetUserId);
+    const { error: payErr } = await supabaseAdmin.from('pembayaran').delete().eq('user_id', targetUserId);
+    if (payErr) {
+      console.error('[handleDeleteStudent] Gagal menghapus riwayat pembayaran:', payErr);
+      throw new Error(`Gagal menghapus riwayat pembayaran: ${payErr.message}`);
+    }
+
+    const { error: stdErr } = await supabaseAdmin.from('students').delete().eq('user_id', targetUserId);
+    if (stdErr) {
+      console.error('[handleDeleteStudent] Gagal menghapus formulir siswa:', stdErr);
+      throw new Error(`Gagal menghapus formulir siswa: ${stdErr.message}`);
+    }
 
     if (targetUserId) {
-      await supabaseAdmin.auth.admin.deleteUser(targetUserId);
+      const { error: authDelErr } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
+      if (authDelErr) {
+        console.error('[handleDeleteStudent] Gagal menghapus akun auth:', authDelErr);
+        throw new Error(`Gagal menghapus akun autentikasi: ${authDelErr.message}`);
+      }
     }
 
     return {

@@ -26,23 +26,29 @@ app.use((req: Request, res: Response, next) => {
     return next();
   }
 
-  const allowedOrigin = (process.env.ALLOWED_ORIGIN || '').trim();
   const requestOrigin = String(req.headers?.origin || '').trim();
 
-  // Validasi origin yang diizinkan:
-  // - Tanpa header origin (same-origin / direct server call)
-  // - Cocok persis dengan ALLOWED_ORIGIN dari konfigurasi
-  // - Lingkungan dev atau preview Google Cloud Run (*.run.app, localhost, 127.0.0.1)
-  const isDevOrPreview =
-    process.env.NODE_ENV !== 'production' ||
-    requestOrigin.includes('localhost') ||
-    requestOrigin.includes('127.0.0.1') ||
-    requestOrigin.endsWith('.run.app');
+  const allowedOrigins = new Set<string>(
+    (process.env.ALLOWED_ORIGINS || process.env.ALLOWED_ORIGIN || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+  );
 
-  const isAllowed =
-    !requestOrigin ||
-    (allowedOrigin && requestOrigin === allowedOrigin) ||
-    isDevOrPreview;
+  // Tambahkan origin aplikasi resmi jika APP_URL terdefinisi
+  if (process.env.APP_URL) {
+    try {
+      allowedOrigins.add(new URL(process.env.APP_URL).origin);
+    } catch {}
+  }
+
+  // Khusus server lokal pada development, izinkan port 3000 lokal
+  if (process.env.NODE_ENV === 'development') {
+    allowedOrigins.add('http://localhost:3000');
+    allowedOrigins.add('http://127.0.0.1:3000');
+  }
+
+  const isAllowed = !requestOrigin || allowedOrigins.has(requestOrigin);
 
   if (!isAllowed) {
     if (req.method === 'OPTIONS') {
@@ -55,8 +61,7 @@ app.use((req: Request, res: Response, next) => {
   }
 
   if (requestOrigin) {
-    const acao = allowedOrigin && requestOrigin === allowedOrigin ? allowedOrigin : requestOrigin;
-    res.setHeader('Access-Control-Allow-Origin', acao);
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
 

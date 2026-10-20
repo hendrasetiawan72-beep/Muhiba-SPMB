@@ -1,5 +1,71 @@
 import { createClient } from '@supabase/supabase-js';
 
+/**
+ * Membersihkan seluruh berkas di folder storage secara rekursif dengan pagination
+ */
+async function removeStorageFolderRecursive(
+  supabaseAdmin: any,
+  bucket: string,
+  folder: string
+): Promise<{ deleted: number; errors: string[] }> {
+  const errors: string[] = [];
+  let deleted = 0;
+  let offset = 0;
+  const limit = 100;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data: items, error: listErr } = await supabaseAdmin.storage
+      .from(bucket)
+      .list(folder, { limit, offset, sortBy: { column: 'name', order: 'asc' } });
+
+    if (listErr) {
+      errors.push(`Gagal membaca isi bucket ${bucket}/${folder}: ${listErr.message}`);
+      break;
+    }
+
+    if (!items || items.length === 0) {
+      break;
+    }
+
+    const filesToDelete: string[] = [];
+    for (const item of items) {
+      if (!item.id) {
+        // Subfolder: rekursif
+        const subResult = await removeStorageFolderRecursive(
+          supabaseAdmin,
+          bucket,
+          `${folder}/${item.name}`
+        );
+        deleted += subResult.deleted;
+        errors.push(...subResult.errors);
+      } else {
+        filesToDelete.push(`${folder}/${item.name}`);
+      }
+    }
+
+    if (filesToDelete.length > 0) {
+      const { data: removed, error: remErr } = await supabaseAdmin.storage
+        .from(bucket)
+        .remove(filesToDelete);
+
+      if (remErr) {
+        errors.push(`Gagal menghapus berkas di ${bucket}/${folder}: ${remErr.message}`);
+      } else {
+        deleted += removed?.length || filesToDelete.length;
+      }
+    }
+
+    if (items.length < limit) {
+      hasMore = false;
+    } else {
+      offset += limit;
+    }
+  }
+
+  return { deleted, errors };
+}
+
 // Vercel / Cloudflare Worker / Express: POST /api/admin/delete-student
 export default async function handler(req: any, res: any) {
   const allowedOrigin = (process.env.ALLOWED_ORIGIN || '').trim();
@@ -133,43 +199,43 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // 4. Hapus berkas storage dokumen-ppdb/<userIdToDelete>/
-    try {
-      const { data: fileList } = await supabaseAdmin.storage
-        .from('dokumen-ppdb')
-        .list(userIdToDelete);
-
-      if (fileList && fileList.length > 0) {
-        const pathsToDelete = fileList.map((f) => `${userIdToDelete}/${f.name}`);
-        await supabaseAdmin.storage.from('dokumen-ppdb').remove(pathsToDelete);
-      }
-    } catch (storageErr) {
-      console.warn('[Admin Delete] Warning saat menghapus dokumen-ppdb storage:', storageErr);
-    }
-
-    // 5. Bersihkan berkas warisan di berkas-spmb jika ada
     const cleanNik = targetStudent?.nik || targetProfile.nik || targetNik;
-    if (cleanNik) {
-      try {
-        const { data: legacyFiles } = await supabaseAdmin.storage
-          .from('berkas-spmb')
-          .list(cleanNik);
 
-        if (legacyFiles && legacyFiles.length > 0) {
-          const paths = legacyFiles.map((f) => `${cleanNik}/${f.name}`);
-          await supabaseAdmin.storage.from('berkas-spmb').remove(paths);
-        }
-      } catch (storageErr) {
-        console.warn('[Admin Delete] Warning saat membersihkan berkas-spmb:', storageErr);
-      }
+    // 4. Hapus berkas storage secara rekursif dan paginasi
+    const storageErrors: string[] = [];
+    const ppdbCleanup = await removeStorageFolderRecursive(supabaseAdmin, 'dokumen-ppdb', userIdToDelete);
+    storageErrors.push(...ppdbCleanup.errors);
+
+    if (cleanNik) {
+      const legacyCleanup = await removeStorageFolderRecursive(supabaseAdmin, 'berkas-spmb', cleanNik);
+      storageErrors.push(...legacyCleanup.errors);
     }
 
-    // 6. Hapus relasi pembayaran dan data students
-    await supabaseAdmin.from('pembayaran').delete().eq('user_id', userIdToDelete);
-    if (cleanNik) {
-      await supabaseAdmin.from('students').delete().eq('nik', cleanNik);
-    } else {
-      await supabaseAdmin.from('students').delete().eq('user_id', userIdToDelete);
+    // 5. Hapus pembayaran dengan verifikasi error ketat
+    const { error: paymentDelErr } = await supabaseAdmin
+      .from('pembayaran')
+      .delete()
+      .eq('user_id', userIdToDelete);
+
+    if (paymentDelErr) {
+      console.error('[Admin Delete] Error hapus pembayaran:', paymentDelErr);
+      return res.status(500).json({
+        success: false,
+        message: `Gagal menghapus data riwayat pembayaran: ${paymentDelErr.message}`,
+      });
+    }
+
+    // 6. Hapus data siswa di database dengan verifikasi error
+    const { error: studentDelErr } = cleanNik
+      ? await supabaseAdmin.from('students').delete().eq('nik', cleanNik)
+      : await supabaseAdmin.from('students').delete().eq('user_id', userIdToDelete);
+
+    if (studentDelErr) {
+      console.error('[Admin Delete] Error hapus siswa:', studentDelErr);
+      return res.status(500).json({
+        success: false,
+        message: `Gagal menghapus data formulir pendaftaran: ${studentDelErr.message}`,
+      });
     }
 
     // 7. Hapus user auth via auth.admin.deleteUser
@@ -178,7 +244,7 @@ export default async function handler(req: any, res: any) {
       console.error('[Admin Delete] Error deleteUser:', delAuthErr);
       return res.status(500).json({
         success: false,
-        message: `Gagal menghapus user auth: ${delAuthErr.message}`,
+        message: `Gagal menghapus akun autentikasi: ${delAuthErr.message}`,
       });
     }
 
@@ -194,6 +260,8 @@ export default async function handler(req: any, res: any) {
         target_nomor: targetStudent?.nomor_pendaftaran || null,
         detail: {
           user_id: userIdToDelete,
+          storage_files_deleted: ppdbCleanup.deleted,
+          storage_errors: storageErrors,
           timestamp: new Date().toISOString(),
         },
       });
@@ -201,9 +269,16 @@ export default async function handler(req: any, res: any) {
       console.warn('[Admin Delete] Log audit notice:', logEx);
     }
 
+    const message =
+      storageErrors.length === 0
+        ? 'Data pendaftar, berkas dokumen, dan akun autentikasi berhasil dihapus secara bersih.'
+        : 'Data pendaftar dan akun berhasil dihapus, namun beberapa berkas storage memerlukan pembersihan manual.';
+
     return res.status(200).json({
       success: true,
-      message: 'Data pendaftar, berkas dokumen, dan akun autentikasi berhasil dihapus secara bersih.',
+      storageCleaned: storageErrors.length === 0,
+      storageErrors: storageErrors.length > 0 ? storageErrors : undefined,
+      message,
     });
   } catch (err: any) {
     console.error('[Admin Delete] Unexpected error:', err);

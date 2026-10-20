@@ -151,7 +151,8 @@ ALTER TABLE public.profiles
 CREATE OR REPLACE FUNCTION public.protect_must_change_password_flag()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF current_user IN ('service_role', 'postgres', 'supabase_admin') THEN
+  IF session_user IN ('postgres', 'supabase_admin')
+     OR COALESCE(auth.role(), '') = 'service_role' THEN
     RETURN NEW;
   END IF;
 
@@ -206,34 +207,29 @@ AS $$
 DECLARE
   v_now timestamptz := now();
   v_hit_count int;
-  v_window_start timestamptz;
 BEGIN
-  -- Bersihkan window kedaluwarsa secara berkala
-  DELETE FROM public.rate_limits
-  WHERE bucket = p_bucket
-    AND window_start < v_now - (p_window_seconds || ' seconds')::interval;
+  -- Operasi atomic tunggal: INSERT ... ON CONFLICT DO UPDATE tanpa race condition
+  INSERT INTO public.rate_limits (
+    bucket, key_hash, hit_count, window_start
+  )
+  VALUES (
+    p_bucket, p_key_hash, 1, v_now
+  )
+  ON CONFLICT (bucket, key_hash)
+  DO UPDATE SET
+    hit_count = CASE
+      WHEN public.rate_limits.window_start < v_now - (p_window_seconds || ' seconds')::interval
+      THEN 1
+      ELSE public.rate_limits.hit_count + 1
+    END,
+    window_start = CASE
+      WHEN public.rate_limits.window_start < v_now - (p_window_seconds || ' seconds')::interval
+      THEN v_now
+      ELSE public.rate_limits.window_start
+    END
+  RETURNING hit_count INTO v_hit_count;
 
-  SELECT hit_count, window_start INTO v_hit_count, v_window_start
-  FROM public.rate_limits
-  WHERE bucket = p_bucket AND key_hash = p_key_hash;
-
-  IF NOT FOUND THEN
-    INSERT INTO public.rate_limits (bucket, key_hash, hit_count, window_start)
-    VALUES (p_bucket, p_key_hash, 1, v_now);
-    RETURN true;
-  ELSIF v_window_start < v_now - (p_window_seconds || ' seconds')::interval THEN
-    UPDATE public.rate_limits
-    SET hit_count = 1, window_start = v_now
-    WHERE bucket = p_bucket AND key_hash = p_key_hash;
-    RETURN true;
-  ELSIF v_hit_count >= p_limit THEN
-    RETURN false;
-  ELSE
-    UPDATE public.rate_limits
-    SET hit_count = hit_count + 1
-    WHERE bucket = p_bucket AND key_hash = p_key_hash;
-    RETURN true;
-  END IF;
+  RETURN (v_hit_count <= p_limit);
 END;
 $$;
 
@@ -345,7 +341,7 @@ DECLARE
 BEGIN
   v_seq := nextval('public.seq_nomor_pendaftaran');
   v_seq_str := lpad(v_seq::text, 4, '0');
-  -- 3 digit acak menggunakan generator kriptografis PostgreSQL
+  -- 3 digit numerik tambahan untuk variasi akhiran nomor urut pendaftaran
   v_rand := 100 + floor(random() * 900)::int;
   RETURN v_year || v_seq_str || v_rand::text;
 END;

@@ -273,7 +273,27 @@ export default async function handler(req: any, res: any) {
       console.error('[Admin Reset Password] Gagal mencabut sesi:', e?.message);
     }
 
-    // 9. Tandai wajib ganti kata sandi setelah update auth berhasil
+    if (!sessionsRevoked) {
+      try {
+        await supabaseAdmin.from('activity_logs').insert({
+          ...logBase,
+          action: 'RESET_PASSWORD_FAILED',
+          detail: {
+            alasan: 'SESSION_REVOCATION_FAILED',
+            verifikasi: { nomor_pendaftaran: 'cocok', no_wa: 'cocok', tanggal_lahir: dobStatus },
+          },
+        });
+      } catch (logErr) {
+        console.error('[Admin Reset Password] Gagal mencatat log kegagalan:', logErr);
+      }
+      return res.status(503).json({
+        success: false,
+        code: 'SESSION_REVOCATION_FAILED',
+        message: 'Password belum dapat direset karena sesi lama gagal dicabut.',
+      });
+    }
+
+    // 9. Tandai wajib ganti kata sandi setelah update auth dan pencabutan sesi berhasil
     const { error: flagErr } = await supabaseAdmin
       .from('profiles')
       .update({ must_change_password: true })
@@ -281,6 +301,23 @@ export default async function handler(req: any, res: any) {
 
     if (flagErr) {
       console.error('[Admin Reset Password] Gagal menandai must_change_password:', flagErr.message);
+      try {
+        await supabaseAdmin.from('activity_logs').insert({
+          ...logBase,
+          action: 'RESET_PASSWORD_FAILED',
+          detail: {
+            alasan: 'PASSWORD_FLAG_UPDATE_FAILED',
+            error: flagErr.message,
+          },
+        });
+      } catch (logErr) {
+        console.error('[Admin Reset Password] Gagal mencatat log flag error:', logErr);
+      }
+      return res.status(500).json({
+        success: false,
+        code: 'PASSWORD_FLAG_UPDATE_FAILED',
+        message: 'Password berubah, tetapi status wajib ganti password gagal disimpan.',
+      });
     }
 
     // 10. Catat audit log keberhasilan (password TIDAK ikut dicatat)
@@ -290,15 +327,11 @@ export default async function handler(req: any, res: any) {
       detail: {
         metode: 'reset_panitia',
         verifikasi: { nomor_pendaftaran: 'cocok', no_wa: 'cocok', tanggal_lahir: dobStatus },
-        sesi_dicabut: sessionsRevoked,
-        must_change_password_set: !flagErr,
+        sesi_dicabut: true,
+        must_change_password_set: true,
       },
     });
     if (logErr) console.error('[Admin Reset Password] Gagal mencatat log:', logErr.message);
-
-    const statusMessage = sessionsRevoked
-      ? 'Kata sandi berhasil direset oleh administrator.'
-      : 'Kata sandi berhasil diperbarui, namun sesi login lama belum berhasil dicabut sepenuhnya.';
 
     return res.status(200).json({
       success: true,
@@ -306,9 +339,9 @@ export default async function handler(req: any, res: any) {
       nama_lengkap: student.nama_lengkap,
       nomor_pendaftaran: student.nomor_pendaftaran,
       no_wa: student.no_wa,
-      sessionsRevoked,
+      sessionsRevoked: true,
       logged: !logErr,
-      message: statusMessage,
+      message: 'Kata sandi berhasil direset oleh administrator.',
     });
   } catch (err: any) {
     console.error('[Admin Reset Password] Unexpected error:', err);

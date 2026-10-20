@@ -35,10 +35,8 @@ export default async function handler(req: any, res: any) {
   const clientIp =
     (req.headers?.['cf-connecting-ip'] as string | undefined)?.trim() ||
     req.ip ||
-    (req.headers?.['x-real-ip'] as string | undefined)?.trim() ||
-    (req.headers?.['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ||
     req.socket?.remoteAddress ||
-    '';
+    '127.0.0.1';
 
   const body = req.body || {};
   const identifier = String(body.identifier || body.nik || '').trim();
