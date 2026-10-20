@@ -244,23 +244,10 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // 7. Tandai wajib ganti password (gagal di sini = migrasi belum dijalankan, belum ada yang berubah)
-    const { error: flagErr } = await supabaseAdmin
-      .from('profiles')
-      .update({ must_change_password: true })
-      .eq('id', userId);
-
-    if (flagErr) {
-      console.error('[Admin Reset Password] Gagal menandai must_change_password:', flagErr.message);
-      return res.status(500).json({
-        success: false,
-        message: 'Kolom must_change_password belum ada. Jalankan SQL migrasi pemulihan password di Supabase.',
-      });
-    }
-
-    // 8. Password sementara acak (Mhb@ + 12 karakter heksadesimal)
+    // 7. Password sementara acak (Mhb@ + 12 karakter heksadesimal)
     const tempPassword = `Mhb@${crypto.randomBytes(6).toString('hex')}`;
 
+    // Update kata sandi Auth terlebih dahulu (jika gagal, flag must_change_password belum berubah)
     const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       password: tempPassword,
     });
@@ -273,12 +260,12 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // 9. Cabut semua sesi lama (token lama tidak bisa diperpanjang). Gagal = hanya peringatan.
+    // 8. Cabut semua sesi lama (token lama tidak bisa diperpanjang)
     let sessionsRevoked = false;
     try {
-      const { error: revokeErr } = await supabaseAdmin.rpc('revoke_user_sessions', { p_user_id: userId });
-      if (revokeErr) {
-        console.error('[Admin Reset Password] Gagal mencabut sesi:', revokeErr.message);
+      const { data: revData, error: revokeErr } = await supabaseAdmin.rpc('revoke_user_sessions', { p_user_id: userId });
+      if (revokeErr || revData === false) {
+        console.error('[Admin Reset Password] Gagal mencabut sesi:', revokeErr?.message || 'RPC returned false');
       } else {
         sessionsRevoked = true;
       }
@@ -286,7 +273,17 @@ export default async function handler(req: any, res: any) {
       console.error('[Admin Reset Password] Gagal mencabut sesi:', e?.message);
     }
 
-    // 10. Catat keberhasilan (password TIDAK ikut dicatat)
+    // 9. Tandai wajib ganti kata sandi setelah update auth berhasil
+    const { error: flagErr } = await supabaseAdmin
+      .from('profiles')
+      .update({ must_change_password: true })
+      .eq('id', userId);
+
+    if (flagErr) {
+      console.error('[Admin Reset Password] Gagal menandai must_change_password:', flagErr.message);
+    }
+
+    // 10. Catat audit log keberhasilan (password TIDAK ikut dicatat)
     const { error: logErr } = await supabaseAdmin.from('activity_logs').insert({
       ...logBase,
       action: 'RESET_PASSWORD',
@@ -294,9 +291,14 @@ export default async function handler(req: any, res: any) {
         metode: 'reset_panitia',
         verifikasi: { nomor_pendaftaran: 'cocok', no_wa: 'cocok', tanggal_lahir: dobStatus },
         sesi_dicabut: sessionsRevoked,
+        must_change_password_set: !flagErr,
       },
     });
     if (logErr) console.error('[Admin Reset Password] Gagal mencatat log:', logErr.message);
+
+    const statusMessage = sessionsRevoked
+      ? 'Kata sandi berhasil direset oleh administrator.'
+      : 'Kata sandi berhasil diperbarui, namun sesi login lama belum berhasil dicabut sepenuhnya.';
 
     return res.status(200).json({
       success: true,
@@ -306,7 +308,7 @@ export default async function handler(req: any, res: any) {
       no_wa: student.no_wa,
       sessionsRevoked,
       logged: !logErr,
-      message: 'Kata sandi berhasil direset oleh administrator.',
+      message: statusMessage,
     });
   } catch (err: any) {
     console.error('[Admin Reset Password] Unexpected error:', err);

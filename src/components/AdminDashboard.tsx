@@ -1,14 +1,9 @@
 /*
 ================================================================================
 ADMIN DASHBOARD + LOG AKTIVITAS + EDIT / HAPUS PENDAFTAR
-Salin berkas ini menimpa: src/components/AdminDashboard.tsx
-
-LANGKAH PASANG (sekali saja)
-  1. Salin SQL di bawah ini (dari baris "-- BAGIAN 0" sampai baris
-     "-- ====" paling akhir sebelum penutup komentar) ke
-     Supabase > SQL Editor > Run. Aman dijalankan ulang.
-  2. Timpa src/components/AdminDashboard.tsx dengan berkas ini.
-  3. Tidak ada perubahan lain: supabase.ts, App.tsx, dan API tidak disentuh.
+Catatan: Seluruh fungsi dan trigger database resmi dikelola melalui file migrasi:
+  supabase/migrations/20261020000000_runtime_security_functions.sql
+================================================================================
 
 Yang berubah di panel admin
   - Tab baru "Log Aktivitas" (siapa mengubah / menghapus / mengekspor apa, kapan).

@@ -16,7 +16,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json());
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '128kb' }));
 
 // CORS Configuration: proteksi endpoint /api/*
 app.use((req: Request, res: Response, next) => {

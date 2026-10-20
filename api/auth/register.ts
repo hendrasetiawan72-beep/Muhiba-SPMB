@@ -52,9 +52,9 @@ export default async function handler(req: any, res: any) {
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
     '';
 
-  if (!supabaseUrl || !supabaseServiceKey) {
+  if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
     console.error(
-      '[API /auth/register] Konfigurasi server belum lengkap: SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY tidak ditemukan.'
+      '[API /auth/register] Konfigurasi server belum lengkap: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, atau SUPABASE_ANON_KEY tidak ditemukan.'
     );
     return res.status(500).json({
       code: 'SERVER_ERROR',
@@ -65,7 +65,7 @@ export default async function handler(req: any, res: any) {
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey || supabaseServiceKey);
+  const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
 
   try {
     let body = req.body;
@@ -86,7 +86,10 @@ export default async function handler(req: any, res: any) {
     const turnstileSecret = (process.env.TURNSTILE_SECRET_KEY || '').trim();
     const turnstileToken = body?.turnstileToken || body?.token || body?.turnstile_token;
     const clientIp =
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      (req.headers?.['cf-connecting-ip'] as string | undefined)?.trim() ||
+      req.ip ||
+      (req.headers?.['x-real-ip'] as string | undefined)?.trim() ||
+      (req.headers?.['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ||
       req.socket?.remoteAddress ||
       '127.0.0.1';
 
@@ -238,10 +241,10 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ code: 'NIK_INVALID', message: 'NIK tidak valid' });
     }
 
-    if (!cleanNama) {
+    if (!cleanNama || cleanNama.length < 2 || cleanNama.length > 120) {
       return res.status(400).json({
-        code: 'SERVER_ERROR',
-        message: 'Nama lengkap wajib diisi.',
+        code: 'VALIDATION_ERROR',
+        message: 'Nama lengkap harus antara 2 hingga 120 karakter.',
       });
     }
     if (!['TO', 'TJKT', 'AKL'].includes(cleanJurusan)) {
@@ -280,11 +283,11 @@ export default async function handler(req: any, res: any) {
       lowerPass.startsWith('muhiba@') ||
       (cleanNama && lowerPass === cleanNama.toLowerCase());
 
-    if (cleanPassword.length < 8 || isPasswordCommon) {
+    if (cleanPassword.length < 8 || cleanPassword.length > 128 || isPasswordCommon) {
       return res.status(400).json({
         code: 'WEAK_PASSWORD',
         message:
-          'Kata sandi minimal 8 karakter dan tidak boleh menggunakan kata sandi umum atau NIK.',
+          'Kata sandi harus terdiri dari 8 hingga 128 karakter dan tidak boleh menggunakan kata sandi umum atau NIK.',
       });
     }
 
@@ -303,8 +306,9 @@ export default async function handler(req: any, res: any) {
 
     if (existingStudent) {
       return res.status(409).json({
-        code: 'NIK_EXISTS',
-        message: `NIK ${cleanNik} sudah terdaftar di sistem SPMB SMK Muhammadiyah Bawang. Silakan langsung login.`,
+        code: 'REGISTRATION_EXISTS',
+        message:
+          'Data pendaftaran tidak dapat diproses. Jika Anda sudah pernah mendaftar, silakan gunakan halaman login atau hubungi panitia.',
       });
     }
 
@@ -333,8 +337,9 @@ export default async function handler(req: any, res: any) {
         createAuthErr?.message?.includes('exists')
       ) {
         return res.status(409).json({
-          code: 'NIK_EXISTS',
-          message: `Akun untuk NIK ${cleanNik} sudah terdaftar. Silakan login dengan kata sandi Anda.`,
+          code: 'REGISTRATION_EXISTS',
+          message:
+            'Data pendaftaran tidak dapat diproses. Jika Anda sudah pernah mendaftar, silakan gunakan halaman login atau hubungi panitia.',
         });
       }
       return res.status(500).json({
@@ -346,33 +351,27 @@ export default async function handler(req: any, res: any) {
     const userId = authCreated.user.id;
 
     // ============================================================
-    // 8. Nomor pendaftaran (Tahun dinamis + sequence min 4 digit + 3 digit acak)
+    // 8. Nomor pendaftaran (Atomic sequence RPC — fail closed)
     // ============================================================
     let nomorPendaftaran = '';
-    const currentYear = new Date().getFullYear().toString();
     try {
-      const { data: rpcNo, error: rpcErr } = await supabaseAdmin.rpc(
-        'next_nomor_pendaftaran'
-      );
-      if (!rpcErr && rpcNo) {
-        nomorPendaftaran = String(rpcNo);
-      } else {
-        console.warn(
-          '[API /auth/register] RPC next_nomor_pendaftaran belum tersedia / error:',
-          rpcErr
-        );
-        const { count } = await supabaseAdmin
-          .from('students')
-          .select('*', { count: 'exact', head: true });
-        const seq = (count || 0) + 1;
-        const seqStr = String(seq).length < 4 ? String(seq).padStart(4, '0') : String(seq);
-        const randSalt = Math.floor(100 + Math.random() * 900);
-        nomorPendaftaran = `${currentYear}${seqStr}${randSalt}`;
+      const { data: rpcNo, error: rpcErr } = await supabaseAdmin.rpc('next_nomor_pendaftaran');
+      if (rpcErr || !rpcNo) {
+        console.error('[API /auth/register] RPC next_nomor_pendaftaran gagal:', rpcErr);
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+        return res.status(503).json({
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'Layanan pendaftaran sementara tidak tersedia. Silakan coba beberapa saat lagi.',
+        });
       }
+      nomorPendaftaran = String(rpcNo);
     } catch (rpcEx) {
-      console.warn('[API /auth/register] RPC call exception:', rpcEx);
-      const randSalt = Math.floor(100 + Math.random() * 900);
-      nomorPendaftaran = `${currentYear}${Date.now().toString().slice(-4)}${randSalt}`;
+      console.error('[API /auth/register] RPC exception:', rpcEx);
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      return res.status(503).json({
+        code: 'SERVICE_UNAVAILABLE',
+        message: 'Layanan pendaftaran sementara tidak tersedia. Silakan coba beberapa saat lagi.',
+      });
     }
 
     const dateFormatted = formatTanggalDaftarJakarta();

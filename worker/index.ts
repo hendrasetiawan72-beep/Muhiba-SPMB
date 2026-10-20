@@ -74,12 +74,33 @@ async function runHandler(handler: VercelStyleHandler, request: Request): Promis
   request.headers.forEach((value, key) => {
     headers[key.toLowerCase()] = value;
   });
-  const clientIp = request.headers.get('cf-connecting-ip');
-  if (clientIp) headers['x-forwarded-for'] = clientIp;
+  const clientIp = request.headers.get('cf-connecting-ip') || '';
+  if (clientIp) {
+    headers['cf-connecting-ip'] = clientIp;
+    headers['x-forwarded-for'] = clientIp;
+  }
+
+  // Batasi ukuran request body: maksimal 128 KB
+  const MAX_BODY_BYTES = 128 * 1024;
+  const contentLength = Number(request.headers.get('content-length') || 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    return jsonResponse(413, {
+      success: false,
+      code: 'PAYLOAD_TOO_LARGE',
+      message: 'Ukuran payload permintaan melebihi batas 128 KB.',
+    });
+  }
 
   let body: unknown = undefined;
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     const text = await request.text();
+    if (text.length > MAX_BODY_BYTES) {
+      return jsonResponse(413, {
+        success: false,
+        code: 'PAYLOAD_TOO_LARGE',
+        message: 'Ukuran payload permintaan melebihi batas 128 KB.',
+      });
+    }
     try {
       body = text ? JSON.parse(text) : {};
     } catch {
@@ -156,11 +177,12 @@ export default {
 
     // ============================================================
     // HEALTH CHECK — DILINDUNGI / DINONAKTIFKAN DI PRODUCTION
-    // Hanya aktif jika HEALTH_CHECK_SECRET diset dan cocok.
+    // Hanya aktif jika HEALTH_CHECK_SECRET diset dan cocok via header X-Health-Token.
+    // Query string token ditolak untuk mencegah kebocoran secret pada access log.
     // ============================================================
     if (url.pathname === '/api/health') {
       const secret = typeof env.HEALTH_CHECK_SECRET === 'string' ? env.HEALTH_CHECK_SECRET : '';
-      const provided = url.searchParams.get('token') || request.headers.get('x-health-token') || '';
+      const provided = request.headers.get('x-health-token') || '';
 
       // Jika secret tidak diset → endpoint dimatikan (404)
       if (!secret || secret.length < 16) {

@@ -28,8 +28,8 @@ export function getSupabaseClients(): {
       : null;
 
   const supabaseAnon =
-    supabaseUrl && (anonKey || serviceRoleKey)
-      ? createClient(supabaseUrl, anonKey || serviceRoleKey)
+    supabaseUrl && anonKey
+      ? createClient(supabaseUrl, anonKey)
       : null;
 
   return { supabaseAdmin, supabaseAnon, supabaseUrl };
@@ -836,6 +836,23 @@ export async function handleDeleteStudent(
   }
 
   const targetUserId = targetStudent.user_id;
+
+  const { data: targetProfile } = await supabaseAdmin
+    .from('profiles')
+    .select('id, role')
+    .eq('id', targetUserId)
+    .maybeSingle();
+
+  if (!targetProfile || targetProfile.role !== 'student') {
+    return {
+      statusCode: 403,
+      body: {
+        success: false,
+        code: 'FORBIDDEN',
+        error: 'Hanya akun siswa yang dapat dihapus.',
+      },
+    };
+  }
 
   try {
     try {

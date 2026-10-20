@@ -33,9 +33,24 @@ export default async function handler(req: any, res: any) {
   }
 
   const clientIp =
+    (req.headers?.['cf-connecting-ip'] as string | undefined)?.trim() ||
+    req.ip ||
+    (req.headers?.['x-real-ip'] as string | undefined)?.trim() ||
     (req.headers?.['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ||
     req.socket?.remoteAddress ||
     '';
+
+  const body = req.body || {};
+  const identifier = String(body.identifier || body.nik || '').trim();
+  const password = String(body.password || '').trim();
+
+  if (identifier.length > 100 || password.length > 128) {
+    return res.status(400).json({
+      success: false,
+      code: 'VALIDATION_ERROR',
+      error: 'Panjang karakter identitas atau kata sandi melebihi batas wajar.',
+    });
+  }
 
   const result = await handleLogin(req.body, clientIp);
   return res.status(result.statusCode).json(result.body);
