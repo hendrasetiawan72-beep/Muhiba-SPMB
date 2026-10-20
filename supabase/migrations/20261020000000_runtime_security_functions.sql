@@ -349,3 +349,38 @@ $$;
 
 REVOKE ALL ON FUNCTION public.next_nomor_pendaftaran() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.next_nomor_pendaftaran() TO service_role;
+
+-- ============================================================================
+-- 8. ATOMIC CASCADE DELETION FOR STUDENT (delete_student_cascade)
+-- ============================================================================
+CREATE OR REPLACE FUNCTION public.delete_student_cascade(
+  p_student_id uuid,
+  p_user_id uuid
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF p_student_id IS NULL OR p_user_id IS NULL THEN
+    RAISE EXCEPTION 'student_id dan user_id wajib diisi';
+  END IF;
+
+  -- 1. Hapus riwayat pembayaran terkait secara atomik
+  DELETE FROM public.pembayaran
+  WHERE student_id = p_student_id OR user_id = p_user_id;
+
+  -- 2. Hapus data pendaftaran siswa
+  DELETE FROM public.students
+  WHERE id = p_student_id AND user_id = p_user_id;
+
+  -- 3. Hapus profil
+  DELETE FROM public.profiles
+  WHERE id = p_user_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.delete_student_cascade(uuid, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_student_cascade(uuid, uuid) TO service_role;
+

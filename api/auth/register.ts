@@ -1,35 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { formatTanggalDaftarJakarta } from '../../server/authHandlers';
+import { applyCors } from '../../server/corsHelper';
 
 // Vercel / Cloudflare Worker: POST /api/auth/register
 export default async function handler(req: any, res: any) {
-  // ============================================================
-  // CORS — HANYA izinkan origin yang dikonfigurasi
-  // ============================================================
-  const allowedOrigin = (process.env.ALLOWED_ORIGIN || '').trim();
-  const requestOrigin = (req.headers?.origin || '').trim();
-
-  if (allowedOrigin) {
-    // Mode ketat: hanya origin yang diizinkan
-    if (requestOrigin && requestOrigin === allowedOrigin) {
-      res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-    } else if (!requestOrigin) {
-      // Same-origin / non-browser call
-      res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-    }
-    // Jika origin berbeda → jangan set ACAO (browser akan block)
-  } else {
-    // Production WAJIB set ALLOWED_ORIGIN.
-    console.error('[CORS] ALLOWED_ORIGIN belum dikonfigurasi! Hanya request same-origin yang akan berfungsi.');
+  if (!applyCors(req, res)) {
+    return;
   }
 
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Cache-Control', 'no-store');
 

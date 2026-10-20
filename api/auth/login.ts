@@ -1,22 +1,12 @@
 import { handleLogin } from '../../server/authHandlers';
+import { applyCors } from '../../server/corsHelper';
 
 // Cloudflare Worker / Vercel: POST /api/auth/login
 export default async function handler(req: any, res: any) {
-  const allowedOrigin = (process.env.ALLOWED_ORIGIN || '').trim();
-  const requestOrigin = (req.headers?.origin || '').trim();
-
-  if (allowedOrigin && requestOrigin === allowedOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  } else if (allowedOrigin && !requestOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  if (!applyCors(req, res)) {
+    return;
   }
 
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Cache-Control', 'no-store');
 

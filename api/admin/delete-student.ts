@@ -1,7 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import { applyCors } from '../../server/corsHelper';
 
 /**
- * Membersihkan seluruh berkas di folder storage secara rekursif dengan pagination
+ * M-01: Membersihkan seluruh berkas di folder storage secara rekursif.
+ * Query selalu dilakukan dari offset: 0 karena berkas yang telah dihapus
+ * menyebabkan pergeseran indeks daftar file. Loop berhenti saat kosong.
  */
 async function removeStorageFolderRecursive(
   supabaseAdmin: any,
@@ -10,14 +13,13 @@ async function removeStorageFolderRecursive(
 ): Promise<{ deleted: number; errors: string[] }> {
   const errors: string[] = [];
   let deleted = 0;
-  let offset = 0;
   const limit = 100;
-  let hasMore = true;
+  const attemptedPaths = new Set<string>();
 
-  while (hasMore) {
+  while (true) {
     const { data: items, error: listErr } = await supabaseAdmin.storage
       .from(bucket)
-      .list(folder, { limit, offset, sortBy: { column: 'name', order: 'asc' } });
+      .list(folder, { limit, offset: 0, sortBy: { column: 'name', order: 'asc' } });
 
     if (listErr) {
       errors.push(`Gagal membaca isi bucket ${bucket}/${folder}: ${listErr.message}`);
@@ -29,18 +31,27 @@ async function removeStorageFolderRecursive(
     }
 
     const filesToDelete: string[] = [];
+    let newItemsFound = false;
+
     for (const item of items) {
+      const fullPath = `${folder}/${item.name}`;
+      if (attemptedPaths.has(fullPath)) {
+        continue;
+      }
+      attemptedPaths.add(fullPath);
+      newItemsFound = true;
+
       if (!item.id) {
-        // Subfolder: rekursif
+        // Subfolder: telusuri secara rekursif
         const subResult = await removeStorageFolderRecursive(
           supabaseAdmin,
           bucket,
-          `${folder}/${item.name}`
+          fullPath
         );
         deleted += subResult.deleted;
         errors.push(...subResult.errors);
       } else {
-        filesToDelete.push(`${folder}/${item.name}`);
+        filesToDelete.push(fullPath);
       }
     }
 
@@ -56,10 +67,9 @@ async function removeStorageFolderRecursive(
       }
     }
 
-    if (items.length < limit) {
-      hasMore = false;
-    } else {
-      offset += limit;
+    // Jika tidak ada item baru dalam batch ini, hentikan untuk mencegah infinite loop
+    if (!newItemsFound) {
+      break;
     }
   }
 
@@ -68,21 +78,11 @@ async function removeStorageFolderRecursive(
 
 // Vercel / Cloudflare Worker / Express: POST /api/admin/delete-student
 export default async function handler(req: any, res: any) {
-  const allowedOrigin = (process.env.ALLOWED_ORIGIN || '').trim();
-  const requestOrigin = (req.headers?.origin || '').trim();
-
-  if (allowedOrigin && requestOrigin === allowedOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  } else if (allowedOrigin && !requestOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  // M-05: Gunakan shared CORS helper terpusat
+  if (!applyCors(req, res)) {
+    return;
   }
 
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Cache-Control', 'no-store');
 
@@ -139,11 +139,17 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    // M-02: Wajib mencantumkan NIK atau student_id. Tidak lagi menerima user_id bebas tanpa record siswa.
     const targetNik = typeof body?.nik === 'string' ? body.nik.trim() : '';
     const targetStudentId = typeof body?.student_id === 'string' ? body.student_id.trim() : '';
-    const targetUserIdRaw = typeof body?.user_id === 'string' ? body.user_id.trim() : '';
 
-    // Resolusi data siswa berdasarkan NIK atau student_id terlebih dahulu
+    if (!targetNik && !targetStudentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Identitas pendaftar (NIK atau student_id) wajib disertakan.',
+      });
+    }
+
     let targetStudent: any = null;
     if (targetNik) {
       const { data: stdByNik } = await supabaseAdmin
@@ -152,30 +158,23 @@ export default async function handler(req: any, res: any) {
         .eq('nik', targetNik)
         .maybeSingle();
       targetStudent = stdByNik;
-    } else if (targetStudentId) {
+    } else {
       const { data: stdById } = await supabaseAdmin
         .from('students')
         .select('id, user_id, nik, nama_lengkap, nomor_pendaftaran')
         .eq('id', targetStudentId)
         .maybeSingle();
       targetStudent = stdById;
-    } else if (targetUserIdRaw) {
-      const { data: stdByUid } = await supabaseAdmin
-        .from('students')
-        .select('id, user_id, nik, nama_lengkap, nomor_pendaftaran')
-        .eq('user_id', targetUserIdRaw)
-        .maybeSingle();
-      targetStudent = stdByUid;
     }
 
-    const userIdToDelete = targetStudent?.user_id || targetUserIdRaw;
-
-    if (!userIdToDelete) {
-      return res.status(400).json({
+    if (!targetStudent?.user_id || !targetStudent?.id) {
+      return res.status(404).json({
         success: false,
-        message: 'Identitas siswa (NIK atau student_id) wajib disertakan.',
+        message: 'Data siswa tidak ditemukan di sistem.',
       });
     }
+
+    const userIdToDelete = targetStudent.user_id;
 
     // Cegah admin menghapus akunnya sendiri
     if (userIdToDelete === callerData.user.id) {
@@ -185,7 +184,7 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // 3. KEAMANAN KRUSIAL: Verifikasi bahwa target memiliki role 'student' di tabel profiles
+    // 3. Verifikasi bahwa target memiliki role 'student' di tabel profiles
     const { data: targetProfile, error: targetProfErr } = await supabaseAdmin
       .from('profiles')
       .select('id, role, nik, full_name')
@@ -199,65 +198,50 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    const cleanNik = targetStudent?.nik || targetProfile.nik || targetNik;
+    // 4. M-03: Eksekusi transaksi database atomik via delete_student_cascade
+    const { error: cascadeErr } = await supabaseAdmin.rpc('delete_student_cascade', {
+      p_student_id: targetStudent.id,
+      p_user_id: userIdToDelete,
+    });
 
-    // 4. Hapus berkas storage secara rekursif dan paginasi
+    if (cascadeErr) {
+      console.error('[Admin Delete] Error delete_student_cascade:', cascadeErr);
+      return res.status(500).json({
+        success: false,
+        message: `Gagal menghapus data siswa dari database: ${cascadeErr.message}`,
+      });
+    }
+
+    // 5. M-01: Bersihkan berkas storage (dokumen-ppdb & berkas-spmb) secara rekursif dari offset: 0
     const storageErrors: string[] = [];
     const ppdbCleanup = await removeStorageFolderRecursive(supabaseAdmin, 'dokumen-ppdb', userIdToDelete);
     storageErrors.push(...ppdbCleanup.errors);
 
-    if (cleanNik) {
-      const legacyCleanup = await removeStorageFolderRecursive(supabaseAdmin, 'berkas-spmb', cleanNik);
+    if (targetStudent.nik) {
+      const legacyCleanup = await removeStorageFolderRecursive(supabaseAdmin, 'berkas-spmb', targetStudent.nik);
       storageErrors.push(...legacyCleanup.errors);
     }
 
-    // 5. Hapus pembayaran dengan verifikasi error ketat
-    const { error: paymentDelErr } = await supabaseAdmin
-      .from('pembayaran')
-      .delete()
-      .eq('user_id', userIdToDelete);
-
-    if (paymentDelErr) {
-      console.error('[Admin Delete] Error hapus pembayaran:', paymentDelErr);
-      return res.status(500).json({
-        success: false,
-        message: `Gagal menghapus data riwayat pembayaran: ${paymentDelErr.message}`,
-      });
-    }
-
-    // 6. Hapus data siswa di database dengan verifikasi error
-    const { error: studentDelErr } = cleanNik
-      ? await supabaseAdmin.from('students').delete().eq('nik', cleanNik)
-      : await supabaseAdmin.from('students').delete().eq('user_id', userIdToDelete);
-
-    if (studentDelErr) {
-      console.error('[Admin Delete] Error hapus siswa:', studentDelErr);
-      return res.status(500).json({
-        success: false,
-        message: `Gagal menghapus data formulir pendaftaran: ${studentDelErr.message}`,
-      });
-    }
-
-    // 7. Hapus user auth via auth.admin.deleteUser
+    // 6. Hapus akun auth via auth.admin.deleteUser
     const { error: delAuthErr } = await supabaseAdmin.auth.admin.deleteUser(userIdToDelete);
     if (delAuthErr) {
       console.error('[Admin Delete] Error deleteUser:', delAuthErr);
       return res.status(500).json({
         success: false,
-        message: `Gagal menghapus akun autentikasi: ${delAuthErr.message}`,
+        message: `Data database berhasil dihapus, namun akun autentikasi gagal dihapus: ${delAuthErr.message}`,
       });
     }
 
-    // 8. Catat audit trail ke tabel activity_logs
+    // 7. Catat audit trail ke tabel activity_logs
     try {
       await supabaseAdmin.from('activity_logs').insert({
         actor_id: callerData.user.id,
         actor_name: callerProfile.full_name || 'Administrator',
         action: 'HAPUS_PENDAFTAR',
-        target_student_id: targetStudent?.id || null,
-        target_nik: cleanNik || null,
-        target_nama: targetStudent?.nama_lengkap || targetProfile.full_name || null,
-        target_nomor: targetStudent?.nomor_pendaftaran || null,
+        target_student_id: targetStudent.id,
+        target_nik: targetStudent.nik,
+        target_nama: targetStudent.nama_lengkap,
+        target_nomor: targetStudent.nomor_pendaftaran,
         detail: {
           user_id: userIdToDelete,
           storage_files_deleted: ppdbCleanup.deleted,
