@@ -50,7 +50,7 @@ export function formatTanggalDaftarJakarta(date = new Date()): string {
   });
   const parts = formatter.formatToParts(date);
   const get = (type: string) => parts.find((p) => p.type === type)?.value || '00';
-  return `${get('day')}-${get('month')}-${get('year')} ${get('hour')}:${get('minute')}`;
+  return `\( {get('day')}- \){get('month')}-${get('year')} \( {get('hour')}: \){get('minute')}`;
 }
 
 export interface ApiResponse {
@@ -68,11 +68,10 @@ export interface ApiResponse {
 
 // ============================================================================
 // KEAMANAN LOGIN: rate limit (fail-closed) + CAPTCHA (fail-closed)
-// S2: per-IP diperketat (40/10m). Wi-Fi sekolah tetap longgar lewat CAPTCHA;
-//     serangan dari satu VPS dibatasi lebih ketat. Per-identifier tetap 10.
+// S2: per-IP 40/10m; RATE_LIMIT_SALT wajib (min 16 karakter)
 // ============================================================================
 const LOGIN_WINDOW_SECONDS = 600; // 10 menit
-const LOGIN_LIMIT_PER_IP = 40;    // S2: turun dari 100 → 40
+const LOGIN_LIMIT_PER_IP = 40;
 const LOGIN_LIMIT_PER_ID = 10;
 
 async function sha256Hex(input: string): Promise<string> {
@@ -93,7 +92,6 @@ async function rateLimitHit(
 ): Promise<RateResult> {
   if (!admin) return 'unavailable';
 
-  // S2: RATE_LIMIT_SALT wajib — jangan fallback ke SERVICE_ROLE_KEY
   const salt = (getEnv('RATE_LIMIT_SALT') || '').trim();
   if (!salt || salt.length < 16) {
     console.error(
@@ -143,29 +141,7 @@ function rateLimitResponse(result: RateResult): ApiResponse | null {
   };
 }
 
-function rateLimitResponse(result: RateResult): ApiResponse | null {
-  if (result === 'ok') return null;
-  if (result === 'limited') {
-    return {
-      statusCode: 429,
-      body: {
-        success: false,
-        code: 'RATE_LIMITED',
-        error: 'Terlalu banyak percobaan login. Coba lagi dalam beberapa menit.',
-      },
-    };
-  }
-  return {
-    statusCode: 503,
-    body: {
-      success: false,
-      code: 'RATE_LIMIT_UNAVAILABLE',
-      error: 'Layanan login sementara tidak tersedia. Silakan coba beberapa saat lagi.',
-    },
-  };
-}
-
-/** Verifikasi Turnstile manual. Mengembalikan null jika lolos, atau ApiResponse error. */
+/** Verifikasi Turnstile manual. null = lolos; ApiResponse = error. */
 async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResponse | null> {
   const secret = getEnv('TURNSTILE_SECRET_KEY');
 
@@ -212,10 +188,6 @@ async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResp
 
 /**
  * Shared Login Request Handler
- * - Verifikasi Cloudflare Turnstile (wajib)
- * - Auth via Supabase
- * - Role diambil dari public.profiles (bukan JWT claim)
- * - Admin identifier dari env ADMIN_LOGIN_ID (bukan hardcoded "admin")
  */
 export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<ApiResponse> {
   const { supabaseAdmin, supabaseAnon, supabaseUrl } = getSupabaseClients();
@@ -281,9 +253,7 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     parsedBody?.captchaToken ||
     '';
 
-  // ============================================================
-  // 1. Rate limit per IP (sebelum menyentuh Turnstile/Supabase)
-  // ============================================================
+  // 1. Rate limit per IP
   const ipLimited = rateLimitResponse(
     await rateLimitHit(
       supabaseAdmin,
@@ -295,9 +265,7 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
   );
   if (ipLimited) return ipLimited;
 
-  // ============================================================
   // 2. CAPTCHA
-  // ============================================================
   const supabaseCaptchaMode = getEnv('SUPABASE_CAPTCHA') === 'true';
   if (supabaseCaptchaMode) {
     if (!turnstileToken) {
@@ -315,36 +283,26 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     if (captchaError) return captchaError;
   }
 
-  // ============================================================
-  // 3. Identitas login (S1 FIX)
-  //  - siswa : NIK 16 digit → nik_{NIK}@auth.smkmuhiba.sch.id
-  //  - admin : hanya ADMIN_LOGIN_ID (env) → ADMIN_AUTH_EMAIL (env)
-  //  - TIDAK menerima string hardcoded "admin"
-  //  - TIDAK menerima sembarang email
-  // ============================================================
+  // 3. Identitas (S1): NIK atau ADMIN_LOGIN_ID — bukan hardcoded "admin"
   const STUDENT_EMAIL_DOMAIN = '@auth.smkmuhiba.sch.id';
   const lowerId = cleanId.toLowerCase();
 
   const adminLoginId = (getEnv('ADMIN_LOGIN_ID') || '').trim().toLowerCase();
-  const adminAuthEmail = (
-    getEnv('ADMIN_AUTH_EMAIL') || 'admin@smkmuhiba.sch.id'
-  )
+  const adminAuthEmail = (getEnv('ADMIN_AUTH_EMAIL') || 'admin@smkmuhiba.sch.id')
     .trim()
     .toLowerCase();
 
   const isNik = /^\d{16}$/.test(cleanId);
-  // Cocok username rahasia ATAU (opsional) ketik tepat email admin yang dikonfigurasi
   const isAdminIdentifier =
     Boolean(adminLoginId) &&
     (lowerId === adminLoginId || lowerId === adminAuthEmail);
 
   let authEmail = '';
   if (isNik) {
-    authEmail = `nik_${cleanId}${STUDENT_EMAIL_DOMAIN}`;
+    authEmail = `nik_\( {cleanId} \){STUDENT_EMAIL_DOMAIN}`;
   } else if (isAdminIdentifier) {
     authEmail = adminAuthEmail;
   } else {
-    // Jangan bocorkan format username admin
     return {
       statusCode: 400,
       body: {
@@ -356,7 +314,7 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     };
   }
 
-  // 4. Rate limit per NIK / admin id
+  // 4. Rate limit per identifier
   const idLimited = rateLimitResponse(
     await rateLimitHit(
       supabaseAdmin,
@@ -496,7 +454,7 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
 
 /**
  * Shared Register Request Handler
- * Catatan: production register utama ada di api/auth/register.ts
+ * Production register utama: api/auth/register.ts
  */
 export async function handleRegister(body: any): Promise<ApiResponse> {
   const { supabaseAdmin, supabaseAnon, supabaseUrl } = getSupabaseClients();
@@ -674,7 +632,7 @@ export async function handleRegister(body: any): Promise<ApiResponse> {
           const seq = (count || 0) + 1;
           const seqStr = String(seq).length < 4 ? String(seq).padStart(4, '0') : String(seq);
           const rand = Math.floor(100 + Math.random() * 900);
-          studentPayload.nomor_pendaftaran = `${currentYear}${seqStr}${rand}`;
+          studentPayload.nomor_pendaftaran = `\( {currentYear} \){seqStr}${rand}`;
           const retry = await supabaseAdmin
             .from('students')
             .insert(studentPayload)
@@ -883,7 +841,7 @@ export async function handleDeleteStudent(
         .list(targetUserId);
 
       if (files && files.length > 0) {
-        const paths = files.map((f) => `${targetUserId}/${f.name}`);
+        const paths = files.map((f) => `\( {targetUserId}/ \){f.name}`);
         await supabaseAdmin.storage.from('dokumen-ppdb').remove(paths);
       }
     } catch (storageErr) {
@@ -896,7 +854,7 @@ export async function handleDeleteStudent(
         .list(cleanNik);
 
       if (legacyFiles && legacyFiles.length > 0) {
-        const paths = legacyFiles.map((f) => `${cleanNik}/${f.name}`);
+        const paths = legacyFiles.map((f) => `\( {cleanNik}/ \){f.name}`);
         await supabaseAdmin.storage.from('berkas-spmb').remove(paths);
       }
     } catch (storageErr) {
