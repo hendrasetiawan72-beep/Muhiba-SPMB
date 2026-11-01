@@ -7,6 +7,7 @@ import registerHandler from './api/auth/register';
 import loginHandler from './api/auth/login';
 import deleteStudentHandler from './api/admin/delete-student';
 import resetPasswordHandler from './api/admin/reset-password';
+import { applyCors } from './server/corsHelper';
 
 dotenv.config();
 
@@ -26,50 +27,9 @@ app.use((req: Request, res: Response, next) => {
     return next();
   }
 
-  const requestOrigin = String(req.headers?.origin || '').trim();
-
-  const allowedOrigins = new Set<string>(
-    (process.env.ALLOWED_ORIGINS || process.env.ALLOWED_ORIGIN || '')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean)
-  );
-
-  // Tambahkan origin aplikasi resmi jika APP_URL terdefinisi
-  if (process.env.APP_URL) {
-    try {
-      allowedOrigins.add(new URL(process.env.APP_URL).origin);
-    } catch {}
+  if (!applyCors(req, res)) {
+    return;
   }
-
-  // Khusus server lokal pada development, izinkan port 3000 lokal
-  if (process.env.NODE_ENV === 'development') {
-    allowedOrigins.add('http://localhost:3000');
-    allowedOrigins.add('http://127.0.0.1:3000');
-  }
-
-  const isAllowed = !requestOrigin || allowedOrigins.has(requestOrigin);
-
-  if (!isAllowed) {
-    if (req.method === 'OPTIONS') {
-      return res.status(403).end();
-    }
-    return res.status(403).json({
-      code: 'CORS_FORBIDDEN',
-      message: 'Origin tidak diizinkan.',
-    });
-  }
-
-  if (requestOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  }
-
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
