@@ -16,8 +16,10 @@ import {
   Check,
   ShieldAlert,
   Eye,
-  EyeOff
+  EyeOff,
+  Loader2,
 } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { dbService } from '../services/supabase';
 import { Student, User as UserType, JurusanType } from '../types/database';
 
@@ -193,6 +195,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
   onNavigateLogin,
   onNavigateHome,
 }) => {
+  const shouldReduceMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<'info' | 'syarat' | 'kontak'>('info');
   const [showRegisterForm, setShowRegisterForm] = useState<boolean>(false);
   const [buktiPendaftaran, setBuktiPendaftaran] = useState<{
@@ -486,46 +489,49 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
         </div>
 
         {/* TABBED INFORMATION BOX */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-8">
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-1.5 bg-slate-100/90 rounded-xl mb-6">
-            <button
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-5 sm:p-8">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-1.5 bg-slate-100/80 rounded-2xl mb-6 border border-slate-200/60">
+            <motion.button
+              whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
               onClick={() => setActiveTab('info')}
-              className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                 activeTab === 'info'
-                  ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-700/20'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 active:scale-[0.98]'
               }`}
             >
               <FileText className="w-4 h-4 shrink-0" />
               <span>Informasi Pendaftaran</span>
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
+              whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
               onClick={() => setActiveTab('syarat')}
-              className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                 activeTab === 'syarat'
-                  ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-700/20'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 active:scale-[0.98]'
               }`}
             >
               <CheckCircle className="w-4 h-4 shrink-0" />
               <span>Syarat Pendaftaran</span>
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
+              whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
               onClick={() => setActiveTab('kontak')}
-              className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                 activeTab === 'kontak'
-                  ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-700/20'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 active:scale-[0.98]'
               }`}
             >
               <Phone className="w-4 h-4 shrink-0" />
               <span>Kontak Pendaftaran</span>
-            </button>
+            </motion.button>
           </div>
 
-          <div className="bg-slate-50/70 p-5 sm:p-7 rounded-xl border border-slate-200/70">
+          <div className="bg-slate-50/70 p-5 sm:p-7 rounded-2xl border border-slate-200/70">
             {activeTab === 'info' && (
               <div className="space-y-6">
                 <div>
@@ -534,26 +540,33 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-blue-300 transition-colors">
+                  <motion.div 
+                    whileHover={shouldReduceMotion ? undefined : { y: -3 }}
+                    className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-indigo-300 hover:shadow-md transition-all duration-200"
+                  >
                     <div>
-                      <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 font-extrabold text-xs flex items-center justify-center mb-3">01</div>
+                      <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 font-extrabold text-xs flex items-center justify-center mb-3">01</div>
                       <h4 className="font-bold text-sm text-slate-900 mb-1">Daftar Online</h4>
                       <p className="text-xs text-slate-600 leading-relaxed">
                         Calon siswa mengisi data dasar (NIK, Nama, WhatsApp, Pilihan Jurusan) dan membuat password akun.
                       </p>
                     </div>
                     <div className="pt-4 mt-3 border-t border-slate-100">
-                      <button
+                      <motion.button
+                        whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
                         onClick={() => setShowRegisterForm(true)}
-                        className="w-full py-2 px-3 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+                        className="w-full py-2.5 px-3 text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 active:scale-[0.97] rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                       >
                         <FileText className="w-3.5 h-3.5" />
                         <span>Daftar Sekarang</span>
-                      </button>
+                      </motion.button>
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-emerald-300 transition-colors">
+                  <motion.div 
+                    whileHover={shouldReduceMotion ? undefined : { y: -3 }}
+                    className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-emerald-300 hover:shadow-md transition-all duration-200"
+                  >
                     <div>
                       <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 font-extrabold text-xs flex items-center justify-center mb-3">02</div>
                       <h4 className="font-bold text-sm text-slate-900 mb-1">Login Masuk</h4>
@@ -562,17 +575,21 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                       </p>
                     </div>
                     <div className="pt-4 mt-3 border-t border-slate-100">
-                      <button
+                      <motion.button
+                        whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
                         onClick={onNavigateLogin}
-                        className="w-full py-2 px-3 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+                        className="w-full py-2.5 px-3 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97] rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                       >
                         <ArrowRight className="w-3.5 h-3.5" />
                         <span>Login Masuk</span>
-                      </button>
+                      </motion.button>
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-blue-300 transition-colors">
+                  <motion.div 
+                    whileHover={shouldReduceMotion ? undefined : { y: -3 }}
+                    className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-blue-300 hover:shadow-md transition-all duration-200"
+                  >
                     <div>
                       <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 font-extrabold text-xs flex items-center justify-center mb-3">03</div>
                       <h4 className="font-bold text-sm text-slate-900 mb-1">Lengkapi Berkas</h4>
@@ -581,12 +598,12 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                       </p>
                     </div>
                     <div className="pt-4 mt-3 border-t border-slate-100">
-                      <div className="w-full py-2 px-3 text-xs font-semibold text-blue-700 bg-blue-50 rounded-md flex items-center justify-center gap-1 text-center">
+                      <div className="w-full py-2 px-3 text-xs font-semibold text-blue-700 bg-blue-50 rounded-xl flex items-center justify-center gap-1 text-center">
                         <Check className="w-3.5 h-3.5 text-blue-600" />
                         <span>Verifikasi Panitia</span>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
             )}
@@ -709,38 +726,59 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
       </div>
 
       {/* REGISTRATION MODAL FORM */}
-      {showRegisterForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 relative my-8 animate-in fade-in zoom-in-95 duration-200">
-            <button
-              type="button"
+      <AnimatePresence>
+        {showRegisterForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={shouldReduceMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={closeRegisterForm}
-              aria-label="Tutup formulir"
-              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100"
+              className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ duration: 0.25 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-8 relative my-8 z-10 border border-slate-100"
             >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="mb-6">
-              <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Form Pendaftaran Awal</span>
-              <h2 className="text-xl font-extrabold text-slate-900 mt-1">
-                Registrasi Calon Siswa Baru
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Buat akun dengan NIK dan Password untuk mengakses formulir lengkap.
-              </p>
-            </div>
-
-            {errorMessage && (
-              <div
-                ref={alertRef}
-                role="alert"
-                className="mb-4 p-3 bg-red-50 border border-red-300 rounded-lg flex items-start gap-2 text-xs text-red-700"
+              <motion.button
+                whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
+                type="button"
+                onClick={closeRegisterForm}
+                aria-label="Tutup formulir"
+                className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               >
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
-                <span className="font-semibold">{errorMessage}</span>
+                <X className="w-5 h-5" />
+              </motion.button>
+
+              <div className="mb-6">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-[11px] font-bold text-indigo-700 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span>Form Pendaftaran Awal</span>
+                </div>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                  Registrasi Calon Siswa Baru
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Buat akun dengan NIK dan Password untuk mengakses formulir lengkap.
+                </p>
               </div>
-            )}
+
+              {errorMessage && (
+                <motion.div
+                  ref={alertRef}
+                  role="alert"
+                  initial={shouldReduceMotion ? false : { opacity: 0, x: -6 }}
+                  animate={shouldReduceMotion ? { opacity: 1 } : { x: [-6, 6, -4, 4, 0], opacity: 1 }}
+                  transition={{ duration: 0.25 }}
+                  className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-700"
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
+                  <span className="font-semibold flex-1">{errorMessage}</span>
+                </motion.div>
+              )}
 
             <form onSubmit={handleRegisterSubmit} noValidate className="space-y-4">
               {/* NIK */}
@@ -979,18 +1017,28 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
               )}
 
               <div className="pt-2">
-                <button
+                <motion.button
+                  whileTap={shouldReduceMotion || isSubmitting ? undefined : { scale: 0.96 }}
+                  whileHover={shouldReduceMotion || isSubmitting ? undefined : { scale: 1.01 }}
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-lg shadow-md transition-colors disabled:opacity-60"
+                  className="w-full py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-indigo-700 active:brightness-95 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-indigo-500/20 transition-all duration-150 disabled:opacity-60 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                 >
-                  {isSubmitting ? 'Memproses Pendaftaran...' : 'Simpan & Dapatkan Bukti Pendaftaran'}
-                </button>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Memproses Pendaftaran...</span>
+                    </>
+                  ) : (
+                    <span>Simpan & Dapatkan Bukti Pendaftaran</span>
+                  )}
+                </motion.button>
               </div>
             </form>
-          </div>
+          </motion.div>
         </div>
       )}
+    </AnimatePresence>
 
       {/* BUKTI PENDAFTARAN MODAL / CARD DENGAN PRINT CSS FIX */}
       {buktiPendaftaran && (
