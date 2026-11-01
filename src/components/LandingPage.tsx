@@ -1794,7 +1794,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="relative mx-auto flex max-w-7xl flex-col items-center gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:justify-between lg:gap-8 lg:px-8 lg:py-9">
           <div className="flex w-full flex-col items-center gap-4 sm:flex-row sm:justify-center lg:w-auto lg:justify-start">
             <img
-              src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhiIuDeq9J_WXO2KBegPfvLCQivkwkbWElfSF07iItWPEB79-w0y7zyYxkSA9jkni23z6pkuzm7KYKoqsfOZ7XbYqmw7_Ic8vwU6UQhyphenhyphen4g_P5P-zvADaKnp-tJCISFdODUggAa9OiuK5QMBP_i5xJ8X3lnJR5PZoA51SqxzZfTy5yVxqq7BIYPLewRPa1Jt/s1672/69252.png"
+              src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEitrsbiiNxOvmcHcN42oOETm0n2rp4n_UYCdRDLH05Z0fD7mLw5rNXwVxft7SBrIMQyi3LSs9DUa-v6QZBrKjE8o9G7RQ171bu0cirIUmWWD6E8wxn9Ua-t61RbRENkAb-U9bhBgdtq-eh0JYAN3hu0r9sCeNdjGFODdPWaNN-5v-NmQB63uOuMRAvgkODt/s1774/69228.png"
               alt="Logo SMK Muhammadiyah Bawang"
               className="h-24 w-auto max-w-[180px] object-contain drop-shadow-xl sm:h-28"
               loading="lazy"
