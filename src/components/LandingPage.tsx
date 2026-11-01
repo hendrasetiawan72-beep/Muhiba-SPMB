@@ -1782,19 +1782,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         )}
       </AnimatePresence>
 
-      {/* FOOTER */}
-      <footer className="bg-slate-950 text-slate-400 py-8 border-t border-slate-800 text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 SPMB SMK MUHIBA | SMK Muhammadiyah Bawang by @hndx07. All rights reserved.</p>
-          <div className="flex items-center gap-6">
-            <a href="https://www.smkmuhiba.sch.id" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1 font-semibold text-blue-400">
-              <span>www.smkmuhiba.sch.id</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-            <button onClick={onLoginClick} className="hover:text-white transition-colors cursor-pointer">
-              Login Petugas & Siswa
-            </button>
+      {/* FOOTER — desain kuning/oranye + logo + sosial media, dipertahankan sebagai bagian utama landing page */}
+      <footer className="relative overflow-hidden border-t-4 border-yellow-300 bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 text-slate-950">
+        <div className="absolute inset-0 pointer-events-none opacity-25" aria-hidden="true">
+          <div className="absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white blur-3xl" />
+          <div className="absolute right-0 bottom-0 h-72 w-72 rounded-full bg-orange-700 blur-3xl" />
+          <div className="absolute right-[-5%] top-8 h-8 w-[38%] rotate-[-12deg] bg-white/50" />
+          <div className="absolute right-[-8%] top-24 h-5 w-[32%] rotate-[-12deg] bg-white/35" />
+        </div>
+
+        <div className="relative mx-auto flex max-w-7xl flex-col items-center gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:justify-between lg:gap-8 lg:px-8 lg:py-9">
+          <div className="flex w-full flex-col items-center gap-4 sm:flex-row sm:justify-center lg:w-auto lg:justify-start">
+            <img
+              src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhiIuDeq9J_WXO2KBegPfvLCQivkwkbWElfSF07iItWPEB79-w0y7zyYxkSA9jkni23z6pkuzm7KYKoqsfOZ7XbYqmw7_Ic8vwU6UQhyphenhyphen4g_P5P-zvADaKnp-tJCISFdODUggAa9OiuK5QMBP_i5xJ8X3lnJR5PZoA51SqxzZfTy5yVxqq7BIYPLewRPa1Jt/s1672/69252.png"
+              alt="Logo SMK Muhammadiyah Bawang"
+              className="h-24 w-auto max-w-[180px] object-contain drop-shadow-xl sm:h-28"
+              loading="lazy"
+            />
+            <div className="hidden h-20 w-px bg-slate-950/35 sm:block" />
+            <div className="text-center sm:text-left">
+              <p className="text-3xl font-black italic tracking-tight drop-shadow-sm sm:text-4xl">Follow US</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-900/70">SPMB SMK Muhammadiyah Bawang</p>
+            </div>
           </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+            <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-white/80 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-orange-400 text-2xl font-black text-white shadow-xl transition-transform duration-300 hover:-translate-y-1 hover:scale-105">◎</a>
+            <a href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-white/80 bg-red-600 text-xl font-black text-white shadow-xl transition-transform duration-300 hover:-translate-y-1 hover:scale-105">▶</a>
+            <a href="https://www.tiktok.com/" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-white/80 bg-slate-950 text-xl font-black text-white shadow-xl transition-transform duration-300 hover:-translate-y-1 hover:scale-105">♪</a>
+            <a href="https://www.smkmuhiba.sch.id" target="_blank" rel="noopener noreferrer" className="ml-0 rounded-full bg-slate-950 px-5 py-3 text-xs font-black text-white shadow-xl transition-transform duration-300 hover:-translate-y-1 sm:ml-2">
+              smkmuhiba.sch.id <ExternalLink className="ml-1 inline h-3 w-3" />
+            </a>
+          </div>
+        </div>
+
+        <div className="relative border-t border-slate-950/15 bg-orange-600/25 px-4 py-3 text-center text-[11px] font-semibold text-slate-950/75">
+          © 2026 SPMB SMK MUHIBA · SMK Muhammadiyah Bawang · All rights reserved.
         </div>
       </footer>
 
