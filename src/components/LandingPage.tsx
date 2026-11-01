@@ -32,9 +32,7 @@ import {
   ChevronsUp,
   RotateCcw,
   LogIn,
-  AlertTriangle,
-  Instagram,
-  Youtube
+  AlertTriangle
 } from 'lucide-react';
 
 // ===========================================================================
@@ -140,8 +138,21 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
   const reduce = useReducedMotion();
   const [open, setOpen] = useState<Set<number>>(new Set([0]));
   const [active, setActive] = useState<number>(0);
+  const [alurImageOpen, setAlurImageOpen] = useState(false);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const alurImageRef = useRef<HTMLDivElement | null>(null);
   const mounted = useRef(false);
+
+  const { scrollYProgress: alurImageProgress } = useScroll({
+    target: alurImageRef,
+    offset: ['start end', 'end start'],
+  });
+  const alurImageY = useTransform(alurImageProgress, [0, 0.5, 1], reduce ? [0, 0, 0] : [34, 0, -26]);
+  const alurImageScale = useTransform(
+    alurImageProgress,
+    [0, 0.5, 1],
+    reduce ? [1, 1, 1] : [0.94, 1, 0.96],
+  );
 
   const allOpen = open.size === STEPS.length;
   const progress = (active + 1) / STEPS.length;
@@ -216,6 +227,41 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
           <p className="mt-2 text-sm text-slate-600 sm:text-base">
             SMK Muhammadiyah Bawang · Ikuti 7 langkah dari awal sampai pengumuman.
           </p>
+        </motion.div>
+
+        {/* Infografis alur: responsif, parallax saat digulir, dan dapat ditekan */}
+        <motion.div
+          ref={alurImageRef}
+          initial={reduce ? false : { opacity: 0 }}
+          whileInView={reduce ? undefined : { opacity: 1 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.65, ease: 'easeOut' }}
+          style={{ y: alurImageY, scale: alurImageScale }}
+          className="relative z-10 mx-auto mb-10 w-full max-w-6xl [transform-style:preserve-3d]"
+        >
+          <button
+            type="button"
+            onClick={() => setAlurImageOpen((value) => !value)}
+            aria-label={alurImageOpen ? 'Perkecil infografis alur pendaftaran' : 'Perbesar infografis alur pendaftaran'}
+            aria-pressed={alurImageOpen}
+            className="group relative block w-full overflow-hidden rounded-3xl border border-white/80 bg-white p-1 shadow-[0_20px_60px_-25px_rgba(30,64,175,0.35)] outline-none transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_-28px_rgba(30,64,175,0.45)] focus-visible:ring-4 focus-visible:ring-blue-300/60 active:scale-[0.995]"
+          >
+            <div className="relative overflow-hidden rounded-[1.35rem] bg-slate-100">
+              <motion.img
+                src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhiIuDeq9J_WXO2KBegPfvLCQivkwkbWElfSF07iItWPEB79-w0y7zyYxkSA9jkni23z6pkuzm7KYKoqsfOZ7XbYqmw7_Ic8vwU6UQhyphenhyphen4g_P5P-zvADaKnp-tJCISFdODUggAa9OiuK5QMBP_i5xJ8X3lnJR5PZoA51SqxzZfTy5yVxqq7BIYPLewRPa1Jt/s1672/69252.png"
+                alt="Infografis alur pendaftaran SPMB SMK Muhammadiyah Bawang"
+                loading="lazy"
+                decoding="async"
+                className={`block h-auto w-full select-none object-contain transition-transform duration-700 ease-out ${
+                  alurImageOpen ? 'scale-[1.025]' : 'scale-100 group-hover:scale-[1.015]'
+                }`}
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-blue-950/15 via-transparent to-white/10 opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
+              <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-slate-950/75 px-3 py-1.5 text-[10px] font-bold tracking-wide text-white opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100 sm:text-xs">
+                {alurImageOpen ? 'Tekan untuk perkecil' : 'Tekan untuk lihat lebih jelas'}
+              </span>
+            </div>
+          </button>
         </motion.div>
 
         <div className="grid gap-8 lg:grid-cols-[17rem_1fr] lg:gap-12">
@@ -1737,33 +1783,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </AnimatePresence>
 
       {/* FOOTER */}
-      <footer className="relative overflow-hidden bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 text-slate-950 border-t-4 border-yellow-200 shadow-[0_-12px_35px_rgba(245,158,11,0.22)]">
-        <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_15%_20%,white_0,transparent_28%),radial-gradient(circle_at_85%_80%,white_0,transparent_24%)]" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-            <a href="https://smkmuhiba.sch.id" target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-2xl bg-white/85 p-2 shadow-xl backdrop-blur-sm transition-transform hover:scale-[1.02]" aria-label="Website resmi SMK Muhammadiyah Bawang">
-              <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEitrsbiiNxOvmcHcN42oOETm0n2rp4n_UYCdRDLH05Z0fD7mLw5rNXwVxft7SBrIMQyi3LSs9DUa-v6QZBrKjE8o9G7RQ171bu0cirIUmWWD6E8wxn9Ua-t61RbRENkAb-U9bhBgdtq-eh0JYAN3hu0r9sCeNdjGFODdPWaNN-5v-NmQB63uOuMRAvgkODt/s320/69228.png" alt="SPMB SMK MUHIBA" className="w-52 sm:w-64 h-auto max-h-28 object-contain" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+      <footer className="bg-slate-950 text-slate-400 py-8 border-t border-slate-800 text-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p>© 2026 SPMB SMK MUHIBA | SMK Muhammadiyah Bawang by @hndx07. All rights reserved.</p>
+          <div className="flex items-center gap-6">
+            <a href="https://www.smkmuhiba.sch.id" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1 font-semibold text-blue-400">
+              <span>www.smkmuhiba.sch.id</span>
+              <ExternalLink className="w-3 h-3" />
             </a>
-            <div className="flex flex-col items-center gap-4">
-              <div className="text-center">
-                <p className="text-2xl sm:text-3xl font-black tracking-tight">Follow US</p>
-                <p className="mt-1 text-[11px] sm:text-xs font-bold uppercase tracking-[0.25em] text-slate-800/70">Media Sosial Resmi SMK MUHIBA</p>
-              </div>
-              <div className="flex items-center gap-3 sm:gap-4">
-                <a href="https://www.instagram.com/Instastemba" target="_blank" rel="noopener noreferrer" aria-label="Instagram SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl"><Instagram className="h-6 w-6" /></a>
-                <a href="https://www.youtube.com/@SMK_Muhammadiyah_Bawang" target="_blank" rel="noopener noreferrer" aria-label="YouTube SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl"><Youtube className="h-6 w-6" /></a>
-                <a href="https://www.tiktok.com/@smartschool17" target="_blank" rel="noopener noreferrer" aria-label="TikTok SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl">
-                  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true"><path d="M16.7 4.2c.6 1.8 1.8 3 3.5 3.4v3.1a8.2 8.2 0 0 1-3.5-1.1v5.8a5.6 5.6 0 1 1-5.6-5.6c.3 0 .7 0 1 .1v3.2a2.6 2.6 0 1 0 1.5 2.3V2.9h3.1c0 .5 0 .9 0 1.3Z"/></svg>
-                </a>
-              </div>
-            </div>
-          </div>
-          <div className="mt-8 pt-5 border-t border-black/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-semibold text-slate-900/70">
-            <p>© 2026 SPMB SMK MUHIBA | SMK Muhammadiyah Bawang by @hndx07. All rights reserved.</p>
-            <div className="flex items-center gap-4">
-              <a href="https://smkmuhiba.sch.id" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors flex items-center gap-1"><span>smkmuhiba.sch.id</span><ExternalLink className="w-3 h-3" /></a>
-              <button onClick={onLoginClick} className="hover:text-black transition-colors cursor-pointer">Login Petugas & Siswa</button>
-            </div>
+            <button onClick={onLoginClick} className="hover:text-white transition-colors cursor-pointer">
+              Login Petugas & Siswa
+            </button>
           </div>
         </div>
       </footer>
