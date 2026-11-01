@@ -1818,6 +1818,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         <div className="relative border-t border-slate-950/15 bg-orange-600/25 px-4 py-3 text-center text-[11px] font-semibold text-slate-950/75">
           © 2026 SPMB SMK MUHIBA · SMK Muhammadiyah Bawang · All rights reserved.
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 font-semibold text-white transition hover:bg-white/20">
+            <Code2 className="h-3.5 w-3.5 text-yellow-300" />
+            Developed by <span className="font-black text-yellow-300">@hndx07</span>
         </div>
       </footer>
 
