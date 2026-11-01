@@ -32,7 +32,9 @@ import {
   ChevronsUp,
   RotateCcw,
   LogIn,
-  AlertTriangle
+  AlertTriangle,
+  Instagram,
+  Youtube
 } from 'lucide-react';
 
 // ===========================================================================
@@ -1735,17 +1737,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </AnimatePresence>
 
       {/* FOOTER */}
-      <footer className="bg-slate-950 text-slate-400 py-8 border-t border-slate-800 text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 SPMB SMK MUHIBA | SMK Muhammadiyah Bawang by @hndx07. All rights reserved.</p>
-          <div className="flex items-center gap-6">
-            <a href="https://www.smkmuhiba.sch.id" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1 font-semibold text-blue-400">
-              <span>www.smkmuhiba.sch.id</span>
-              <ExternalLink className="w-3 h-3" />
+      <footer className="relative overflow-hidden bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 text-slate-950 border-t-4 border-yellow-200 shadow-[0_-12px_35px_rgba(245,158,11,0.22)]">
+        <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_15%_20%,white_0,transparent_28%),radial-gradient(circle_at_85%_80%,white_0,transparent_24%)]" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+            <a href="https://smkmuhiba.sch.id" target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-2xl bg-white/85 p-2 shadow-xl backdrop-blur-sm transition-transform hover:scale-[1.02]" aria-label="Website resmi SMK Muhammadiyah Bawang">
+              <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEitrsbiiNxOvmcHcN42oOETm0n2rp4n_UYCdRDLH05Z0fD7mLw5rNXwVxft7SBrIMQyi3LSs9DUa-v6QZBrKjE8o9G7RQ171bu0cirIUmWWD6E8wxn9Ua-t61RbRENkAb-U9bhBgdtq-eh0JYAN3hu0r9sCeNdjGFODdPWaNN-5v-NmQB63uOuMRAvgkODt/s320/69228.png" alt="SPMB SMK MUHIBA" className="w-52 sm:w-64 h-auto max-h-28 object-contain" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
             </a>
-            <button onClick={onLoginClick} className="hover:text-white transition-colors cursor-pointer">
-              Login Petugas & Siswa
-            </button>
+            <div className="flex flex-col items-center gap-4">
+              <div className="text-center">
+                <p className="text-2xl sm:text-3xl font-black tracking-tight">Follow US</p>
+                <p className="mt-1 text-[11px] sm:text-xs font-bold uppercase tracking-[0.25em] text-slate-800/70">Media Sosial Resmi SMK MUHIBA</p>
+              </div>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <a href="https://www.instagram.com/Instastemba" target="_blank" rel="noopener noreferrer" aria-label="Instagram SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl"><Instagram className="h-6 w-6" /></a>
+                <a href="https://www.youtube.com/@SMK_Muhammadiyah_Bawang" target="_blank" rel="noopener noreferrer" aria-label="YouTube SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl"><Youtube className="h-6 w-6" /></a>
+                <a href="https://www.tiktok.com/@smartschool17" target="_blank" rel="noopener noreferrer" aria-label="TikTok SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl">
+                  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true"><path d="M16.7 4.2c.6 1.8 1.8 3 3.5 3.4v3.1a8.2 8.2 0 0 1-3.5-1.1v5.8a5.6 5.6 0 1 1-5.6-5.6c.3 0 .7 0 1 .1v3.2a2.6 2.6 0 1 0 1.5 2.3V2.9h3.1c0 .5 0 .9 0 1.3Z"/></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="mt-8 pt-5 border-t border-black/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-semibold text-slate-900/70">
+            <p>© 2026 SPMB SMK MUHIBA | SMK Muhammadiyah Bawang by @hndx07. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              <a href="https://smkmuhiba.sch.id" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors flex items-center gap-1"><span>smkmuhiba.sch.id</span><ExternalLink className="w-3 h-3" /></a>
+              <button onClick={onLoginClick} className="hover:text-black transition-colors cursor-pointer">Login Petugas & Siswa</button>
+            </div>
           </div>
         </div>
       </footer>
