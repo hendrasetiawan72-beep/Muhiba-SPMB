@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronDown,
+  ChevronUp,
   BookOpen,
   ArrowRight,
   ArrowUp,
@@ -796,6 +797,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 }) => {
   const [showBackToTop, setShowBackToTop] = useState<boolean>(false);
 
+  // State untuk kontrol deskripsi jurusan (expand/collapse)
+  const [expandedJurusan, setExpandedJurusan] = useState<Record<string, boolean>>({
+    to: true,
+    tjkt: true,
+    akl: true,
+  });
+
+  const toggleJurusanDesc = (id: string) => {
+    setExpandedJurusan((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
   const [isYtMuted, setIsYtMuted] = useState<boolean>(true);
   const ytIframeRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -1311,11 +1326,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 4. KONSENTRASI KEAHLIAN (JURUSAN) */}
-      <section id="jurusan-section" className="py-20 lg:py-24 bg-white relative overflow-hidden scroll-mt-24 section-snap">
+      {/* ========================================================================= */}
+      {/* 4. KONSENTRASI KEAHLIAN (JURUSAN) - WARNA PUDAR & DESKRIPSI SEMBUNYI/TAMPIL */}
+      {/* ========================================================================= */}
+      <section id="jurusan-section" className="py-20 lg:py-24 bg-slate-50/60 relative overflow-hidden scroll-mt-24 section-snap">
         <motion.div 
           style={{ y: jurusanGlowY }}
-          className="absolute -right-32 top-1/3 w-96 h-96 bg-blue-100/60 rounded-full blur-3xl pointer-events-none will-change-transform"
+          className="absolute -right-32 top-1/3 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl pointer-events-none will-change-transform"
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -1341,103 +1358,207 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"
           >
+            
+            {/* 1. TEKNIK OTOMOTIF (TO) - Wana Merah Pudar */}
             <motion.div 
               id="jurusan-to" 
               variants={cardStaggerVariants}
-              whileHover={{ y: -8, transition: { duration: 0.25 } }}
-              className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 hover:shadow-2xl hover:border-amber-300 transition-all duration-300 flex flex-col group scroll-mt-24"
+              whileHover={{ y: -6, transition: { duration: 0.25 } }}
+              className="bg-rose-50/70 border border-rose-200/90 rounded-2xl p-7 shadow-xs hover:shadow-xl hover:border-rose-300 transition-all duration-300 flex flex-col group scroll-mt-24"
             >
-              <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 mb-6 group-hover:scale-110 group-hover:bg-amber-100 transition-all">
-                <Wrench className="w-8 h-8" />
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-14 h-14 rounded-2xl bg-rose-100/90 border border-rose-200 flex items-center justify-center text-rose-600 group-hover:scale-105 group-hover:bg-rose-200/80 transition-all">
+                  <Wrench className="w-7 h-7" />
+                </div>
+                <span className="text-xs font-bold text-rose-800 bg-rose-100/90 px-3 py-1 rounded-full border border-rose-200/70">
+                  Teknologi Mesin & TBSM
+                </span>
               </div>
 
-              <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-amber-600 transition-colors">
+              <h3 className="text-xl font-extrabold text-rose-950 mb-2 group-hover:text-rose-700 transition-colors">
                 Teknik Otomotif (TO)
               </h3>
 
-              <p className="text-sm text-slate-600 leading-relaxed flex-grow">
-                Pusat inovasi mesin dan otomotif! Jurusan TO membekali siswa dengan keahlian membongkar, merakit, dan menganalisis teknologi kendaraan bermotor terkini. Jadilah teknisi handal yang siap menguasai industri otomotif masa depan.
-              </p>
+              {/* Tombol Sembunyikan / Tampilkan Deskripsi */}
+              <button
+                type="button"
+                onClick={() => toggleJurusanDesc('to')}
+                className="mt-1 mb-3 inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900 transition-colors cursor-pointer self-start focus:outline-none"
+              >
+                <span>{expandedJurusan.to ? 'Sembunyikan Deskripsi' : 'Tampilkan Deskripsi'}</span>
+                <motion.span
+                  animate={{ rotate: expandedJurusan.to ? 180 : 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </motion.span>
+              </button>
 
-              <div className="mt-6 pt-5 border-t border-slate-200/80 flex items-center justify-between text-xs font-semibold">
-                <span className="text-amber-700 bg-amber-100/70 px-2.5 py-1 rounded">Teknologi Mesin & TBSM</span>
+              {/* Deskripsi dengan Animasi Slide Atas-Bawah */}
+              <AnimatePresence initial={false}>
+                {expandedJurusan.to && (
+                  <motion.div
+                    key="desc-to"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.35, ease: 'easeInOut' }}
+                    className="overflow-hidden"
+                  >
+                    <p className="text-sm text-rose-900/80 leading-relaxed pt-1 pb-2 font-normal">
+                      Pusat inovasi mesin dan otomotif! Jurusan TO membekali siswa dengan keahlian membongkar, merakit, dan menganalisis teknologi kendaraan bermotor terkini. Jadilah teknisi handal yang siap menguasai industri otomotif masa depan.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="mt-5 pt-4 border-t border-rose-200/70 flex items-center justify-end">
                 <button
                   onClick={onRegisterClick}
-                  className="text-blue-600 hover:text-blue-700 flex items-center gap-1 group/btn cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer"
                 >
-                  <span>Daftar Jurusan</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
+                  <span>Daftar Jurusan TO</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>
 
+            {/* 2. TEKNIK JARINGAN KOMPUTER & TELEKOMUNIKASI (TJKT) - Warna Biru Pudar */}
             <motion.div 
               id="jurusan-tjkt" 
               variants={cardStaggerVariants}
-              whileHover={{ y: -8, transition: { duration: 0.25 } }}
-              className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 hover:shadow-2xl hover:border-blue-300 transition-all duration-300 flex flex-col group scroll-mt-24"
+              whileHover={{ y: -6, transition: { duration: 0.25 } }}
+              className="bg-blue-50/70 border border-blue-200/90 rounded-2xl p-7 shadow-xs hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col group scroll-mt-24"
             >
-              <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200/80 flex items-center justify-center text-blue-600 mb-6 group-hover:scale-110 group-hover:bg-blue-100 transition-all">
-                <Cpu className="w-8 h-8" />
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-14 h-14 rounded-2xl bg-blue-100/90 border border-blue-200 flex items-center justify-center text-blue-600 group-hover:scale-105 group-hover:bg-blue-200/80 transition-all">
+                  <Cpu className="w-7 h-7" />
+                </div>
+                <span className="text-xs font-bold text-blue-800 bg-blue-100/90 px-3 py-1 rounded-full border border-blue-200/70">
+                  Mikrotik & Fiber Optic
+                </span>
               </div>
 
-              <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">
+              <h3 className="text-xl font-extrabold text-blue-950 mb-2 group-hover:text-blue-700 transition-colors">
                 Teknik Jaringan Komputer & Telekomunikasi (TJKT)
               </h3>
 
-              <p className="text-sm text-slate-600 leading-relaxed flex-grow">
-                Gerbang menuju dunia digital tanpa batas. Di TJKT, kamu akan menguasai infrastruktur jaringan, keamanan siber, dan teknologi fiber optik. Persiapkan dirimu menjadi arsitek jaringan yang menghubungkan dunia.
-              </p>
+              {/* Tombol Sembunyikan / Tampilkan Deskripsi */}
+              <button
+                type="button"
+                onClick={() => toggleJurusanDesc('tjkt')}
+                className="mt-1 mb-3 inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-900 transition-colors cursor-pointer self-start focus:outline-none"
+              >
+                <span>{expandedJurusan.tjkt ? 'Sembunyikan Deskripsi' : 'Tampilkan Deskripsi'}</span>
+                <motion.span
+                  animate={{ rotate: expandedJurusan.tjkt ? 180 : 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </motion.span>
+              </button>
 
-              <div className="mt-6 pt-5 border-t border-slate-200/80 flex items-center justify-between text-xs font-semibold">
-                <span className="text-blue-700 bg-blue-100/70 px-2.5 py-1 rounded">Mikrotik & Fiber Optic</span>
+              {/* Deskripsi dengan Animasi Slide Atas-Bawah */}
+              <AnimatePresence initial={false}>
+                {expandedJurusan.tjkt && (
+                  <motion.div
+                    key="desc-tjkt"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.35, ease: 'easeInOut' }}
+                    className="overflow-hidden"
+                  >
+                    <p className="text-sm text-blue-900/80 leading-relaxed pt-1 pb-2 font-normal">
+                      Gerbang menuju dunia digital tanpa batas. Di TJKT, kamu akan menguasai infrastruktur jaringan, keamanan siber, dan teknologi fiber optik. Persiapkan dirimu menjadi arsitek jaringan yang menghubungkan dunia.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="mt-5 pt-4 border-t border-blue-200/70 flex items-center justify-end">
                 <button
                   onClick={onRegisterClick}
-                  className="text-blue-600 hover:text-blue-700 flex items-center gap-1 group/btn cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer"
                 >
-                  <span>Daftar Jurusan</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
+                  <span>Daftar Jurusan TJKT</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>
 
+            {/* 3. AKUNTANSI DAN KEUANGAN LEMBAGA (AKL) - Warna Hijau Pudar */}
             <motion.div 
               id="jurusan-akl" 
               variants={cardStaggerVariants}
-              whileHover={{ y: -8, transition: { duration: 0.25 } }}
-              className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 hover:shadow-2xl hover:border-emerald-300 transition-all duration-300 flex flex-col group scroll-mt-24"
+              whileHover={{ y: -6, transition: { duration: 0.25 } }}
+              className="bg-emerald-50/70 border border-emerald-200/90 rounded-2xl p-7 shadow-xs hover:shadow-xl hover:border-emerald-300 transition-all duration-300 flex flex-col group scroll-mt-24"
             >
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 mb-6 group-hover:scale-110 group-hover:bg-emerald-100 transition-all">
-                <Calculator className="w-8 h-8" />
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100/90 border border-emerald-200 flex items-center justify-center text-emerald-600 group-hover:scale-105 group-hover:bg-emerald-200/80 transition-all">
+                  <Calculator className="w-7 h-7" />
+                </div>
+                <span className="text-xs font-bold text-emerald-800 bg-emerald-100/90 px-3 py-1 rounded-full border border-emerald-200/70">
+                  Fintech & Perbankan
+                </span>
               </div>
 
-              <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-emerald-600 transition-colors">
-                Akuntansi dan Keuangan Lembaga (AKL)
+              <h3 className="text-xl font-extrabold text-emerald-950 mb-2 group-hover:text-emerald-700 transition-colors">
+                Akuntansi & Keuangan Lembaga (AKL)
               </h3>
 
-              <p className="text-sm text-slate-600 leading-relaxed flex-grow">
-                Mencetak pahlawan finansial masa depan. Jurusan AKL melatih ketelitian dan keahlianmu dalam mengelola keuangan, perpajakan, dan akuntansi digital. Raih karir cemerlang di sektor perbankan maupun startup bisnis.
-              </p>
+              {/* Tombol Sembunyikan / Tampilkan Deskripsi */}
+              <button
+                type="button"
+                onClick={() => toggleJurusanDesc('akl')}
+                className="mt-1 mb-3 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900 transition-colors cursor-pointer self-start focus:outline-none"
+              >
+                <span>{expandedJurusan.akl ? 'Sembunyikan Deskripsi' : 'Tampilkan Deskripsi'}</span>
+                <motion.span
+                  animate={{ rotate: expandedJurusan.akl ? 180 : 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </motion.span>
+              </button>
 
-              <div className="mt-6 pt-5 border-t border-slate-200/80 flex items-center justify-between text-xs font-semibold">
-                <span className="text-emerald-700 bg-emerald-100/70 px-2.5 py-1 rounded">Fintech & Perbankan</span>
+              {/* Deskripsi dengan Animasi Slide Atas-Bawah */}
+              <AnimatePresence initial={false}>
+                {expandedJurusan.akl && (
+                  <motion.div
+                    key="desc-akl"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.35, ease: 'easeInOut' }}
+                    className="overflow-hidden"
+                  >
+                    <p className="text-sm text-emerald-900/80 leading-relaxed pt-1 pb-2 font-normal">
+                      Mencetak pahlawan finansial masa depan. Jurusan AKL melatih ketelitian dan keahlianmu dalam mengelola keuangan, perpajakan, dan akuntansi digital. Raih karir cemerlang di sektor perbankan maupun startup bisnis.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="mt-5 pt-4 border-t border-emerald-200/70 flex items-center justify-end">
                 <button
                   onClick={onRegisterClick}
-                  className="text-blue-600 hover:text-blue-700 flex items-center gap-1 group/btn cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer"
                 >
-                  <span>Daftar Jurusan</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
+                  <span>Daftar Jurusan AKL</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>
+
           </motion.div>
 
           <div className="mt-12 text-center">
             <button
               onClick={() => scrollToSection('fasilitas-section')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/90 text-xs font-bold transition-all cursor-pointer group"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/90 text-xs font-bold transition-all cursor-pointer group shadow-xs hover:shadow-md"
               title="Lanjut ke Bagian Fasilitas & Workshop"
             >
               <span>Lanjut ke Fasilitas & Workshop Modern</span>
