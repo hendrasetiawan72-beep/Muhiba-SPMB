@@ -233,8 +233,13 @@ import {
   History,
   RefreshCw,
   ChevronDown,
+  Users,
+  Clock,
+  CheckCircle2,
+  GraduationCap,
 } from 'lucide-react';
 import { Student, User, StatusPendaftaran, JurusanType, BerkasItem } from '../types/database';
+import { motion, useReducedMotion } from 'motion/react';
 import { dbService } from '../services/supabase';
 const AdminResetPasswordModal = React.lazy(() =>
   import('./AdminResetPasswordModal').then((m) => ({ default: m.AdminResetPasswordModal }))
@@ -866,6 +871,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onLogout,
   onNavigateHome,
 }) => {
+  const shouldReduceMotion = useReducedMotion();
   const PAGE_SIZE = 25;
   const [students, setStudents] = useState<Student[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -1409,73 +1415,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
-      {/* Header Admin */}
-      <header className="bg-gradient-to-r from-blue-800 via-indigo-800 to-purple-900 text-white border-b border-indigo-950 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-md">
+      {/* Header Admin - Operational Panel Style */}
+      <header className="bg-[#151329] text-white border-b border-indigo-950/80 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-extrabold shadow ring-2 ring-white/20">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white font-extrabold shadow ring-1 ring-white/20">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-sm font-extrabold tracking-wide uppercase text-white drop-shadow-xs">
-              PANEL ADMINISTRATOR PPDB
+            <h1 className="text-xs sm:text-sm font-black tracking-wider uppercase text-white">
+              PANEL OPERASIONAL SPMB
             </h1>
-            <p className="text-[11px] text-blue-200 font-medium">SMK Muhammadiyah Bawang (SMK Muhiba)</p>
+            <p className="text-[10px] text-indigo-300 font-medium">SMK Muhammadiyah Bawang</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 border border-emerald-400/40 rounded-full text-xs font-bold text-emerald-200 backdrop-blur-xs">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <span className="text-[11px] tracking-wide">Terhubung</span>
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <button
+            onClick={onNavigateHome}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-950/70 hover:bg-indigo-900/90 border border-indigo-800/60 text-indigo-200 text-xs font-semibold transition-all"
+            title="Buka Halaman Utama PPDB"
+          >
+            <span>Lihat Tampilan Web</span>
+            <ExternalLink className="w-3 h-3" />
+          </button>
+
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-950/70 border border-indigo-800/40 text-xs">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold text-[11px] flex items-center justify-center shadow-xs">
+              A
+            </div>
+            <div className="text-left hidden sm:block">
+              <div className="text-[11px] font-bold text-white leading-tight">Admin PPDB</div>
+              <div className="text-[9px] text-indigo-300 uppercase tracking-wider font-semibold">ADMINISTRATOR</div>
+            </div>
           </div>
 
           <button
-            onClick={handleExportJSON}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
-            title="Download data pendaftar format JSON"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download Data JSON</span>
-          </button>
-
-          <a
-            href="https://www.smkmuhiba.sch.id"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-1.5 text-xs text-blue-100 hover:text-white transition-colors hidden sm:inline-flex items-center gap-1 font-bold"
-          >
-            <span>Web Sekolah</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-
-          <button
-            onClick={onNavigateHome}
-            className="px-3 py-1.5 text-xs text-blue-100 hover:text-white font-semibold transition-colors hidden sm:inline"
-          >
-            Beranda PPDB
-          </button>
-
-          <button
             onClick={onLogout}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-black rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-black rounded-xl shadow-sm transition-all cursor-pointer"
             title="Keluar dari Panel Admin"
           >
-            <LogOut className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>LOGOUT</span>
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Logout</span>
           </button>
         </div>
       </header>
 
       {/* Main Admin Viewport */}
       <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-8 space-y-6">
-        {/* Tab */}
-        <div role="tablist" className="inline-flex gap-1 bg-white p-1.5 rounded-xl border border-slate-200/80 shadow-sm">
+        {/* Tab Segmented Control */}
+        <div role="tablist" className="inline-flex gap-1 bg-slate-200/80 p-1.5 rounded-2xl border border-slate-200 shadow-xs">
           <button
             role="tab"
             aria-selected={activeTab === 'pendaftar'}
             onClick={() => setActiveTab('pendaftar')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${
-              activeTab === 'pendaftar' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'pendaftar' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Data Pendaftar
@@ -1484,8 +1478,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             role="tab"
             aria-selected={activeTab === 'log'}
             onClick={() => setActiveTab('log')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1.5 ${
-              activeTab === 'log' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 ${
+              activeTab === 'log' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <History className="w-3.5 h-3.5" />
@@ -1497,52 +1491,198 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {activeTab === 'pendaftar' && (
           <>
-            {/* KPI */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
-                <p className="text-[11px] font-semibold text-slate-500 uppercase">Total Pendaftar</p>
-                <p className="text-2xl font-black text-slate-900 mt-1 tabular-nums">{stats.total}</p>
-              </div>
-
-              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
-                <p className="text-[11px] font-semibold text-amber-600 uppercase">Teknik Otomotif (TO)</p>
-                <p className="text-2xl font-black text-amber-600 mt-1 tabular-nums">
-                  {stats.to}
+            {/* HERO BANNER CARD - Operational Panel Style */}
+            <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="relative z-10 space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold text-white">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Panel Kontrol SPMB</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                  Dashboard Operasional SPMB
+                </h2>
+                <p className="text-xs sm:text-sm text-indigo-100 font-medium">
+                  SMK Muhammadiyah Bawang • Rekapitulasi Data & Verifikasi Real-Time
                 </p>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
-                <p className="text-[11px] font-semibold text-blue-600 uppercase">TJKT</p>
-                <p className="text-2xl font-black text-blue-600 mt-1 tabular-nums">
-                  {stats.tjkt}
-                </p>
-              </div>
-
-              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
-                <p className="text-[11px] font-semibold text-emerald-600 uppercase">AKL</p>
-                <p className="text-2xl font-black text-emerald-600 mt-1 tabular-nums">
-                  {stats.akl}
-                </p>
-              </div>
-
-              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm col-span-2 md:col-span-1">
-                <p className="text-[11px] font-semibold text-purple-600 uppercase">Diterima / Terverifikasi</p>
-                <p className="text-2xl font-black text-purple-600 mt-1 tabular-nums">
-                  {stats.lolos}
-                </p>
+              <div className="relative z-10 flex flex-wrap items-center gap-3">
+                <motion.button
+                  whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
+                  whileHover={shouldReduceMotion ? undefined : { scale: 1.02 }}
+                  onClick={handleExportCSV}
+                  className="px-5 py-3.5 bg-white hover:bg-slate-50 active:scale-[0.97] text-slate-900 rounded-2xl text-xs sm:text-sm font-bold shadow-lg transition-all flex items-center gap-2.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  title="Unduh data pendaftar format CSV"
+                >
+                  <Download className="w-4 h-4 text-indigo-600" />
+                  <span>Download Rekap CSV</span>
+                </motion.button>
+                <motion.button
+                  whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
+                  whileHover={shouldReduceMotion ? undefined : { scale: 1.02 }}
+                  onClick={handleExportJSON}
+                  className="px-4 py-3.5 bg-white/15 hover:bg-white/25 active:scale-[0.97] text-white border border-white/20 rounded-2xl text-xs sm:text-sm font-bold backdrop-blur-sm transition-all flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  title="Unduh berkas cadangan format JSON"
+                >
+                  <Download className="w-4 h-4 text-white" />
+                  <span>Backup JSON</span>
+                </motion.button>
               </div>
             </div>
 
-            {/* Filter Bar */}
-            <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+            {/* 4 KPI CARDS (Solid Colors with Micro-interactions & Stagger) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Card 1: Biru Solid (Total Pendaftar) */}
+              <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: shouldReduceMotion ? 0 : 0.03 }}
+                whileHover={shouldReduceMotion ? undefined : { y: -3 }}
+                className="bg-blue-600 rounded-3xl p-6 text-white shadow-md hover:shadow-lg relative overflow-hidden flex flex-col justify-between min-h-[148px] transition-shadow duration-200"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white/90 uppercase tracking-wider">Total Pendaftar</span>
+                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-4xl sm:text-5xl font-black tracking-tight">{stats.total}</div>
+                  <p className="text-xs text-white/80 mt-1">Siswa terdaftar di sistem</p>
+                </div>
+                <Users className="absolute -right-4 -bottom-4 w-28 h-28 text-white/10 pointer-events-none" />
+              </motion.div>
+
+              {/* Card 2: Kuning/Amber Solid (Menunggu Verifikasi) */}
+              <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: shouldReduceMotion ? 0 : 0.07 }}
+                whileHover={shouldReduceMotion ? undefined : { y: -3 }}
+                className="bg-amber-500 rounded-3xl p-6 text-slate-950 shadow-md hover:shadow-lg relative overflow-hidden flex flex-col justify-between min-h-[148px] transition-shadow duration-200"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-900 uppercase tracking-wider">Menunggu Verifikasi</span>
+                  <div className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-slate-900" />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-4xl sm:text-5xl font-black tracking-tight">{Math.max(0, stats.total - stats.lolos)}</div>
+                  <motion.button
+                    whileTap={shouldReduceMotion ? undefined : { scale: 0.95 }}
+                    onClick={() => { setFilterStatus('Menunggu Verifikasi'); setPage(1); }}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/10 hover:bg-black/20 active:scale-95 text-xs font-bold text-slate-900 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+                  >
+                    <span>Periksa berkas &rarr;</span>
+                  </motion.button>
+                </div>
+                <Clock className="absolute -right-4 -bottom-4 w-28 h-28 text-black/10 pointer-events-none" />
+              </motion.div>
+
+              {/* Card 3: Hijau/Emerald Solid (Diterima / Terverifikasi) */}
+              <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: shouldReduceMotion ? 0 : 0.11 }}
+                whileHover={shouldReduceMotion ? undefined : { y: -3 }}
+                className="bg-emerald-600 rounded-3xl p-6 text-white shadow-md hover:shadow-lg relative overflow-hidden flex flex-col justify-between min-h-[148px] transition-shadow duration-200"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white/90 uppercase tracking-wider">Diterima / Lolos</span>
+                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-4xl sm:text-5xl font-black tracking-tight">{stats.lolos}</div>
+                  <p className="text-xs text-white/80 mt-1">Siswa lolos administrasi</p>
+                </div>
+                <CheckCircle2 className="absolute -right-4 -bottom-4 w-28 h-28 text-white/10 pointer-events-none" />
+              </motion.div>
+
+              {/* Card 4: Merah/Rose Solid (Pilihan Jurusan) */}
+              <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: shouldReduceMotion ? 0 : 0.15 }}
+                whileHover={shouldReduceMotion ? undefined : { y: -3 }}
+                className="bg-rose-600 rounded-3xl p-6 text-white shadow-md hover:shadow-lg relative overflow-hidden flex flex-col justify-between min-h-[148px] transition-shadow duration-200"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white/90 uppercase tracking-wider">Pilihan Jurusan</span>
+                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                    <GraduationCap className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-2xl sm:text-3xl font-black tracking-tight">
+                    TO {stats.to} · TJKT {stats.tjkt} · AKL {stats.akl}
+                  </div>
+                  <p className="text-xs text-white/80 mt-1">Distribusi pilihan keahlian</p>
+                </div>
+                <GraduationCap className="absolute -right-4 -bottom-4 w-28 h-28 text-white/10 pointer-events-none" />
+              </motion.div>
+            </div>
+
+            {/* STATUS PIPELINE HORIZONTAL CHIPS & STATUS BANNER */}
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 sm:p-7 space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-1.5 h-5 bg-indigo-600 rounded-full" />
+                  <h3 className="font-extrabold text-slate-800 text-sm">Status Pendaftaran & Kuota Jurusan</h3>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-100">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Live
+                  </span>
+                </div>
+
+                <div className="text-xs text-slate-500 font-medium">
+                  Total <span className="font-bold text-slate-700">{totalCount}</span> pendaftar tersaring
+                </div>
+              </div>
+
+              {/* Horizontal Status Chips (Pastel Colors as in reference) */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="bg-blue-50/70 border border-blue-100 rounded-2xl p-4 text-center">
+                  <span className="text-[11px] font-bold text-blue-800 block">Total Masuk</span>
+                  <span className="text-2xl font-black text-blue-700 mt-1 block">{stats.total}</span>
+                </div>
+                <div className="bg-amber-50/70 border border-amber-100 rounded-2xl p-4 text-center">
+                  <span className="text-[11px] font-bold text-amber-800 block">Teknik Otomotif</span>
+                  <span className="text-2xl font-black text-amber-700 mt-1 block">{stats.to}</span>
+                </div>
+                <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 text-center">
+                  <span className="text-[11px] font-bold text-indigo-800 block">TJKT</span>
+                  <span className="text-2xl font-black text-indigo-700 mt-1 block">{stats.tjkt}</span>
+                </div>
+                <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-4 text-center">
+                  <span className="text-[11px] font-bold text-emerald-800 block">AKL</span>
+                  <span className="text-2xl font-black text-emerald-700 mt-1 block">{stats.akl}</span>
+                </div>
+                <div className="bg-purple-50/70 border border-purple-100 rounded-2xl p-4 text-center col-span-2 sm:col-span-1">
+                  <span className="text-[11px] font-bold text-purple-800 block">Diterima</span>
+                  <span className="text-2xl font-black text-purple-700 mt-1 block">{stats.lolos}</span>
+                </div>
+              </div>
+
+              {/* Calm Status Banner / Empty-state Style */}
+              <div className="bg-emerald-50/60 border border-emerald-100/80 rounded-2xl p-3.5 text-center text-xs text-emerald-800 flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Semua data pendaftaran aktif tersinkronisasi secara real-time dengan server cloud.</span>
+              </div>
+            </div>
+
+            {/* Filter Bar & Controls */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="relative w-full md:w-80">
-                <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari NIK, Nama, No. Daftar, SMP..."
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50"
                 />
               </div>
 
@@ -1553,7 +1693,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <select
                     value={filterJurusan}
                     onChange={(e) => { setFilterJurusan(e.target.value); setPage(1); }}
-                    className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-md bg-white font-semibold"
+                    className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="ALL">Semua Jurusan</option>
                     <option value="TO">Teknik Otomotif (TO)</option>
@@ -1567,7 +1707,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <select
                     value={filterStatus}
                     onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
-                    className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-md bg-white font-semibold"
+                    className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="ALL">Semua Status</option>
                     <option value="Berkas Fisik">Berkas Fisik</option>
@@ -1581,37 +1721,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <button
                   onClick={refreshAll}
                   disabled={isLoadingList}
-                  className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-md text-xs font-bold transition-colors disabled:opacity-50"
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
                   title="Muat ulang data pendaftar"
                 >
-                  {isLoadingList ? 'Memuat...' : 'Muat Ulang'}
-                </button>
-
-                <button
-                  onClick={handleExportCSV}
-                  className="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-md text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
-                  title="Unduh data pendaftar format CSV/Excel"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Export CSV</span>
-                </button>
-
-                <button
-                  onClick={handleExportJSON}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
-                  title="Unduh berkas cadangan data pendaftar format JSON"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download Data JSON</span>
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingList ? 'animate-spin' : ''}`} />
+                  <span>{isLoadingList ? 'Memuat...' : 'Muat Ulang'}</span>
                 </button>
               </div>
             </div>
 
-            {/* Tabel Pendaftar */}
-            <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+            {/* Tabel Pendaftar Container */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                  <thead className="bg-slate-50/80 border-b border-slate-100 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
                     <tr>
                       <th className="px-4 py-3.5">No. Pendaftaran</th>
                       <th className="px-4 py-3.5">NIK Siswa</th>
