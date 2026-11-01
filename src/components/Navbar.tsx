@@ -38,7 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [jurusanDropdownOpen, setJurusanDropdownOpen] = useState(false);
 
   const logoUrl =
-    'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgzWdtCjCcX2chJuhLX_26N5MmkVK-1SkyO7kgXznQQJPQa6_TB_EJzD1WWpztg7yX9RBRE7rGn0t2Z3FdG06mwwT6pQix8t6vnlcOBm_EgGl9z0jeJemJkppP0KIIjkXGksQvaCLh2dz-gOF6a2H213VQBL6Am8Elhmd76OOnphogk-EoTTbkYbg0TQJhv/s512/34690.png';
+    'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEitrsbiiNxOvmcHcN42oOETm0n2rp4n_UYCdRDLH05Z0fD7mLw5rNXwVxft7SBrIMQyi3LSs9DUa-v6QZBrKjE8o9G7RQ171bu0cirIUmWWD6E8wxn9Ua-t61RbRENkAb-U9bhBgdtq-eh0JYAN3hu0r9sCeNdjGFODdPWaNN-5v-NmQB63uOuMRAvgkODt/s320/69228.png';
 
   const navigateTo = (view: 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard', sectionId?: string) => {
     setActiveView(view);
@@ -70,20 +70,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <img
               src={logoUrl}
-              alt="Logo SMK Muhammadiyah Bawang"
-              className="w-10 h-10 lg:w-11 lg:h-11 object-contain drop-shadow"
+              alt="SPMB SMK MUHIBA"
+              className="w-36 sm:w-44 lg:w-52 h-auto max-h-12 lg:max-h-14 object-contain object-left drop-shadow-md"
               referrerPolicy="no-referrer"
               loading="eager"
               decoding="async"
             />
-            <div className="flex flex-col">
-              <span className="font-extrabold text-sm lg:text-base tracking-wider text-white flex items-center gap-1.5">
-                SPMB <span className="text-yellow-300">SMK MUHIBA</span>
-              </span>
-              <span className="text-[10px] lg:text-[11px] text-blue-200 tracking-tight font-medium">
-                SMK Muhammadiyah Bawang
-              </span>
-            </div>
+            <span className="sr-only">SPMB SMK MUHIBA — SMK Muhammadiyah Bawang</span>
           </div>
 
           {/* ZONE 2: DESKTOP NAVIGATION (Hidden on mobile/tablet) */}
