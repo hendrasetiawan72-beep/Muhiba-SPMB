@@ -1806,12 +1806,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-            <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-white/80 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-orange-400 text-2xl font-black text-white shadow-xl transition-transform duration-300 hover:-translate-y-1 hover:scale-105">◎</a>
-            <a href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-white/80 bg-red-600 text-xl font-black text-white shadow-xl transition-transform duration-300 hover:-translate-y-1 hover:scale-105">▶</a>
-            <a href="https://www.tiktok.com/" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-white/80 bg-slate-950 text-xl font-black text-white shadow-xl transition-transform duration-300 hover:-translate-y-1 hover:scale-105">♪</a>
-            <a href="https://www.smkmuhiba.sch.id" target="_blank" rel="noopener noreferrer" className="ml-0 rounded-full bg-slate-950 px-5 py-3 text-xs font-black text-white shadow-xl transition-transform duration-300 hover:-translate-y-1 sm:ml-2">
-              smkmuhiba.sch.id <ExternalLink className="ml-1 inline h-3 w-3" />
+          <div className="flex items-center gap-3 sm:gap-4">
+                <a href="https://www.instagram.com/Instastemba" target="_blank" rel="noopener noreferrer" aria-label="Instagram SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl"><Instagram className="h-6 w-6" /></a>
+                <a href="https://www.youtube.com/@SMK_Muhammadiyah_Bawang" target="_blank" rel="noopener noreferrer" aria-label="YouTube SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl"><Youtube className="h-6 w-6" /></a>
+                <a href="https://www.tiktok.com/@smartschool17" target="_blank" rel="noopener noreferrer" aria-label="TikTok SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl">
+                  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true"><path d="M16.7 4.2c.6 1.8 1.8 3 3.5 3.4v3.1a8.2 8.2 0 0 1-3.5-1.1v5.8a5.6 5.6 0 1 1-5.6-5.6c.3 0 .7 0 1 .1v3.2a2.6 2.6 0 1 0 1.5 2.3V2.9h3.1c0 .5 0 .9 0 1.3Z"/></svg>
+                </a>
             </a>
           </div>
         </div>
