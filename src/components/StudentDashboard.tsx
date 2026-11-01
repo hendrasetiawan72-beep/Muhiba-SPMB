@@ -721,7 +721,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             <div className="h-[61px] px-4 bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white border-b border-indigo-900/40 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2.5">
                 <img
-                  src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgzWdtCjCcX2chJuhLX_26N5MmkVK-1SkyO7kgXznQQJPQa6_TB_EJzD1WWpztg7yX9RBRE7rGn0t2Z3FdG06mwwT6pQix8t6vnlcOBm_EgGl9z0jeJemJkppP0KIIjkXGksQvaCLh2dz-gOF6a2H213VQBL6Am8Elhmd76OOnphogk-EoTTbkYbg0TQJhv/s512/34690.png"
+                  src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEitrsbiiNxOvmcHcN42oOETm0n2rp4n_UYCdRDLH05Z0fD7mLw5rNXwVxft7SBrIMQyi3LSs9DUa-v6QZBrKjE8o9G7RQ171bu0cirIUmWWD6E8wxn9Ua-t61RbRENkAb-U9bhBgdtq-eh0JYAN3hu0r9sCeNdjGFODdPWaNN-5v-NmQB63uOuMRAvgkODt/s320/69228.png"
                   alt="Logo"
                   className="w-8 h-8 object-contain drop-shadow"
                 />
