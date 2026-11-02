@@ -136,24 +136,21 @@ export const Navbar: React.FC<NavbarProps> = ({
       <header className="ui-header z-50">
         <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
 
-          {/* Brand — hanya logo + judul, tanpa keterangan tambahan */}
+          {/* Brand — hanya logo (tanpa teks), ukuran dioptimalkan */}
           <button
             type="button"
             onClick={() => navigateTo('home')}
-            className="flex min-w-0 items-center gap-3 rounded-xl py-1 pr-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+            className="flex shrink-0 items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             aria-label="SPMB SMK Muhiba, ke beranda"
           >
             <img
               src={LOGO_URL}
               alt="Logo SMK Muhammadiyah Bawang"
-              className="h-11 w-11 shrink-0 object-contain drop-shadow-md sm:h-12 sm:w-12"
+              className="h-12 w-auto max-h-12 object-contain drop-shadow-md sm:h-14 sm:max-h-14"
               referrerPolicy="no-referrer"
               loading="eager"
               decoding="async"
             />
-            <span className="min-w-0 truncate text-[0.95rem] font-extrabold tracking-tight text-white sm:text-base">
-              SPMB SMK MUHIBA
-            </span>
           </button>
 
           {/* Navigasi desktop */}
@@ -304,7 +301,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   Login
                 </button>
-                {/* Daftar Sekarang → merah (bukan putih) */}
+                {/* Daftar Sekarang → merah */}
                 <button
                   type="button"
                   onClick={() => navigateTo('portal')}
@@ -333,7 +330,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Menu ponsel/tablet: melayang di bawah header */}
+        {/* Menu ponsel/tablet */}
         <AnimatePresence>
           {menuOpen && (
             <motion.div
@@ -406,7 +403,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </>
                   ) : (
                     <div className="flex flex-col gap-2.5 sm:hidden">
-                      {/* Tombol daftar mobile juga merah */}
                       <button
                         type="button"
                         onClick={() => navigateTo('portal')}
