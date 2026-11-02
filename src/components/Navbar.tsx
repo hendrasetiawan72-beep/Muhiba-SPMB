@@ -128,12 +128,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   const linkIdle = 'text-white/80 hover:bg-white/10 hover:text-white';
   const linkActive = 'bg-white/15 text-white';
 
+  // Mobile menu mengikuti warna navbar, bukan putih
   const mobileRow =
-    'flex h-12 w-full items-center justify-between rounded-2xl px-4 text-left text-[0.95rem] font-medium text-slate-700 transition-colors active:bg-indigo-50 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500';
+    'flex h-12 w-full items-center justify-between rounded-2xl px-4 text-left text-[0.95rem] font-medium text-white/90 transition-colors active:bg-white/15 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30';
 
   return (
     <>
-      <header className="ui-header z-50">
+      <header className="ui-header !bg-gradient-to-r !from-blue-700 !via-indigo-700 !to-violet-600 z-50">
         <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
 
           {/* Brand — hanya logo (tanpa teks), ukuran dioptimalkan */}
@@ -341,31 +342,31 @@ export const Navbar: React.FC<NavbarProps> = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-x-0 top-full max-h-[calc(100dvh_-_4.25rem)] overflow-y-auto rounded-b-[2rem] bg-white px-3 pb-5 pt-3 shadow-[0_40px_60px_-24px_rgba(30,27,75,.55)] lg:hidden"
+              className="absolute inset-x-0 top-full max-h-[calc(100dvh_-_4.25rem)] overflow-y-auto rounded-b-[2rem] !bg-gradient-to-b !from-indigo-700 !via-indigo-800 !to-violet-800 px-3 pb-5 pt-3 shadow-[0_40px_60px_-24px_rgba(30,27,75,.55)] lg:hidden"
             >
               <div className="mx-auto max-w-xl space-y-1">
                 <button type="button" onClick={() => navigateTo('home')} className={mobileRow}>
                   <span>Beranda</span>
-                  <ChevronRight className="h-4 w-4 text-slate-300" />
+                  <ChevronRight className="h-4 w-4 text-white/50" />
                 </button>
                 <button type="button" onClick={() => navigateTo('home', 'profil-sekolah')} className={mobileRow}>
                   <span>Profil Sekolah</span>
-                  <ChevronRight className="h-4 w-4 text-slate-300" />
+                  <ChevronRight className="h-4 w-4 text-white/50" />
                 </button>
                 <button type="button" onClick={() => navigateTo('home', 'fasilitas-section')} className={mobileRow}>
                   <span>Fasilitas & Gedung</span>
-                  <ChevronRight className="h-4 w-4 text-slate-300" />
+                  <ChevronRight className="h-4 w-4 text-white/50" />
                 </button>
                 <button type="button" onClick={() => navigateTo('home', 'alur-pendaftaran')} className={mobileRow}>
                   <span>Alur Pendaftaran</span>
-                  <ChevronRight className="h-4 w-4 text-slate-300" />
+                  <ChevronRight className="h-4 w-4 text-white/50" />
                 </button>
                 <button type="button" onClick={() => navigateTo('home', 'kontak-section')} className={mobileRow}>
                   <span>Hubungi Kami</span>
-                  <ChevronRight className="h-4 w-4 text-slate-300" />
+                  <ChevronRight className="h-4 w-4 text-white/50" />
                 </button>
 
-                <p className="px-4 pb-1 pt-3 text-xs font-semibold text-slate-400">Jurusan</p>
+                <p className="px-4 pb-1 pt-3 text-xs font-semibold text-white/55">Jurusan</p>
                 {JURUSAN_MENU.map((j) => (
                   <button
                     key={j.id}
@@ -377,11 +378,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <span className={`h-2.5 w-2.5 rounded-full ${j.dot}`} />
                       <span>{j.mobile}</span>
                     </span>
-                    <ChevronRight className="h-4 w-4 text-slate-300" />
+                    <ChevronRight className="h-4 w-4 text-white/50" />
                   </button>
                 ))}
 
-                <div className="space-y-2.5 border-t border-slate-100 pt-4">
+                <div className="space-y-2.5 border-t border-white/15 pt-4">
                   {currentUser ? (
                     <>
                       <button
@@ -396,7 +397,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <button
                         type="button"
                         onClick={onLogout}
-                        className="flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                        className="flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl text-sm font-semibold text-white/90 transition-colors hover:bg-white/10"
                       >
                         Keluar Akun
                       </button>
@@ -417,7 +418,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         onClick={() => navigateTo('login')}
                         onTouchStart={onPreloadLogin}
                         onMouseEnter={onPreloadLogin}
-                        className="flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl bg-indigo-50 text-sm font-semibold text-indigo-700 transition-transform active:scale-[0.97]"
+                        className="flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold text-white ring-1 ring-white/15 transition-transform active:scale-[0.97]"
                       >
                         Login Siswa
                       </button>
