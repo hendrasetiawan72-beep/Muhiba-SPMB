@@ -1,13 +1,3 @@
-Berikut adalah pembaruan kode lengkap untuk Landing Page SPMB SMK Muhammadiyah Bawang, dengan pembaruan khusus pada bagian Konsentrasi Keahlian (Jurusan):
-Perubahan & Peningkatan:
- * Warna Pudar (Faded Theme) per Jurusan:
-   * Teknik Otomotif (TO): Skema Merah Pudar (Soft Red / Rose).
-   * Teknik Jaringan Komputer & Telekomunikasi (TJKT): Skema Biru Pudar (Soft Blue / Sky).
-   * Akuntansi dan Keuangan Lembaga (AKL): Skema Hijau Pudar (Soft Green / Emerald).
- * Fitur Sembunyikan & Tampilkan Deskripsi (Collapsible):
-   * Ditambahkan tombol toggle "Lihat Deskripsi" / "Sembunyikan Deskripsi" lengkap dengan ikon indikator panah.
- * Efek Slide Atas-Bawah Interaktif & Responsif:
-   * Menggunakan motion.div dan AnimatePresence dari Framer Motion untuk animasi expand/collapse yang mulus dan intuitif di semua resolusi layar (HP hingga Desktop).
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { LucideIcon } from 'lucide-react';
