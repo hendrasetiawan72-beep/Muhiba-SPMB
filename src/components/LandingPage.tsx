@@ -15,7 +15,6 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronDown,
-  ChevronUp,
   BookOpen,
   ArrowRight,
   ArrowUp,
@@ -36,7 +35,10 @@ import {
   AlertTriangle,
   Instagram,
   Youtube,
-  Code2
+  Code2,
+  Sparkles,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 // ===========================================================================
@@ -797,11 +799,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 }) => {
   const [showBackToTop, setShowBackToTop] = useState<boolean>(false);
 
-  // State untuk kontrol deskripsi jurusan (expand/collapse)
+  // State untuk kontrol deskripsi jurusan (Default: TERSEMBUNYI untuk semua jurusan)
   const [expandedJurusan, setExpandedJurusan] = useState<Record<string, boolean>>({
-    to: true,
-    tjkt: true,
-    akl: true,
+    to: false,
+    tjkt: false,
+    akl: false,
   });
 
   const toggleJurusanDesc = (id: string) => {
@@ -1327,12 +1329,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ========================================================================= */}
-      {/* 4. KONSENTRASI KEAHLIAN (JURUSAN) - WARNA PUDAR & DESKRIPSI SEMBUNYI/TAMPIL */}
+      {/* 4. KONSENTRASI KEAHLIAN (JURUSAN) - DESAIN DASHBOARD MODERN & KONTROL VIEW */}
       {/* ========================================================================= */}
-      <section id="jurusan-section" className="py-20 lg:py-24 bg-slate-50/60 relative overflow-hidden scroll-mt-24 section-snap">
+      <section id="jurusan-section" className="py-20 lg:py-24 bg-gradient-to-b from-slate-50 via-slate-100/70 to-blue-50/40 relative overflow-hidden scroll-mt-24 section-snap">
         <motion.div 
           style={{ y: jurusanGlowY }}
-          className="absolute -right-32 top-1/3 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl pointer-events-none will-change-transform"
+          className="absolute -right-32 top-1/3 w-96 h-96 bg-blue-200/40 rounded-full blur-3xl pointer-events-none will-change-transform"
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -1343,13 +1345,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             transition={{ duration: 0.55 }}
             className="text-center max-w-2xl mx-auto mb-16"
           >
-            <span className="text-xs font-bold text-blue-700 tracking-wider uppercase">JURUSAN</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              Program Unggalan
+            </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1">
               Konsentrasi <span className="text-blue-600">Keahlian</span>
             </h2>
             <div className="w-16 h-1 bg-blue-600 mx-auto mt-3 rounded-full" />
-            <p className="text-sm text-slate-600 mt-4">
-              Pilihan program keahlian unggulan berbasis kebutuhan revolusi industri modern dan digitalisasi global.
+            <p className="text-sm text-slate-600 mt-4 leading-relaxed">
+              Klik <span className="font-semibold text-slate-800">"Lihat Detail Deskripsi"</span> untuk mengeksplorasi kurikulum dan profil lengkap tiap konsentrasi keahlian.
             </p>
           </motion.div>
 
@@ -1361,193 +1366,259 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"
           >
             
-            {/* 1. TEKNIK OTOMOTIF (TO) - Wana Merah Pudar */}
+            {/* 1. TEKNIK OTOMOTIF (TO) - Merah Pudar Dashboard Style */}
             <motion.div 
               id="jurusan-to" 
               variants={cardStaggerVariants}
-              whileHover={{ y: -6, transition: { duration: 0.25 } }}
-              className="bg-rose-50/70 border border-rose-200/90 rounded-2xl p-7 shadow-xs hover:shadow-xl hover:border-rose-300 transition-all duration-300 flex flex-col group scroll-mt-24"
+              whileHover={{ y: -8, scale: 1.01, transition: { duration: 0.25 } }}
+              className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-rose-50/90 via-rose-100/70 to-rose-200/50 border border-rose-200/90 p-7 shadow-lg hover:shadow-2xl hover:border-rose-400 transition-all duration-300 flex flex-col group scroll-mt-24"
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-14 h-14 rounded-2xl bg-rose-100/90 border border-rose-200 flex items-center justify-center text-rose-600 group-hover:scale-105 group-hover:bg-rose-200/80 transition-all">
+              {/* Background Watermark Icon (Estetik khas dashboard referensi) */}
+              <Wrench className="absolute -bottom-8 -right-8 w-44 h-44 text-rose-500/10 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700 ease-out pointer-events-none" />
+
+              {/* Tag Header */}
+              <div className="flex items-center justify-between mb-5 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-white/90 shadow-md border border-rose-200 flex items-center justify-center text-rose-600 group-hover:scale-110 group-hover:bg-rose-600 group-hover:text-white transition-all duration-300">
                   <Wrench className="w-7 h-7" />
                 </div>
-                <span className="text-xs font-bold text-rose-800 bg-rose-100/90 px-3 py-1 rounded-full border border-rose-200/70">
+                <span className="text-[11px] font-extrabold text-rose-800 bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-rose-300/60 shadow-2xs">
                   Teknologi Mesin & TBSM
                 </span>
               </div>
 
-              <h3 className="text-xl font-extrabold text-rose-950 mb-2 group-hover:text-rose-700 transition-colors">
+              {/* Title */}
+              <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-rose-700 transition-colors relative z-10">
                 Teknik Otomotif (TO)
               </h3>
+              <p className="text-xs font-semibold text-rose-800/80 mt-1 mb-4 relative z-10">
+                Otomotif Modern · Perawatan Berkala · Ototronik
+              </p>
 
-              {/* Tombol Sembunyikan / Tampilkan Deskripsi */}
-              <button
-                type="button"
-                onClick={() => toggleJurusanDesc('to')}
-                className="mt-1 mb-3 inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900 transition-colors cursor-pointer self-start focus:outline-none"
-              >
-                <span>{expandedJurusan.to ? 'Sembunyikan Deskripsi' : 'Tampilkan Deskripsi'}</span>
-                <motion.span
-                  animate={{ rotate: expandedJurusan.to ? 180 : 0 }}
-                  transition={{ duration: 0.25 }}
+              {/* Toggle View Description Button */}
+              <div className="relative z-10">
+                <button
+                  type="button"
+                  onClick={() => toggleJurusanDesc('to')}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-rose-600 text-rose-700 hover:text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer border border-rose-300/70 group/btn"
                 >
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </motion.span>
-              </button>
+                  {expandedJurusan.to ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Sembunyikan Deskripsi</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Lihat Detail Deskripsi</span>
+                    </>
+                  )}
+                  <motion.span
+                    animate={{ rotate: expandedJurusan.to ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </motion.span>
+                </button>
+              </div>
 
-              {/* Deskripsi dengan Animasi Slide Atas-Bawah */}
+              {/* Slide animation for description content */}
               <AnimatePresence initial={false}>
                 {expandedJurusan.to && (
                   <motion.div
                     key="desc-to"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.35, ease: 'easeInOut' }}
-                    className="overflow-hidden"
+                    initial={{ height: 0, opacity: 0, y: -10 }}
+                    animate={{ height: 'auto', opacity: 1, y: 0 }}
+                    exit={{ height: 0, opacity: 0, y: -10 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden relative z-10"
                   >
-                    <p className="text-sm text-rose-900/80 leading-relaxed pt-1 pb-2 font-normal">
+                    <div className="mt-4 pt-3 border-t border-rose-300/40 text-sm text-slate-700 leading-relaxed bg-white/70 backdrop-blur-sm p-4 rounded-2xl border border-white/80 shadow-inner">
                       Pusat inovasi mesin dan otomotif! Jurusan TO membekali siswa dengan keahlian membongkar, merakit, dan menganalisis teknologi kendaraan bermotor terkini. Jadilah teknisi handal yang siap menguasai industri otomotif masa depan.
-                    </p>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <div className="mt-5 pt-4 border-t border-rose-200/70 flex items-center justify-end">
+              {/* Card Footer Button */}
+              <div className="mt-6 pt-4 border-t border-rose-300/50 flex items-center justify-between relative z-10">
+                <span className="text-[11px] font-bold text-rose-700">Kuota Terbatas</span>
                 <button
                   onClick={onRegisterClick}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
                 >
-                  <span>Daftar Jurusan TO</span>
+                  <span>Daftar Jurusan</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>
 
-            {/* 2. TEKNIK JARINGAN KOMPUTER & TELEKOMUNIKASI (TJKT) - Warna Biru Pudar */}
+            {/* 2. TEKNIK JARINGAN KOMPUTER & TELEKOMUNIKASI (TJKT) - Biru Pudar Dashboard Style */}
             <motion.div 
               id="jurusan-tjkt" 
               variants={cardStaggerVariants}
-              whileHover={{ y: -6, transition: { duration: 0.25 } }}
-              className="bg-blue-50/70 border border-blue-200/90 rounded-2xl p-7 shadow-xs hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col group scroll-mt-24"
+              whileHover={{ y: -8, scale: 1.01, transition: { duration: 0.25 } }}
+              className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50/90 via-sky-100/70 to-blue-200/50 border border-blue-200/90 p-7 shadow-lg hover:shadow-2xl hover:border-blue-400 transition-all duration-300 flex flex-col group scroll-mt-24"
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-14 h-14 rounded-2xl bg-blue-100/90 border border-blue-200 flex items-center justify-center text-blue-600 group-hover:scale-105 group-hover:bg-blue-200/80 transition-all">
+              {/* Background Watermark Icon */}
+              <Cpu className="absolute -bottom-8 -right-8 w-44 h-44 text-blue-500/10 group-hover:scale-110 group-hover:-rotate-12 transition-transform duration-700 ease-out pointer-events-none" />
+
+              {/* Tag Header */}
+              <div className="flex items-center justify-between mb-5 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-white/90 shadow-md border border-blue-200 flex items-center justify-center text-blue-600 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
                   <Cpu className="w-7 h-7" />
                 </div>
-                <span className="text-xs font-bold text-blue-800 bg-blue-100/90 px-3 py-1 rounded-full border border-blue-200/70">
+                <span className="text-[11px] font-extrabold text-blue-800 bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-blue-300/60 shadow-2xs">
                   Mikrotik & Fiber Optic
                 </span>
               </div>
 
-              <h3 className="text-xl font-extrabold text-blue-950 mb-2 group-hover:text-blue-700 transition-colors">
+              {/* Title */}
+              <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-blue-700 transition-colors relative z-10">
                 Teknik Jaringan Komputer & Telekomunikasi (TJKT)
               </h3>
+              <p className="text-xs font-semibold text-blue-800/80 mt-1 mb-4 relative z-10">
+                Cyber Security · Fiber Optic · Cloud Computing
+              </p>
 
-              {/* Tombol Sembunyikan / Tampilkan Deskripsi */}
-              <button
-                type="button"
-                onClick={() => toggleJurusanDesc('tjkt')}
-                className="mt-1 mb-3 inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-900 transition-colors cursor-pointer self-start focus:outline-none"
-              >
-                <span>{expandedJurusan.tjkt ? 'Sembunyikan Deskripsi' : 'Tampilkan Deskripsi'}</span>
-                <motion.span
-                  animate={{ rotate: expandedJurusan.tjkt ? 180 : 0 }}
-                  transition={{ duration: 0.25 }}
+              {/* Toggle View Description Button */}
+              <div className="relative z-10">
+                <button
+                  type="button"
+                  onClick={() => toggleJurusanDesc('tjkt')}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-blue-600 text-blue-700 hover:text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer border border-blue-300/70 group/btn"
                 >
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </motion.span>
-              </button>
+                  {expandedJurusan.tjkt ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Sembunyikan Deskripsi</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Lihat Detail Deskripsi</span>
+                    </>
+                  )}
+                  <motion.span
+                    animate={{ rotate: expandedJurusan.tjkt ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </motion.span>
+                </button>
+              </div>
 
-              {/* Deskripsi dengan Animasi Slide Atas-Bawah */}
+              {/* Slide animation for description content */}
               <AnimatePresence initial={false}>
                 {expandedJurusan.tjkt && (
                   <motion.div
                     key="desc-tjkt"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.35, ease: 'easeInOut' }}
-                    className="overflow-hidden"
+                    initial={{ height: 0, opacity: 0, y: -10 }}
+                    animate={{ height: 'auto', opacity: 1, y: 0 }}
+                    exit={{ height: 0, opacity: 0, y: -10 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden relative z-10"
                   >
-                    <p className="text-sm text-blue-900/80 leading-relaxed pt-1 pb-2 font-normal">
+                    <div className="mt-4 pt-3 border-t border-blue-300/40 text-sm text-slate-700 leading-relaxed bg-white/70 backdrop-blur-sm p-4 rounded-2xl border border-white/80 shadow-inner">
                       Gerbang menuju dunia digital tanpa batas. Di TJKT, kamu akan menguasai infrastruktur jaringan, keamanan siber, dan teknologi fiber optik. Persiapkan dirimu menjadi arsitek jaringan yang menghubungkan dunia.
-                    </p>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <div className="mt-5 pt-4 border-t border-blue-200/70 flex items-center justify-end">
+              {/* Card Footer Button */}
+              <div className="mt-6 pt-4 border-t border-blue-300/50 flex items-center justify-between relative z-10">
+                <span className="text-[11px] font-bold text-blue-700">Kuota Terbatas</span>
                 <button
                   onClick={onRegisterClick}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
                 >
-                  <span>Daftar Jurusan TJKT</span>
+                  <span>Daftar Jurusan</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>
 
-            {/* 3. AKUNTANSI DAN KEUANGAN LEMBAGA (AKL) - Warna Hijau Pudar */}
+            {/* 3. AKUNTANSI DAN KEUANGAN LEMBAGA (AKL) - Hijau Pudar Dashboard Style */}
             <motion.div 
               id="jurusan-akl" 
               variants={cardStaggerVariants}
-              whileHover={{ y: -6, transition: { duration: 0.25 } }}
-              className="bg-emerald-50/70 border border-emerald-200/90 rounded-2xl p-7 shadow-xs hover:shadow-xl hover:border-emerald-300 transition-all duration-300 flex flex-col group scroll-mt-24"
+              whileHover={{ y: -8, scale: 1.01, transition: { duration: 0.25 } }}
+              className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50/90 via-green-100/70 to-emerald-200/50 border border-emerald-200/90 p-7 shadow-lg hover:shadow-2xl hover:border-emerald-400 transition-all duration-300 flex flex-col group scroll-mt-24"
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-100/90 border border-emerald-200 flex items-center justify-center text-emerald-600 group-hover:scale-105 group-hover:bg-emerald-200/80 transition-all">
+              {/* Background Watermark Icon */}
+              <Calculator className="absolute -bottom-8 -right-8 w-44 h-44 text-emerald-500/10 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700 ease-out pointer-events-none" />
+
+              {/* Tag Header */}
+              <div className="flex items-center justify-between mb-5 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-white/90 shadow-md border border-emerald-200 flex items-center justify-center text-emerald-600 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
                   <Calculator className="w-7 h-7" />
                 </div>
-                <span className="text-xs font-bold text-emerald-800 bg-emerald-100/90 px-3 py-1 rounded-full border border-emerald-200/70">
+                <span className="text-[11px] font-extrabold text-emerald-800 bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-emerald-300/60 shadow-2xs">
                   Fintech & Perbankan
                 </span>
               </div>
 
-              <h3 className="text-xl font-extrabold text-emerald-950 mb-2 group-hover:text-emerald-700 transition-colors">
+              {/* Title */}
+              <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors relative z-10">
                 Akuntansi & Keuangan Lembaga (AKL)
               </h3>
+              <p className="text-xs font-semibold text-emerald-800/80 mt-1 mb-4 relative z-10">
+                Perbankan Syariah · Perpajakan Digital · Accurate Software
+              </p>
 
-              {/* Tombol Sembunyikan / Tampilkan Deskripsi */}
-              <button
-                type="button"
-                onClick={() => toggleJurusanDesc('akl')}
-                className="mt-1 mb-3 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900 transition-colors cursor-pointer self-start focus:outline-none"
-              >
-                <span>{expandedJurusan.akl ? 'Sembunyikan Deskripsi' : 'Tampilkan Deskripsi'}</span>
-                <motion.span
-                  animate={{ rotate: expandedJurusan.akl ? 180 : 0 }}
-                  transition={{ duration: 0.25 }}
+              {/* Toggle View Description Button */}
+              <div className="relative z-10">
+                <button
+                  type="button"
+                  onClick={() => toggleJurusanDesc('akl')}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-emerald-600 text-emerald-700 hover:text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer border border-emerald-300/70 group/btn"
                 >
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </motion.span>
-              </button>
+                  {expandedJurusan.akl ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Sembunyikan Deskripsi</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Lihat Detail Deskripsi</span>
+                    </>
+                  )}
+                  <motion.span
+                    animate={{ rotate: expandedJurusan.akl ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </motion.span>
+                </button>
+              </div>
 
-              {/* Deskripsi dengan Animasi Slide Atas-Bawah */}
+              {/* Slide animation for description content */}
               <AnimatePresence initial={false}>
                 {expandedJurusan.akl && (
                   <motion.div
                     key="desc-akl"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.35, ease: 'easeInOut' }}
-                    className="overflow-hidden"
+                    initial={{ height: 0, opacity: 0, y: -10 }}
+                    animate={{ height: 'auto', opacity: 1, y: 0 }}
+                    exit={{ height: 0, opacity: 0, y: -10 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden relative z-10"
                   >
-                    <p className="text-sm text-emerald-900/80 leading-relaxed pt-1 pb-2 font-normal">
+                    <div className="mt-4 pt-3 border-t border-emerald-300/40 text-sm text-slate-700 leading-relaxed bg-white/70 backdrop-blur-sm p-4 rounded-2xl border border-white/80 shadow-inner">
                       Mencetak pahlawan finansial masa depan. Jurusan AKL melatih ketelitian dan keahlianmu dalam mengelola keuangan, perpajakan, dan akuntansi digital. Raih karir cemerlang di sektor perbankan maupun startup bisnis.
-                    </p>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <div className="mt-5 pt-4 border-t border-emerald-200/70 flex items-center justify-end">
+              {/* Card Footer Button */}
+              <div className="mt-6 pt-4 border-t border-emerald-300/50 flex items-center justify-between relative z-10">
+                <span className="text-[11px] font-bold text-emerald-700">Kuota Terbatas</span>
                 <button
                   onClick={onRegisterClick}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
                 >
-                  <span>Daftar Jurusan AKL</span>
+                  <span>Daftar Jurusan</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1872,4 +1943,3 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 };
 
 export default LandingPage;
-
