@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react
 import { User, Student } from './types/database';
 import { dbService } from './services/supabase';
 import { Navbar } from './components/Navbar';
-import { ViewSkeleton } from './components/ui/Skeletons';
+import { DelayedViewSkeleton } from './components/ui/Skeletons';
+import { runViewTransition, supportsViewTransitions } from './components/ui/transition';
 import { SwipeBackLayer } from './components/ui/navigation';
 import { LazyErrorBoundary } from './components/LazyErrorBoundary';
 import { lazyWithPreload } from './Utils/lazyLoad';
@@ -29,17 +30,19 @@ const ChangePasswordModal = lazyWithPreload(() =>
   import('./components/ChangePasswordModal').then((m) => ({ default: m.ChangePasswordModal }))
 );
 
+type View = 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard';
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
-  const [activeView, setActiveView] = useState<'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard'>('home');
+  const [activeView, setActiveViewRaw] = useState<View>('home');
+  const [navPending, setNavPending] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Riwayat browser (UI saja): tombol/gestur "back" & geser-kembali -> halaman sebelumnya.
   // Tidak mengubah alur autentikasi; dashboard tetap dijaga oleh pengecekan user di bawah.
   // ---------------------------------------------------------------------------
-  type View = 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard';
   const activeViewRef = useRef<View>(activeView);
   const userRef = useRef<User | null>(null);
   const studentRef = useRef<Student | null>(null);
@@ -48,6 +51,74 @@ export default function App() {
   activeViewRef.current = activeView;
   userRef.current = currentUser;
   studentRef.current = currentStudent;
+
+  // ---------------------------------------------------------------------------
+  // Perpindahan halaman yang mulus (UI saja):
+  //  1) chunk halaman tujuan diunduh dulu (halaman lama tetap tampil, tanpa kedipan skeleton),
+  //  2) lalu semua perubahan state digabung dalam SATU transisi cross-fade,
+  //  3) posisi scroll direset tanpa animasi.
+  // Alur data/autentikasi tidak berubah; hanya waktu & cara penggantian tampilan.
+  // ---------------------------------------------------------------------------
+  const pendingViewRef = useRef<View | null>(null);
+  const loadedChunksRef = useRef<Set<View>>(new Set<View>(['home']));
+
+  const preloadView = (v: View): Promise<unknown> | null => {
+    if (loadedChunksRef.current.has(v)) return null;
+    const p =
+      v === 'portal'
+        ? RegistrationPortal.preload()
+        : v === 'login'
+        ? LoginPage.preload()
+        : v === 'student-dashboard'
+        ? StudentDashboard.preload()
+        : v === 'admin-dashboard'
+        ? AdminDashboard.preload()
+        : null;
+    return p ? p.then(() => { loadedChunksRef.current.add(v); }) : null;
+  };
+
+  const navigateWith = useCallback((next: View, extra?: () => void) => {
+    const base = pendingViewRef.current ?? activeViewRef.current;
+    if (next === base) {
+      extra?.();
+      return;
+    }
+    pendingViewRef.current = next;
+    const apply = () => {
+      runViewTransition(
+        () => {
+          pendingViewRef.current = null;
+          extra?.();
+          setActiveViewRaw(next);
+        },
+        { scrollTop: true }
+      );
+    };
+    const loading = preloadView(next);
+    if (!loading) {
+      apply();
+      return;
+    }
+    // tampilkan bilah progres tipis hanya bila unduhan terasa lama (> 150 ms)
+    const timer = window.setTimeout(() => setNavPending(true), 150);
+    const guard = new Promise<void>((resolve) => window.setTimeout(resolve, 2500));
+    Promise.race([loading, guard])
+      .catch(() => undefined)
+      .finally(() => {
+        window.clearTimeout(timer);
+        setNavPending(false);
+        apply();
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const setActiveView = useCallback(
+    (v: View | ((prev: View) => View)) => {
+      const base = pendingViewRef.current ?? activeViewRef.current;
+      navigateWith(typeof v === 'function' ? v(base) : v);
+    },
+    [navigateWith]
+  );
 
   useEffect(() => {
     const st = (window.history.state as { view?: View; idx?: number } | null) || {};
@@ -141,8 +212,13 @@ export default function App() {
           setActiveView((prev) => (prev === 'login' || prev === 'portal' ? 'admin-dashboard' : prev));
         }
       } else {
-        setCurrentUser(null);
-        setCurrentStudent(null);
+        const clearSession = () => {
+          setCurrentUser(null);
+          setCurrentStudent(null);
+        };
+        const v = pendingViewRef.current ?? activeViewRef.current;
+        if (v === 'student-dashboard' || v === 'admin-dashboard') navigateWith('home', clearSession);
+        else clearSession();
       }
     });
 
@@ -195,10 +271,11 @@ export default function App() {
 
   const handleLogout = async () => {
     await dbService.logout();
-    setCurrentUser(null);
-    setCurrentStudent(null);
-    setShowChangePassword(false);
-    setActiveView('home');
+    navigateWith('home', () => {
+      setCurrentUser(null);
+      setCurrentStudent(null);
+      setShowChangePassword(false);
+    });
   };
 
   const handlePasswordChanged = () => {
@@ -209,6 +286,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
       <SwipeBackLayer canGoBack={canGoBack} onBack={goBack} />
+      {navPending && <div className="ui-navprogress" role="progressbar" aria-label="Memuat halaman" />}
       {/* Show Navbar on Home, Portal, and Login */}
       {(activeView === 'home' || activeView === 'portal' || activeView === 'login') && (
         <Navbar
@@ -223,7 +301,11 @@ export default function App() {
       )}
 
       <LazyErrorBoundary>
-        <Suspense fallback={<ViewSkeleton view={activeView} />}>
+        <Suspense fallback={<DelayedViewSkeleton view={activeView} />}>
+          <div
+            key={supportsViewTransitions() ? 'view' : activeView}
+            className={`flex flex-1 flex-col ${supportsViewTransitions() ? '' : 'ui-view-in'}`}
+          >
           {/* VIEW: HOME / LANDING PAGE */}
           {activeView === 'home' && (
             <LandingPage
@@ -278,15 +360,18 @@ export default function App() {
           {/* GANTI PASSWORD (siswa): wajib setelah reset oleh panitia, atau dibuka lewat tombol di bilah sisi */}
           {activeView === 'student-dashboard' && currentUser && currentUser.role === 'student' && (
             (currentUser.must_change_password || showChangePassword) && (
-              <ChangePasswordModal
-                forced={!!currentUser.must_change_password}
-                nik={currentUser.nik}
-                onChanged={handlePasswordChanged}
-                onClose={() => setShowChangePassword(false)}
-                onLogout={handleLogout}
-              />
+              <Suspense fallback={null}>
+                <ChangePasswordModal
+                  forced={!!currentUser.must_change_password}
+                  nik={currentUser.nik}
+                  onChanged={handlePasswordChanged}
+                  onClose={() => setShowChangePassword(false)}
+                  onLogout={handleLogout}
+                />
+              </Suspense>
             )
           )}
+          </div>
         </Suspense>
       </LazyErrorBoundary>
     </div>

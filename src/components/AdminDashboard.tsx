@@ -244,6 +244,7 @@ import {
 import { Student, User, StatusPendaftaran, JurusanType, BerkasItem } from '../types/database';
 import { motion, useReducedMotion } from 'motion/react';
 import { useHistorySync } from './ui/navigation';
+import { runViewTransition, isViewTransitioning } from './ui/transition';
 import { Hero, Stagger, StatCard, StatusTile, PanelTitle, SegTabs, CountUp, ViewTransition, LOGO_URL, itemVariants } from './ui/kit';
 import { dbService } from '../services/supabase';
 const AdminResetPasswordModal = React.lazy(() =>
@@ -890,9 +891,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterJurusan, setFilterJurusan] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
-  const [activeTab, setActiveTab] = useState<'pendaftar' | 'log'>('pendaftar');
+  const [activeTab, setActiveTabRaw] = useState<'pendaftar' | 'log'>('pendaftar');
+  const setActiveTab = (t: 'pendaftar' | 'log') => {
+    if (t === activeTab) return;
+    runViewTransition(() => setActiveTabRaw(t));
+  };
   // Geser/tombol kembali: tab aktif tersimpan di riwayat browser
-  useHistorySync('ad', activeTab, (v: 'pendaftar' | 'log') => setActiveTab(v));
+  useHistorySync('ad', activeTab, (v: 'pendaftar' | 'log') => (isViewTransitioning() ? setActiveTabRaw(v) : setActiveTab(v)));
   const [logRefreshKey, setLogRefreshKey] = useState(0);
 
   // Detail / verifikasi

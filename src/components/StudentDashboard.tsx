@@ -37,6 +37,7 @@ import { dbService } from '../services/supabase';
 import { credentialStore } from '../services/credentialStore';
 import { Hero, Stagger, StatCard, StatusTile, PanelTitle, SegTabs, ProgressRing, BottomNav, Sheet, ViewTransition, LOGO_URL } from './ui/kit';
 import { useHistorySync } from './ui/navigation';
+import { runViewTransition, isViewTransitioning } from './ui/transition';
 const ChangePasswordModal = React.lazy(() =>
   import('./ChangePasswordModal').then((m) => ({ default: m.ChangePasswordModal }))
 );
@@ -103,8 +104,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 }) => {
   const shouldReduceMotion = useReducedMotion();
   const [student, setStudent] = useState<Student>(initialStudent);
-  const [activeMenu, setActiveMenu] = useState<'beranda' | 'formulir' | 'pembayaran' | 'pengumuman'>('beranda');
-  const [activeFormTab, setActiveFormTab] = useState<'diri' | 'alamat' | 'ortu' | 'berkas'>('diri');
+  type MenuState = 'beranda' | 'formulir' | 'pembayaran' | 'pengumuman';
+  type FormTabState = 'diri' | 'alamat' | 'ortu' | 'berkas';
+  const [activeMenu, setActiveMenuRaw] = useState<MenuState>('beranda');
+  const [activeFormTab, setActiveFormTabRaw] = useState<FormTabState>('diri');
+  // Pindah menu/tab dengan cross-fade mulus (tanpa mengubah logika: hanya cara state diganti)
+  const setActiveMenu = (m: MenuState) => {
+    if (m === activeMenu) return;
+    runViewTransition(() => setActiveMenuRaw(m), { scrollTop: true });
+  };
+  const setActiveFormTab = (t: FormTabState) => {
+    if (t === activeFormTab) return;
+    runViewTransition(() => setActiveFormTabRaw(t));
+  };
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showWarningBanner, setShowWarningBanner] = useState(true);
@@ -117,9 +129,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   useHistorySync(
     'sd',
     { menu: activeMenu, tab: activeFormTab },
-    (v: { menu: 'beranda' | 'formulir' | 'pembayaran' | 'pengumuman'; tab: 'diri' | 'alamat' | 'ortu' | 'berkas' }) => {
-      setActiveMenu(v.menu);
-      setActiveFormTab(v.tab);
+    (v: { menu: MenuState; tab: FormTabState }) => {
+      const apply = () => {
+        setActiveMenuRaw(v.menu);
+        setActiveFormTabRaw(v.tab);
+      };
+      // saat dashboard baru saja muncul lewat transisi halaman, jangan memulai transisi kedua
+      if (isViewTransitioning()) apply();
+      else runViewTransition(apply, { scrollTop: true });
     }
   );
 

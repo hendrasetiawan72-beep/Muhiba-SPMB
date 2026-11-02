@@ -624,3 +624,55 @@
 @media (prefers-reduced-motion: reduce) {
   .ui-skel::after { animation: none; display: none; }
 }
+
+/* =============================================================================
+   TRANSISI HALAMAN (View Transitions API + fallback)
+   ============================================================================= */
+@layer components {
+  /* Header & navigasi bawah dianggap "elemen tetap": tidak ikut memudar saat halaman berganti */
+  .ui-header { view-transition-name: ui-header; }
+  .ui-bottomnav { view-transition-name: ui-bottomnav; }
+
+  /* Fallback untuk browser tanpa View Transitions: fade-in singkat (opacity saja) */
+  .ui-view-in { animation: ui-view-in .32s cubic-bezier(.22, 1, .36, 1) both; }
+  .ui-fade-in { animation: ui-view-in .26s ease-out both; }
+
+  /* Bilah progres tipis saat halaman berikutnya masih diunduh */
+  .ui-navprogress {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    z-index: 100;
+    overflow: hidden;
+    pointer-events: none;
+    background: rgb(99 102 241 / .14);
+  }
+  .ui-navprogress::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 38%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #3b82f6, #7c3aed, #ec4899);
+    animation: ui-progress 1.1s ease-in-out infinite;
+  }
+}
+@keyframes ui-view-in { from { opacity: 0; } }
+@keyframes ui-progress { from { transform: translateX(-100%); } to { transform: translateX(270%); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: .3s;
+    animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+  }
+  ::view-transition-group(ui-header),
+  ::view-transition-group(ui-bottomnav) {
+    animation-duration: .3s;
+    animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-view-in, .ui-fade-in { animation: none; }
+  .ui-navprogress::after { animation: none; width: 100%; }
+}

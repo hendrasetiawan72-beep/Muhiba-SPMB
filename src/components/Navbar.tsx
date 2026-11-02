@@ -1,29 +1,49 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { User, Student } from '../types/database';
-import { 
-  Menu, 
-  X, 
-  ChevronDown, 
-  UserCheck, 
-  Shield, 
-  ExternalLink, 
-  LogOut, 
-  BookOpen, 
-  Home, 
-  Layers, 
-  ListChecks,
-  Building2
+import {
+  Menu,
+  X,
+  ChevronDown,
+  ChevronRight,
+  UserCheck,
+  Shield,
+  LogOut,
 } from 'lucide-react';
+
+type View = 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard';
 
 interface NavbarProps {
   currentUser: User | null;
   currentStudent?: Student | null;
-  activeView: 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard';
-  setActiveView: (view: 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard') => void;
+  activeView: View;
+  setActiveView: (view: View) => void;
   onLogout: () => void;
   onPreloadPortal?: () => void;
   onPreloadLogin?: () => void;
 }
+
+const LOGO_URL =
+  'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgzWdtCjCcX2chJuhLX_26N5MmkVK-1SkyO7kgXznQQJPQa6_TB_EJzD1WWpztg7yX9RBRE7rGn0t2Z3FdG06mwwT6pQix8t6vnlcOBm_EgGl9z0jeJemJkppP0KIIjkXGksQvaCLh2dz-gOF6a2H213VQBL6Am8Elhmd76OOnphogk-EoTTbkYbg0TQJhv/s512/34690.png';
+
+/** Mencari section hingga muncul (halaman beranda bisa baru saja tampil) lalu menggulir halus ke sana. */
+const scrollToSection = (sectionId: string) => {
+  // cegah skrip "gulir cepat ke Profil" di LandingPage membajak gulir dari menu
+  (window as any).__spmbNavLockUntil = Date.now() + 1800;
+  let tries = 0;
+  const attempt = () => {
+    const el = document.getElementById(sectionId);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else if (tries++ < 15) window.setTimeout(attempt, 80);
+  };
+  window.setTimeout(attempt, 120);
+};
+
+const JURUSAN_MENU = [
+  { id: 'jurusan-to', short: 'TO', full: 'Teknik Otomotif', mobile: 'Teknik Otomotif (TO)', dot: 'bg-amber-400' },
+  { id: 'jurusan-tjkt', short: 'TJKT', full: 'Teknik Komputer & Jaringan', mobile: 'Teknik Jaringan Komputer (TJKT)', dot: 'bg-blue-400' },
+  { id: 'jurusan-akl', short: 'AKL', full: 'Akuntansi & Keuangan', mobile: 'Akuntansi & Keuangan (AKL)', dot: 'bg-emerald-400' },
+];
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
@@ -36,306 +56,321 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [jurusanDropdownOpen, setJurusanDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const reduce = useReducedMotion();
 
-  const logoUrl =
-    'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEitrsbiiNxOvmcHcN42oOETm0n2rp4n_UYCdRDLH05Z0fD7mLw5rNXwVxft7SBrIMQyi3LSs9DUa-v6QZBrKjE8o9G7RQ171bu0cirIUmWWD6E8wxn9Ua-t61RbRENkAb-U9bhBgdtq-eh0JYAN3hu0r9sCeNdjGFODdPWaNN-5v-NmQB63uOuMRAvgkODt/s320/69228.png';
-
-  const navigateTo = (view: 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard', sectionId?: string) => {
+  const navigateTo = (view: View, sectionId?: string) => {
     setActiveView(view);
     setMenuOpen(false);
     setJurusanDropdownOpen(false);
-    
-    if (typeof window !== 'undefined') {
-      if (sectionId) {
-        // Bug fixed: Removed fallback to 'profil-sekolah'
-        setTimeout(() => {
-          const el = document.getElementById(sectionId);
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-      } else if (view === 'home') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+
+    if (typeof window === 'undefined') return;
+    if (sectionId) {
+      scrollToSection(sectionId);
+    } else if (view === 'home' && activeView === 'home') {
+      // sudah di beranda: gulir halus ke atas. (Dari halaman lain, reset posisi ditangani transisi halaman.)
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
+  // Tutup dropdown saat klik di luar, dan menu saat menekan Escape
+  useEffect(() => {
+    if (!jurusanDropdownOpen && !menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (jurusanDropdownOpen && dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setJurusanDropdownOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setJurusanDropdownOpen(false);
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [jurusanDropdownOpen, menuOpen]);
+
+  const linkBase =
+    'relative rounded-xl px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70';
+  const linkIdle = 'text-white/80 hover:bg-white/10 hover:text-white';
+  const linkActive = 'bg-white/15 text-white';
+
+  const mobileRow =
+    'flex h-12 w-full items-center justify-between rounded-2xl px-4 text-left text-[0.95rem] font-medium text-slate-700 transition-colors active:bg-indigo-50 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500';
+
   return (
-    <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white shadow-lg border-b border-indigo-900/40 transition-all duration-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-18 py-3 lg:py-0">
-          
-          {/* ZONE 1: BRAND LOGO */}
-          <div 
-            onClick={() => navigateTo('home')} 
-            className="flex items-center gap-3 cursor-pointer group"
+    <>
+      <header className="ui-header z-50">
+        <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+
+          {/* Brand */}
+          <button
+            type="button"
+            onClick={() => navigateTo('home')}
+            className="flex min-w-0 items-center gap-3 rounded-xl py-1 pr-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+            aria-label="SPMB SMK Muhiba, ke beranda"
           >
             <img
-              src={logoUrl}
-              alt="SPMB SMK MUHIBA"
-              className="w-36 sm:w-44 lg:w-52 h-auto max-h-12 lg:max-h-14 object-contain object-left drop-shadow-md"
+              src={LOGO_URL}
+              alt="Logo SMK Muhammadiyah Bawang"
+              className="h-10 w-10 shrink-0 object-contain drop-shadow-md"
               referrerPolicy="no-referrer"
               loading="eager"
               decoding="async"
             />
-            <span className="sr-only">SPMB SMK MUHIBA — SMK Muhammadiyah Bawang</span>
-          </div>
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate text-[0.95rem] font-extrabold tracking-tight sm:text-base">SPMB SMK MUHIBA</span>
+              <span className="hidden truncate text-xs text-indigo-100 min-[400px]:block">SMK Muhammadiyah Bawang</span>
+            </span>
+          </button>
 
-          {/* ZONE 2: DESKTOP NAVIGATION (Hidden on mobile/tablet) */}
-          <nav className="hidden lg:flex items-center gap-6 text-sm font-semibold tracking-wide">
+          {/* Navigasi desktop */}
+          <nav className="hidden items-center gap-1 lg:flex" aria-label="Navigasi utama">
             <button
+              type="button"
               onClick={() => navigateTo('home')}
-              className={`transition-colors py-1 hover:text-yellow-300 ${
-                activeView === 'home' ? 'text-yellow-300 border-b-2 border-yellow-300' : 'text-white/90'
-              }`}
+              aria-current={activeView === 'home' ? 'page' : undefined}
+              className={`${linkBase} ${activeView === 'home' ? linkActive : linkIdle}`}
             >
               Home
             </button>
 
-            <button
-              onClick={() => navigateTo('home', 'profil-sekolah')}
-              className="text-white/90 hover:text-yellow-300 transition-colors py-1"
-            >
+            <button type="button" onClick={() => navigateTo('home', 'profil-sekolah')} className={`${linkBase} ${linkIdle}`}>
               Profil Sekolah
             </button>
 
-            {/* Jurusan Dropdown */}
-            <div className="relative">
+            {/* Jurusan */}
+            <div className="relative" ref={dropdownRef}>
               <button
-                onClick={() => setJurusanDropdownOpen(!jurusanDropdownOpen)}
-                className="flex items-center gap-1 text-white/90 hover:text-yellow-300 transition-colors py-1 focus:outline-none"
+                type="button"
+                onClick={() => setJurusanDropdownOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={jurusanDropdownOpen}
+                className={`${linkBase} ${jurusanDropdownOpen ? linkActive : linkIdle} flex items-center gap-1`}
               >
                 <span>Jurusan</span>
-                <ChevronDown className="w-4 h-4 transition-transform duration-200" />
+                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${jurusanDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {jurusanDropdownOpen && (
-                <div 
-                  className="absolute left-0 mt-2 w-64 bg-white text-slate-800 rounded-lg shadow-xl py-2 z-50 border border-slate-100"
-                  onMouseLeave={() => setJurusanDropdownOpen(false)}
-                >
-                  <button
-                    onClick={() => navigateTo('home', 'jurusan-to')}
-                    className="w-full text-left px-4 py-2 hover:bg-blue-50 text-xs font-semibold flex items-center justify-between"
+              <AnimatePresence>
+                {jurusanDropdownOpen && (
+                  <motion.div
+                    role="menu"
+                    initial={reduce ? false : { opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                    className="absolute left-0 top-full z-50 mt-2 w-72 rounded-2xl border border-slate-100 bg-white p-1.5 text-slate-800 shadow-[0_30px_50px_-20px_rgba(30,27,75,.45)]"
                   >
-                    <span>Teknik Otomotif</span>
-                  </button>
-                  <button
-                    onClick={() => navigateTo('home', 'jurusan-tjkt')}
-                    className="w-full text-left px-4 py-2 hover:bg-blue-50 text-xs font-semibold flex items-center justify-between"
-                  >
-                    <span>Teknik Komputer & Jaringan</span>
-                  </button>
-                  <button
-                    onClick={() => navigateTo('home', 'jurusan-akl')}
-                    className="w-full text-left px-4 py-2 hover:bg-blue-50 text-xs font-semibold flex items-center justify-between"
-                  >
-                    <span>Akuntansi & Keuangan</span>
-                  </button>
-                </div>
-              )}
+                    {JURUSAN_MENU.map((j) => (
+                      <button
+                        key={j.id}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => navigateTo('home', j.id)}
+                        className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-sm font-medium transition-colors hover:bg-indigo-50 focus-visible:bg-indigo-50 focus-visible:outline-none"
+                      >
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${j.dot}`} />
+                        <span className="flex-1">{j.full}</span>
+                        <span className="text-xs font-semibold text-slate-400">{j.short}</span>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            <button
-              onClick={() => navigateTo('home', 'fasilitas-section')}
-              className="text-white/90 hover:text-yellow-300 transition-colors py-1"
-            >
+            <button type="button" onClick={() => navigateTo('home', 'fasilitas-section')} className={`${linkBase} ${linkIdle}`}>
               Fasilitas
             </button>
-
-            <button
-              onClick={() => navigateTo('home', 'alur-pendaftaran')}
-              className="relative py-1 font-bold text-yellow-300 hover:text-white transition-colors"
-            >
+            <button type="button" onClick={() => navigateTo('home', 'alur-pendaftaran')} className={`${linkBase} ${linkIdle}`}>
               Alur Pendaftaran
             </button>
-
-            <button
-              onClick={() => navigateTo('home', 'kontak-section')}
-              className="text-white/90 hover:text-yellow-300 transition-colors py-1"
-            >
+            <button type="button" onClick={() => navigateTo('home', 'kontak-section')} className={`${linkBase} ${linkIdle}`}>
               Kontak
             </button>
           </nav>
 
-          {/* ZONE 3: ACTIONS & MOBILE MENU TOGGLE */}
-          <div className="flex items-center gap-3 h-full">
+          {/* Aksi */}
+          <div className="flex shrink-0 items-center gap-2">
             {currentUser ? (
-              <div className="hidden sm:flex items-center gap-2">
+              <div className="hidden items-center gap-2 sm:flex">
                 {currentUser.role === 'admin' ? (
                   <button
+                    type="button"
                     onClick={() => navigateTo('admin-dashboard')}
-                    className="px-3.5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-md shadow-sm transition-all flex items-center gap-1.5"
+                    className="flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-indigo-700 shadow-[0_14px_24px_-14px_rgba(15,23,42,.6)] transition-transform hover:-translate-y-0.5 active:scale-95"
                   >
-                    <Shield className="w-3.5 h-3.5 text-yellow-400" />
+                    <Shield className="h-4 w-4" />
                     <span>Panel Admin</span>
                   </button>
                 ) : (
                   <button
+                    type="button"
                     onClick={() => navigateTo('student-dashboard')}
-                    className="px-3.5 py-2 text-xs font-bold text-blue-900 bg-yellow-300 hover:bg-yellow-400 rounded-md shadow-sm transition-all flex items-center gap-1.5"
+                    className="flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-indigo-700 shadow-[0_14px_24px_-14px_rgba(15,23,42,.6)] transition-transform hover:-translate-y-0.5 active:scale-95"
                   >
-                    <UserCheck className="w-3.5 h-3.5 text-blue-950" />
+                    <UserCheck className="h-4 w-4" />
                     <span>Dashboard ({currentStudent?.nama_lengkap?.split(' ')[0] || 'Siswa'})</span>
                   </button>
                 )}
-                <button
-                  onClick={onLogout}
-                  title="Keluar"
-                  className="p-2 text-white/80 hover:text-white hover:bg-blue-700/50 rounded-md transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
+                <button type="button" onClick={onLogout} title="Keluar" aria-label="Keluar" className="ui-hbtn !px-0 w-10">
+                  <LogOut className="h-4 w-4" />
                 </button>
               </div>
             ) : (
-              <div className="hidden sm:flex items-center gap-2">
+              <>
                 <button
+                  type="button"
                   onClick={() => navigateTo('login')}
                   onMouseEnter={onPreloadLogin}
                   onTouchStart={onPreloadLogin}
                   onFocus={onPreloadLogin}
-                  className="px-4 py-2 text-xs font-bold text-blue-100 hover:text-white hover:bg-blue-700/50 rounded-lg transition-colors border border-blue-400/40 cursor-pointer"
+                  className="ui-hbtn hidden sm:inline-flex"
                 >
                   Login
                 </button>
                 <button
+                  type="button"
                   onClick={() => navigateTo('portal')}
                   onMouseEnter={onPreloadPortal}
                   onTouchStart={onPreloadPortal}
                   onFocus={onPreloadPortal}
-                  className="px-4 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
+                  className="flex h-10 cursor-pointer items-center rounded-xl bg-white px-4 text-sm font-bold text-indigo-700 shadow-[0_14px_24px_-14px_rgba(15,23,42,.6)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                 >
-                  DAFTAR SEKARANG
+                  <span className="sm:hidden">Daftar</span>
+                  <span className="hidden sm:inline">Daftar Sekarang</span>
                 </button>
-              </div>
+              </>
             )}
 
-            {/* MOBILE MENU TOGGLE (HAMBURGER) */}
+            {/* Hamburger */}
             <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden p-2 text-white bg-blue-800/80 hover:bg-blue-700 active:bg-blue-900 border border-blue-400/50 rounded-lg shadow-sm transition-all focus:outline-none"
-              aria-label="Navigasi Menu"
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              className="ui-hbtn !px-0 w-10 lg:hidden"
+              aria-label={menuOpen ? 'Tutup menu navigasi' : 'Buka menu navigasi'}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-nav"
             >
-              {menuOpen ? (
-                <X className="w-5 h-5 text-yellow-300" />
-              ) : (
-                <Menu className="w-5 h-5 text-yellow-300" />
-              )}
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
-      </div>
 
-      {/* MOBILE/TABLET DRAWER */}
-      {menuOpen && (
-        <div className="lg:hidden bg-gradient-to-b from-indigo-900/98 via-blue-900/98 to-purple-950/98 backdrop-blur-xl border-t border-indigo-500/30 shadow-2xl px-4 py-6 animate-in slide-in-from-top-3 duration-200">
-          <div className="max-w-7xl mx-auto space-y-6">
-            
-            {/* Navigasi Utama Mobile */}
-            <div className="space-y-2 text-sm font-medium">
-              <p className="text-[11px] font-extrabold text-yellow-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Home className="w-3.5 h-3.5" />
-                <span>Menu Utama</span>
-              </p>
-              
-              <button
-                onClick={() => navigateTo('home')}
-                className="w-full text-left py-2.5 px-3 rounded-md hover:bg-blue-800/80 text-white transition-colors"
-              >
-                Beranda (Home)
-              </button>
-              <button
-                onClick={() => navigateTo('home', 'profil-sekolah')}
-                className="w-full text-left py-2.5 px-3 rounded-md hover:bg-blue-800/80 text-white transition-colors"
-              >
-                Profil Sekolah
-              </button>
-              <button
-                onClick={() => navigateTo('home', 'fasilitas-section')}
-                className="w-full text-left py-2.5 px-3 rounded-md hover:bg-blue-800/80 text-white transition-colors"
-              >
-                Fasilitas & Gedung
-              </button>
-              <button
-                onClick={() => navigateTo('home', 'alur-pendaftaran')}
-                className="w-full text-left py-2.5 px-3 rounded-md hover:bg-blue-800/80 text-yellow-300 font-bold flex items-center gap-2 transition-colors"
-              >
-                <ListChecks className="w-4 h-4" /> Alur Pendaftaran
-              </button>
-              <button
-                onClick={() => navigateTo('home', 'kontak-section')}
-                className="w-full text-left py-2.5 px-3 rounded-md hover:bg-blue-800/80 text-white transition-colors"
-              >
-                Hubungi Kami (Contact)
-              </button>
-            </div>
+        {/* Menu ponsel/tablet: melayang di bawah header, tidak mendorong isi halaman */}
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div
+              id="mobile-nav"
+              role="dialog"
+              aria-label="Menu navigasi"
+              initial={reduce ? false : { opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-x-0 top-full max-h-[calc(100dvh_-_4.25rem)] overflow-y-auto rounded-b-[2rem] bg-white px-3 pb-5 pt-3 shadow-[0_40px_60px_-24px_rgba(30,27,75,.55)] lg:hidden"
+            >
+              <div className="mx-auto max-w-xl space-y-1">
+                <button type="button" onClick={() => navigateTo('home')} className={mobileRow}>
+                  <span>Beranda</span>
+                  <ChevronRight className="h-4 w-4 text-slate-300" />
+                </button>
+                <button type="button" onClick={() => navigateTo('home', 'profil-sekolah')} className={mobileRow}>
+                  <span>Profil Sekolah</span>
+                  <ChevronRight className="h-4 w-4 text-slate-300" />
+                </button>
+                <button type="button" onClick={() => navigateTo('home', 'fasilitas-section')} className={mobileRow}>
+                  <span>Fasilitas & Gedung</span>
+                  <ChevronRight className="h-4 w-4 text-slate-300" />
+                </button>
+                <button type="button" onClick={() => navigateTo('home', 'alur-pendaftaran')} className={mobileRow}>
+                  <span>Alur Pendaftaran</span>
+                  <ChevronRight className="h-4 w-4 text-slate-300" />
+                </button>
+                <button type="button" onClick={() => navigateTo('home', 'kontak-section')} className={mobileRow}>
+                  <span>Hubungi Kami</span>
+                  <ChevronRight className="h-4 w-4 text-slate-300" />
+                </button>
 
-            {/* Jurusan Mobile */}
-            <div className="space-y-2">
-              <p className="text-[11px] font-extrabold text-yellow-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5" />
-                <span>Jurusan & Keahlian</span>
-              </p>
-              <button
-                onClick={() => navigateTo('home', 'jurusan-to')}
-                className="w-full text-left p-3 rounded-lg bg-blue-800/40 text-white text-sm transition-colors hover:bg-blue-800/90"
-              >
-                Teknik Otomotif (TO)
-              </button>
-              <button
-                onClick={() => navigateTo('home', 'jurusan-tjkt')}
-                className="w-full text-left p-3 rounded-lg bg-blue-800/40 text-white text-sm transition-colors hover:bg-blue-800/90"
-              >
-                Teknik Jaringan Komputer (TJKT)
-              </button>
-              <button
-                onClick={() => navigateTo('home', 'jurusan-akl')}
-                className="w-full text-left p-3 rounded-lg bg-blue-800/40 text-white text-sm transition-colors hover:bg-blue-800/90"
-              >
-                Akuntansi & Keuangan (AKL)
-              </button>
-            </div>
-
-            {/* Aksi Mobile */}
-            <div className="space-y-3 pt-4 border-t border-blue-700/50">
-              {currentUser ? (
-                <div className="space-y-2">
-                  <button
-                    onClick={() => navigateTo(currentUser.role === 'admin' ? 'admin-dashboard' : 'student-dashboard')}
-                    className="w-full py-3 px-3 text-center text-sm font-bold text-blue-900 bg-yellow-300 rounded-lg shadow-md"
-                  >
-                    Buka Dashboard
+                <p className="px-4 pb-1 pt-3 text-xs font-semibold text-slate-400">Jurusan</p>
+                {JURUSAN_MENU.map((j) => (
+                  <button key={j.id} type="button" onClick={() => navigateTo('home', j.id)} className={mobileRow}>
+                    <span className="flex items-center gap-3">
+                      <span className={`h-2 w-2 rounded-full ${j.dot}`} />
+                      <span>{j.mobile}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-slate-300" />
                   </button>
-                  <button
-                    onClick={onLogout}
-                    className="w-full py-3 text-center text-sm font-semibold text-rose-300 hover:text-rose-200"
-                  >
-                    Keluar Akun
-                  </button>
+                ))}
+
+                <div className="space-y-2.5 border-t border-slate-100 pt-4">
+                  {currentUser ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => navigateTo(currentUser.role === 'admin' ? 'admin-dashboard' : 'student-dashboard')}
+                        className="flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-sm font-bold text-white shadow-[0_18px_30px_-16px_rgba(91,61,240,.9)] transition-transform active:scale-[0.97]"
+                      >
+                        Buka Dashboard
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onLogout}
+                        className="flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                      >
+                        Keluar Akun
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex flex-col gap-2.5 sm:hidden">
+                      <button
+                        type="button"
+                        onClick={() => navigateTo('portal')}
+                        onTouchStart={onPreloadPortal}
+                        onMouseEnter={onPreloadPortal}
+                        className="flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-sm font-bold text-white shadow-[0_18px_30px_-16px_rgba(91,61,240,.9)] transition-transform active:scale-[0.97]"
+                      >
+                        Daftar Sekarang
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigateTo('login')}
+                        onTouchStart={onPreloadLogin}
+                        onMouseEnter={onPreloadLogin}
+                        className="flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl bg-indigo-50 text-sm font-semibold text-indigo-700 transition-transform active:scale-[0.97]"
+                      >
+                        Login Siswa
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="space-y-3 flex flex-col sm:hidden">
-                  <button
-                    onClick={() => navigateTo('portal')}
-                    onTouchStart={onPreloadPortal}
-                    onMouseEnter={onPreloadPortal}
-                    className="w-full py-3 px-3 text-center text-sm font-black text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-lg shadow-md uppercase cursor-pointer"
-                  >
-                    DAFTAR SEKARANG
-                  </button>
-                  <button
-                    onClick={() => navigateTo('login')}
-                    onTouchStart={onPreloadLogin}
-                    onMouseEnter={onPreloadLogin}
-                    className="w-full py-3 px-3 text-center text-sm font-bold text-blue-100 bg-blue-700/60 border border-blue-400/40 rounded-lg cursor-pointer"
-                  >
-                    Login Siswa
-                  </button>
-                </div>
-              )}
-            </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
 
-          </div>
-        </div>
-      )}
-    </header>
+      {/* Latar redup di belakang menu ponsel */}
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.button
+            type="button"
+            aria-label="Tutup menu"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setMenuOpen(false)}
+            className="fixed inset-0 z-[45] cursor-default bg-slate-950/30 backdrop-blur-[2px] lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 };

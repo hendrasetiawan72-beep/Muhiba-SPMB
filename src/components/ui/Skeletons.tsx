@@ -3,7 +3,7 @@
  * Bentuknya meniru tata letak halaman asli supaya transisi terasa mulus.
  * Murni presentasi, tanpa logika.
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 export type SkeletonView = 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard';
 
@@ -178,4 +178,19 @@ export const ViewSkeleton: React.FC<{ view: SkeletonView }> = ({ view }) => {
   if (view === 'admin-dashboard') return <AdminSkeleton />;
   if (view === 'login' || view === 'portal') return <FormSkeleton />;
   return <PageSkeleton />;
+};
+
+/** Skeleton yang baru tampil setelah jeda singkat: bila chunk cepat tiba, tidak ada kedipan skeleton sama sekali. */
+export const DelayedViewSkeleton: React.FC<{ view: SkeletonView; delay?: number }> = ({ view, delay = 140 }) => {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setShow(true), delay);
+    return () => window.clearTimeout(t);
+  }, [delay]);
+  if (!show) return null;
+  return (
+    <div className="ui-fade-in">
+      <ViewSkeleton view={view} />
+    </div>
+  );
 };

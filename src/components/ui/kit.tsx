@@ -6,6 +6,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence, animate, useReducedMotion } from 'motion/react';
 import type { LucideIcon } from 'lucide-react';
+import { isViewTransitioning, supportsViewTransitions } from './transition';
 
 export const LOGO_URL =
   'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgzWdtCjCcX2chJuhLX_26N5MmkVK-1SkyO7kgXznQQJPQa6_TB_EJzD1WWpztg7yX9RBRE7rGn0t2Z3FdG06mwwT6pQix8t6vnlcOBm_EgGl9z0jeJemJkppP0KIIjkXGksQvaCLh2dz-gOF6a2H213VQBL6Am8Elhmd76OOnphogk-EoTTbkYbg0TQJhv/s512/34690.png';
@@ -57,43 +58,48 @@ export const CountUp: React.FC<{ value: number; duration?: number; className?: s
 /* ------------------------------------------------------------------ */
 export const listVariants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } },
+  show: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } },
 };
 export const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: EASE_OUT } },
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE_OUT } },
 };
 
 /* Pembungkus stagger: anak-anak (StatCard, StatusTile, dst.) masuk berurutan */
 export const Stagger: React.FC<{ className?: string; children: React.ReactNode }> = ({ className, children }) => {
   const reduce = useReducedMotion();
   return (
-    <motion.div className={className} variants={listVariants} initial={reduce ? false : 'hidden'} animate="show">
+    <motion.div
+      className={className}
+      variants={listVariants}
+      initial={reduce || isViewTransitioning() ? false : 'hidden'}
+      animate="show"
+    >
       {children}
     </motion.div>
   );
 };
 
-/* Transisi halus saat berpindah menu/tab */
+/* Transisi halus saat berpindah menu/tab.
+ * Browser modern: cross-fade ditangani View Transitions API (lihat transition.ts), komponen ini pasif.
+ * Browser lama: fade-in singkat (hanya opacity, agar elemen fixed di dalamnya tidak ikut bergeser). */
 export const ViewTransition: React.FC<{ viewKey: string; className?: string; children: React.ReactNode }> = ({
   viewKey,
   className,
   children,
 }) => {
   const reduce = useReducedMotion();
+  if (supportsViewTransitions()) return <div className={className}>{children}</div>;
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={viewKey}
-        className={className}
-        initial={reduce ? false : { opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
-        transition={{ duration: 0.24, ease: EASE_OUT }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      key={viewKey}
+      className={className}
+      initial={reduce ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.22, ease: EASE_OUT }}
+    >
+      {children}
+    </motion.div>
   );
 };
 
@@ -111,9 +117,9 @@ export const Hero: React.FC<{
   const reduce = useReducedMotion();
   return (
     <motion.section
-      initial={reduce ? false : { opacity: 0, y: 18, scale: 0.985 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.55, ease: EASE_OUT }}
+      initial={reduce || isViewTransitioning() ? false : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: EASE_OUT }}
       className={`ui-hero ${className}`}
     >
       <span className="ui-hero__orb ui-hero__orb--a" aria-hidden />
