@@ -1,103 +1,1359 @@
-// ===========================================================================
-// PERUBAHAN 1 — IMPORT lucide-react
-// Hapus baris "Sparkles," dari daftar import. Contoh akhirnya:
-//   ...
-//   Code2,
-//   Eye,
-//   EyeOff
-// } from 'lucide-react';
-// ===========================================================================
+Berikut adalah kode lengkap berkas LandingPage.tsx yang telah diperbarui.
+Di bagian Konsentrasi Keahlian (Jurusan):
+ * Deskripsi disembunyikan secara default dan dapat dibuka/ditutup secara fleksibel.
+ * Menerapkan desain kartu berestetika modern yang terinspirasi dari tampilan dashboard referensi (sudut sangat melengkung rounded-3xl, watermark ikon transparan di latar belakang kartu, badge pill, dan bayangan lembut).
+ * Menerapkan animasi slide atas-bawah dan efek responsif yang dinamis dengan framer-motion (AnimatePresence & motion.div).
+ * Menyesuaikan skema warna pudar (soft-tinted gradient): Merah pudar untuk TO, Biru pudar untuk TJKT, dan Hijau pudar untuk AKL.
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, useScroll, useTransform, AnimatePresence, useReducedMotion } from 'motion/react';
+import type { LucideIcon } from 'lucide-react';
+import { 
+  Wrench, 
+  Cpu, 
+  Calculator, 
+  MapPin, 
+  Phone, 
+  MessageCircle, 
+  ExternalLink, 
+  CheckCircle2, 
+  Award, 
+  Play, 
+  ChevronRight,
+  ChevronLeft,
+  ChevronDown,
+  BookOpen,
+  ArrowRight,
+  ArrowUp,
+  Volume2,
+  VolumeX,
+  X,
+  Globe,
+  UserPlus,
+  ClipboardList,
+  CloudUpload,
+  FileSearch,
+  ShieldCheck,
+  Megaphone,
+  ChevronsDown,
+  ChevronsUp,
+  RotateCcw,
+  LogIn,
+  AlertTriangle,
+  Instagram,
+  Youtube,
+  Code2,
+  Sparkles,
+  Eye,
+  EyeOff
+} from 'lucide-react';
 
+// ===========================================================================
+// KOMPONEN ALUR PENDAFTARAN SPMB
+// ===========================================================================
+interface AlurPendaftaranProps {
+  onRegisterClick?: () => void;
+  onLoginClick?: () => void;
+}
 
-// ===========================================================================
-// PERUBAHAN 2 — Tambahkan data jurusan DI ATAS "export const LandingPage"
-// (taruh setelah komponen FasilitasCarousel)
-// ===========================================================================
-const JURUSAN = [
+interface Step {
+  title: string;
+  desc: React.ReactNode;
+  color: string;
+  icon: LucideIcon;
+  chip?: string;
+  warn?: boolean;
+  action?: 'register' | 'login';
+}
+
+const STEPS: Step[] = [
   {
-    id: 'to' as const,
-    icon: Wrench,
-    title: 'Teknik Otomotif (TO)',
-    tag: 'Teknologi Mesin & TBSM',
-    sub: 'Otomotif Modern · Perawatan Berkala · Ototronik',
-    desc: 'Pusat inovasi mesin dan otomotif! Jurusan TO membekali siswa dengan keahlian membongkar, merakit, dan menganalisis teknologi kendaraan bermotor terkini. Jadilah teknisi handal yang siap menguasai industri otomotif masa depan.',
-    card: 'from-rose-50/90 via-rose-100/70 to-rose-200/50 border-rose-200/90 hover:border-rose-400',
-    watermark: 'text-rose-500/10 group-hover:rotate-12',
-    iconBox: 'border-rose-200 text-rose-600 group-hover:bg-rose-600',
-    tagCls: 'text-rose-800 border-rose-300/60',
-    titleHover: 'group-hover:text-rose-700',
-    subCls: 'text-rose-800/80',
-    toggleCls: 'hover:bg-rose-600 text-rose-700 border-rose-300/70',
-    descBorder: 'border-rose-300/40',
-    footBorder: 'border-rose-300/50',
-    quotaCls: 'text-rose-700',
-    ctaCls: 'from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500',
+    title: 'Buka Website SPMB',
+    color: '#6c63d9',
+    icon: Globe,
+    desc: <>Scan barcode atau buka alamat website SPMB SMK Muhammadiyah Bawang.</>,
   },
   {
-    id: 'tjkt' as const,
-    icon: Cpu,
-    title: 'Teknik Jaringan Komputer & Telekomunikasi (TJKT)',
-    tag: 'Mikrotik & Fiber Optic',
-    sub: 'Cyber Security · Fiber Optic · Cloud Computing',
-    desc: 'Gerbang menuju dunia digital tanpa batas. Di TJKT, kamu akan menguasai infrastruktur jaringan, keamanan siber, dan teknologi fiber optik. Persiapkan dirimu menjadi arsitek jaringan yang menghubungkan dunia.',
-    card: 'from-blue-50/90 via-sky-100/70 to-blue-200/50 border-blue-200/90 hover:border-blue-400',
-    watermark: 'text-blue-500/10 group-hover:-rotate-12',
-    iconBox: 'border-blue-200 text-blue-600 group-hover:bg-blue-600',
-    tagCls: 'text-blue-800 border-blue-300/60',
-    titleHover: 'group-hover:text-blue-700',
-    subCls: 'text-blue-800/80',
-    toggleCls: 'hover:bg-blue-600 text-blue-700 border-blue-300/70',
-    descBorder: 'border-blue-300/40',
-    footBorder: 'border-blue-300/50',
-    quotaCls: 'text-blue-700',
-    ctaCls: 'from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500',
+    title: 'Klik “Daftar Sekarang”',
+    color: '#e8344a',
+    icon: UserPlus,
+    desc: (
+      <>
+        Tekan tombol <b>Daftar Sekarang</b> di halaman utama SPMB.
+      </>
+    ),
+    action: 'register',
   },
   {
-    id: 'akl' as const,
-    icon: Calculator,
-    title: 'Akuntansi & Keuangan Lembaga (AKL)',
-    tag: 'Fintech & Perbankan',
-    sub: 'Perbankan Syariah · Perpajakan Digital · Accurate Software',
-    desc: 'Mencetak pahlawan finansial masa depan. Jurusan AKL melatih ketelitian dan keahlianmu dalam mengelola keuangan, perpajakan, dan akuntansi digital. Raih karir cemerlang di sektor perbankan maupun startup bisnis.',
-    card: 'from-emerald-50/90 via-green-100/70 to-emerald-200/50 border-emerald-200/90 hover:border-emerald-400',
-    watermark: 'text-emerald-500/10 group-hover:rotate-12',
-    iconBox: 'border-emerald-200 text-emerald-600 group-hover:bg-emerald-600',
-    tagCls: 'text-emerald-800 border-emerald-300/60',
-    titleHover: 'group-hover:text-emerald-700',
-    subCls: 'text-emerald-800/80',
-    toggleCls: 'hover:bg-emerald-600 text-emerald-700 border-emerald-300/70',
-    descBorder: 'border-emerald-300/40',
-    footBorder: 'border-emerald-300/50',
-    quotaCls: 'text-emerald-700',
-    ctaCls: 'from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500',
+    title: 'Isi Data Awal',
+    color: '#1fa463',
+    icon: ClipboardList,
+    desc: (
+      <>
+        Isi <b>NIK, nama, nomor WhatsApp, pilihan jurusan</b> (TO / TJKT / AKL), lalu buat{' '}
+        <b>password</b>.
+      </>
+    ),
+    chip: 'Catat No. Pendaftaran & password untuk login',
+    warn: true,
+  },
+  {
+    title: 'Login & Lengkapi Formulir',
+    color: '#1c3f8f',
+    icon: CloudUpload,
+    desc: (
+      <>
+        Login dengan No. Pendaftaran / NIK. Isi <b>biodata, alamat, data orang tua</b>, lalu upload{' '}
+        <b>KK, Ijazah/SKL, Akta Lahir</b>.
+      </>
+    ),
+    chip: 'Status: Menunggu Verifikasi',
+    action: 'login',
+  },
+  {
+    title: 'Verifikasi oleh Admin SPMB',
+    color: '#f28c1e',
+    icon: FileSearch,
+    desc: <>Panitia memeriksa data dan berkas. Pantau status & catatan panitia di dashboard.</>,
+    chip: 'Menunggu Verifikasi → Terverifikasi',
+  },
+  {
+    title: 'Terverifikasi: Bayar & Cetak',
+    color: '#0f9d8a',
+    icon: ShieldCheck,
+    desc: (
+      <>
+        Buka menu <b>Biaya & Pembayaran</b>, lalu cetak formulir pendaftaran.
+      </>
+    ),
+  },
+  {
+    title: 'Pengumuman Hasil Seleksi',
+    color: '#2f80ed',
+    icon: Megaphone,
+    desc: (
+      <>
+        Cek hasil: <b>Diterima</b> atau <b>Cadangan</b>. Ikuti arahan panitia untuk daftar ulang,
+        seragam & MPLS.
+      </>
+    ),
+    chip: 'Cek dashboard secara berkala',
   },
 ];
 
+const RING_R = 52;
+const RING_C = 2 * Math.PI * RING_R;
 
-// ===========================================================================
-// PERUBAHAN 3 — GANTI SELURUH BAGIAN
-//   "{/* 4. KONSENTRASI KEAHLIAN (JURUSAN) ... */}"
-// sampai penutup </section> sebelum "{/* 5. FASILITAS & WORKSHOP */}"
-// dengan kode di bawah ini.
-// ===========================================================================
+const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
+  onRegisterClick,
+  onLoginClick,
+}) => {
+  const reduce = useReducedMotion();
+  const [open, setOpen] = useState<Set<number>>(new Set([0]));
+  const [active, setActive] = useState<number>(0);
+  const [alurImageOpen, setAlurImageOpen] = useState(false);
+  const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const alurImageRef = useRef<HTMLDivElement | null>(null);
+  const mounted = useRef(false);
 
-      {/* 4. KONSENTRASI KEAHLIAN (JURUSAN) */}
-      <section id="jurusan-section" className="py-20 lg:py-24 bg-gradient-to-b from-slate-50 via-slate-100/70 to-blue-50/40 relative overflow-hidden scroll-mt-24 section-snap">
+  const { scrollYProgress: alurImageProgress } = useScroll({
+    target: alurImageRef,
+    offset: ['start end', 'end start'],
+  });
+  const alurImageY = useTransform(alurImageProgress, [0, 0.5, 1], reduce ? [0, 0, 0] : [34, 0, -26]);
+  const alurImageScale = useTransform(
+    alurImageProgress,
+    [0, 0.5, 1],
+    reduce ? [1, 1, 1] : [0.94, 1, 0.96],
+  );
+
+  const allOpen = open.size === STEPS.length;
+  const progress = (active + 1) / STEPS.length;
+
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    const t = window.setTimeout(() => {
+      itemRefs.current[active]?.scrollIntoView({
+        behavior: reduce ? 'auto' : 'smooth',
+        block: 'nearest',
+      });
+    }, 280);
+    return () => window.clearTimeout(t);
+  }, [active, reduce]);
+
+  const toggle = (i: number) => {
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+    setActive(i);
+  };
+
+  const openAll = () => setOpen(new Set(STEPS.map((_, i) => i)));
+  const closeAll = () => setOpen(new Set());
+
+  const goNext = (i: number) => {
+    if (i >= STEPS.length - 1) {
+      setOpen(new Set([0]));
+      setActive(0);
+      return;
+    }
+    setOpen(new Set([i + 1]));
+    setActive(i + 1);
+  };
+
+  const runAction = (a?: Step['action']) => {
+    if (a === 'register') onRegisterClick?.();
+    if (a === 'login') onLoginClick?.();
+  };
+
+  return (
+    <section
+      id="alur-pendaftaran"
+      className="relative scroll-mt-24 section-snap overflow-hidden bg-gradient-to-b from-slate-50 via-blue-50/60 to-white py-16 sm:py-20"
+    >
+      <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-blue-200/40 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-amber-200/40 blur-3xl" />
+
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         <motion.div
+          initial={reduce ? false : { opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.4 }}
+          transition={{ duration: 0.5 }}
+          className="mx-auto mb-10 max-w-2xl text-center"
+        >
+          <span className="inline-block rounded-full bg-amber-100 px-4 py-1 text-xs font-bold uppercase tracking-widest text-amber-700">
+            Panduan Pendaftaran
+          </span>
+          <h2 className="mt-3 text-3xl font-extrabold text-slate-900 sm:text-4xl">
+            Alur SPMB Online
+          </h2>
+          <p className="mt-2 text-sm text-slate-600 sm:text-base">
+            SMK Muhammadiyah Bawang · Ikuti 7 langkah dari awal sampai pengumuman.
+          </p>
+        </motion.div>
+
+        <motion.div
+          ref={alurImageRef}
+          initial={reduce ? false : { opacity: 0 }}
+          whileInView={reduce ? undefined : { opacity: 1 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.65, ease: 'easeOut' }}
+          style={{ y: alurImageY, scale: alurImageScale }}
+          className="relative z-10 mx-auto mb-10 w-full max-w-6xl [transform-style:preserve-3d]"
+        >
+          <button
+            type="button"
+            onClick={() => setAlurImageOpen((value) => !value)}
+            aria-label={alurImageOpen ? 'Perkecil infografis alur pendaftaran' : 'Perbesar infografis alur pendaftaran'}
+            aria-pressed={alurImageOpen}
+            className="group relative block w-full overflow-hidden rounded-3xl border border-white/80 bg-white p-1 shadow-[0_20px_60px_-25px_rgba(30,64,175,0.35)] outline-none transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_-28px_rgba(30,64,175,0.45)] focus-visible:ring-4 focus-visible:ring-blue-300/60 active:scale-[0.995]"
+          >
+            <div className="relative overflow-hidden rounded-[1.35rem] bg-slate-100">
+              <motion.img
+                src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhiIuDeq9J_WXO2KBegPfvLCQivkwkbWElfSF07iItWPEB79-w0y7zyYxkSA9jkni23z6pkuzm7KYKoqsfOZ7XbYqmw7_Ic8vwU6UQhyphenhyphen4g_P5P-zvADaKnp-tJCISFdODUggAa9OiuK5QMBP_i5xJ8X3lnJR5PZoA51SqxzZfTy5yVxqq7BIYPLewRPa1Jt/s1672/69252.png"
+                alt="Infografis alur pendaftaran SPMB SMK Muhammadiyah Bawang"
+                loading="lazy"
+                decoding="async"
+                className={`block h-auto w-full select-none object-contain transition-transform duration-700 ease-out ${
+                  alurImageOpen ? 'scale-[1.025]' : 'scale-100 group-hover:scale-[1.015]'
+                }`}
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-blue-950/15 via-transparent to-white/10 opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
+              <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-slate-950/75 px-3 py-1.5 text-[10px] font-bold tracking-wide text-white opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100 sm:text-xs">
+                {alurImageOpen ? 'Tekan untuk perkecil' : 'Tekan untuk lihat lebih jelas'}
+              </span>
+            </div>
+          </button>
+        </motion.div>
+
+        <div className="grid gap-8 lg:grid-cols-[17rem_1fr] lg:gap-12">
+          <aside className="self-start lg:sticky lg:top-24">
+            <div className="flex items-center gap-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:flex-col lg:gap-4 lg:p-6">
+              <div className="relative h-28 w-28 shrink-0">
+                <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+                  <circle cx="60" cy="60" r={RING_R} fill="none" stroke="#e2e8f0" strokeWidth="10" />
+                  <motion.circle
+                    cx="60"
+                    cy="60"
+                    r={RING_R}
+                    fill="none"
+                    stroke={STEPS[active].color}
+                    strokeWidth="10"
+                    strokeLinecap="round"
+                    strokeDasharray={RING_C}
+                    initial={false}
+                    animate={{ strokeDashoffset: RING_C * (1 - progress), stroke: STEPS[active].color }}
+                    transition={{ duration: reduce ? 0 : 0.6, ease: 'easeOut' }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-extrabold text-slate-900">
+                    {active + 1}
+                    <span className="text-sm font-semibold text-slate-400">/{STEPS.length}</span>
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Langkah
+                  </span>
+                </div>
+              </div>
+
+              <div className="min-w-0 flex-1 lg:w-full lg:text-center">
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={active}
+                    initial={reduce ? false : { opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-sm font-bold leading-snug"
+                    style={{ color: STEPS[active].color }}
+                  >
+                    {STEPS[active].title}
+                  </motion.p>
+                </AnimatePresence>
+
+                <div className="mt-3 flex flex-wrap gap-2 lg:justify-center">
+                  <button
+                    type="button"
+                    onClick={allOpen ? closeAll : openAll}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-700 active:scale-95"
+                  >
+                    {allOpen ? <ChevronsUp className="h-4 w-4" /> : <ChevronsDown className="h-4 w-4" />}
+                    {allOpen ? 'Tutup Semua' : 'Buka Semua'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onRegisterClick}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-red-700 active:scale-95"
+                  >
+                    Daftar Sekarang
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <ol className="relative">
+            {STEPS.map((s, i) => {
+              const Icon = s.icon;
+              const isOpen = open.has(i);
+              const isActive = active === i;
+              const done = i < active;
+              const panelId = `alur-panel-${i}`;
+              return (
+                <motion.li
+                  key={s.title}
+                  ref={(el) => {
+                    itemRefs.current[i] = el;
+                  }}
+                  initial={reduce ? false : { opacity: 0, y: 28 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ duration: 0.45, delay: Math.min(i, 3) * 0.05 }}
+                  className="relative flex gap-4 pb-5 sm:gap-6 last:pb-0"
+                >
+                  <div className="relative flex w-14 shrink-0 flex-col items-center sm:w-16">
+                    <button
+                      type="button"
+                      onClick={() => toggle(i)}
+                      aria-label={`Langkah ${i + 1}: ${s.title}`}
+                      className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white text-white shadow-lg transition-transform hover:scale-110 active:scale-95 sm:h-16 sm:w-16"
+                      style={{ backgroundColor: s.color }}
+                    >
+                      {isActive && !reduce && (
+                        <motion.span
+                          className="absolute inset-0 rounded-full"
+                          style={{ backgroundColor: s.color }}
+                          animate={{ scale: [1, 1.55], opacity: [0.45, 0] }}
+                          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
+                        />
+                      )}
+                      <Icon className="relative h-6 w-6 sm:h-7 sm:w-7" />
+                      <span
+                        className="absolute -top-1.5 -left-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs font-extrabold shadow"
+                        style={{ color: s.color }}
+                      >
+                        {i + 1}
+                      </span>
+                    </button>
+
+                    {i < STEPS.length - 1 && (
+                      <div className="relative -mt-1 w-1 flex-1 overflow-hidden rounded-full bg-slate-200">
+                        <motion.div
+                          className="absolute inset-0 origin-top rounded-full"
+                          style={{ backgroundColor: s.color }}
+                          initial={false}
+                          animate={{ scaleY: done ? 1 : 0 }}
+                          transition={{ duration: reduce ? 0 : 0.5 }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div
+                    className={`min-w-0 flex-1 self-start overflow-hidden rounded-2xl border bg-white transition-shadow ${
+                      isActive ? 'shadow-lg' : 'shadow-sm hover:shadow-md'
+                    }`}
+                    style={{
+                      borderColor: isActive ? s.color : '#e2e8f0',
+                      borderLeftWidth: 6,
+                      borderLeftColor: s.color,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggle(i)}
+                      aria-expanded={isOpen}
+                      aria-controls={panelId}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left sm:px-6"
+                    >
+                      <span className="text-base font-bold leading-snug sm:text-xl" style={{ color: s.color }}>
+                        {s.title}
+                      </span>
+                      <motion.span
+                        animate={{ rotate: isOpen ? 180 : 0 }}
+                        transition={{ duration: reduce ? 0 : 0.25 }}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600"
+                      >
+                        <ChevronDown className="h-5 w-5" />
+                      </motion.span>
+                    </button>
+
+                    <AnimatePresence initial={false}>
+                      {isOpen && (
+                        <motion.div
+                          id={panelId}
+                          key="panel"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: reduce ? 0 : 0.3, ease: 'easeInOut' }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-4 pb-5 sm:px-6">
+                            <p className="text-sm leading-relaxed text-slate-600 sm:text-base [&_b]:font-bold [&_b]:text-slate-900">
+                              {s.desc}
+                            </p>
+
+                            {s.chip && (
+                              <span
+                                className="mt-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold sm:text-sm"
+                                style={{
+                                  color: s.color,
+                                  backgroundColor: `${s.color}1a`,
+                                  borderColor: `${s.color}55`,
+                                }}
+                              >
+                                {s.warn && <AlertTriangle className="h-4 w-4" />}
+                                {s.chip}
+                              </span>
+                            )}
+
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {s.action && (
+                                <button
+                                  type="button"
+                                  onClick={() => runAction(s.action)}
+                                  className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow transition hover:brightness-110 active:scale-95"
+                                  style={{ backgroundColor: s.color }}
+                                >
+                                  {s.action === 'login' ? (
+                                    <LogIn className="h-4 w-4" />
+                                  ) : (
+                                    <UserPlus className="h-4 w-4" />
+                                  )}
+                                  {s.action === 'login' ? 'Login Sekarang' : 'Daftar Sekarang'}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => goNext(i)}
+                                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-95"
+                              >
+                                {i === STEPS.length - 1 ? (
+                                  <>
+                                    <RotateCcw className="h-4 w-4" /> Ulangi dari awal
+                                  </>
+                                ) : (
+                                  <>
+                                    Langkah berikutnya <ArrowRight className="h-4 w-4" />
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.li>
+              );
+            })}
+          </ol>
+        </div>
+
+        <div className="mt-12 text-center">
+          <button
+            type="button"
+            onClick={() =>
+              document.getElementById('kontak-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+            className="group inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200/90 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-blue-50 hover:text-blue-700"
+            title="Lanjut ke Bagian Kontak & Lokasi Peta"
+          >
+            <span>Lanjut ke Kontak & Lokasi Peta</span>
+            <ChevronDown className="h-3.5 w-3.5 animate-bounce text-blue-600 transition-transform group-hover:translate-y-0.5" />
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// ===========================================================================
+// HELPER GULIR HALUS
+// ===========================================================================
+const lockAutoScroll = (ms = 1800) => {
+  (window as any).__spmbNavLockUntil = Date.now() + ms;
+};
+const isAutoScrollLocked = () => Date.now() < ((window as any).__spmbNavLockUntil || 0);
+const isTouchDevice = () =>
+  typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+
+// ===========================================================================
+// FASILITAS CAROUSEL
+// ===========================================================================
+const FACILITIES = [
+  {
+    title: 'Workshop Teknik Otomotif',
+    subtitle: 'Standar Industri & Bengkel Resmi (TSM & TKR)',
+    description:
+      'Workshop Teknik Otomotif SMK Muhammadiyah dirancang sebagai sarana praktik siswa dalam mempelajari perawatan, perbaikan, dan teknologi kendaraan bermotor. Dilengkapi dengan peralatan standar industri, workshop ini membekali siswa dengan keterampilan teknis, kedisiplinan kerja, serta etos profesional sesuai nilai-nilai SOP Perusahaan.',
+    tags: ['TEKNIK OTOMOTIF', 'TSM & TKR', 'UNGGUL'],
+    completionRate: '100%',
+    image: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    title: 'Lab Akuntansi',
+    subtitle: 'Simulasi Perbankan & Software Akuntansi Digital',
+    description:
+      'Laboratorium Akuntansi dilengkapi dengan komputer terintegrasi software Accurate, MYOB, perpajakan digital e-Faktur, dan simulasi kasir modern. Mempersiapkan siswa dengan kecakapan analisis keuangan, pencatatan transaksi terstandar, dan etika profesional perbankan syariah serta konvensional.',
+    tags: ['AKUNTANSI', 'FINTECH', 'DIGITAL'],
+    completionRate: '100%',
+    image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    title: 'Lab Fiber Optic',
+    subtitle: 'Infrastruktur Jaringan Cepat & Mikrotik Academy',
+    description:
+      'Fasilitas mutakhir untuk program keahlian TJKT dengan perangkat Splicer Fiber Optic, OTDR, Routerboard Mikrotik, Cisco, Server Virtualisasi, dan laboratorium komputasi berkecepatan tinggi untuk riset jaringan dan keamanan siber.',
+    tags: ['FIBER OPTIC', 'MIKROTIK', 'CYBER SECURITY'],
+    completionRate: '100%',
+    image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    title: 'Kewirausahaan',
+    subtitle: 'Business Center & Teaching Factory Muhiba',
+    description:
+      'Pusat inkubasi bisnis siswa yang mewadahi unit produksi, minimarket sekolah, jasa servis motor berkala, perakitan PC, dan penjualan produk kreatif karya siswa untuk memupuk jiwa mandiri dan wirausaha tangguh sejak dini.',
+    tags: ['BUSINESS CENTER', 'TEFA', 'WIRAUSAHA'],
+    completionRate: '100%',
+    image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=80',
+  },
+];
+
+const FASILITAS_INTERVAL_MS = 5000;
+
+const FasilitasCarousel: React.FC<{ onRegisterClick: () => void }> = ({ onRegisterClick }) => {
+  const total = FACILITIES.length;
+  const [active, setActive] = useState(0);
+  const [hovered, setHovered] = useState(false);
+  const [touching, setTouching] = useState(false);
+  const [inView, setInView] = useState(true);
+  const [tabVisible, setTabVisible] = useState(true);
+
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const remaining = useRef(FASILITAS_INTERVAL_MS);
+  const startedAt = useRef(0);
+
+  const paused = hovered || touching || !inView || !tabVisible;
+
+  useEffect(() => {
+    remaining.current = FASILITAS_INTERVAL_MS;
+  }, [active]);
+
+  useEffect(() => {
+    if (paused) return;
+    startedAt.current = Date.now();
+    const timer = window.setTimeout(() => setActive((i) => (i + 1) % total), remaining.current);
+    return () => {
+      window.clearTimeout(timer);
+      remaining.current = Math.max(300, remaining.current - (Date.now() - startedAt.current));
+    };
+  }, [active, paused, total]);
+
+  useEffect(() => {
+    const node = rootRef.current;
+    let observer: IntersectionObserver | undefined;
+    if (node && 'IntersectionObserver' in window) {
+      observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+        threshold: 0.25,
+      });
+      observer.observe(node);
+    }
+    const onVis = () => setTabVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      observer?.disconnect();
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
+
+  const goNext = () => setActive((i) => (i + 1) % total);
+  const goPrev = () => setActive((i) => (i - 1 + total) % total);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    setTouching(true);
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    setTouching(false);
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start) return;
+    const dx = e.changedTouches[0].clientX - start.x;
+    const dy = e.changedTouches[0].clientY - start.y;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) goNext();
+      else goPrev();
+    }
+  };
+  const onTouchCancel = () => {
+    touchStart.current = null;
+    setTouching(false);
+  };
+
+  return (
+    <div
+      ref={rootRef}
+      className="relative"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowRight') goNext();
+        if (e.key === 'ArrowLeft') goPrev();
+      }}
+      onPointerEnter={(e) => e.pointerType === 'mouse' && setHovered(true)}
+      onPointerLeave={(e) => e.pointerType === 'mouse' && setHovered(false)}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
+      aria-roledescription="carousel"
+      aria-label="Fasilitas sekolah"
+    >
+      <style>{`@keyframes fasilitas-progress{from{transform:scaleX(0)}to{transform:scaleX(1)}}`}</style>
+
+      <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xl sm:rounded-3xl [touch-action:pan-y]">
+        <div className="grid">
+          {FACILITIES.map((f, i) => {
+            const isCurrent = i === active;
+            return (
+              <article
+                key={f.title}
+                aria-hidden={!isCurrent}
+                inert={!isCurrent}
+                className={`col-start-1 row-start-1 grid grid-cols-1 transition-opacity duration-500 lg:grid-cols-12 ${
+                  isCurrent ? 'z-10 opacity-100' : 'pointer-events-none z-0 opacity-0'
+                }`}
+              >
+                <div className="relative min-h-[220px] overflow-hidden bg-slate-900 sm:min-h-[320px] lg:col-span-6 lg:min-h-[440px]">
+                  <img
+                    src={f.image}
+                    alt={f.title}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover object-center"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute left-4 top-4 rounded-full bg-blue-600/90 px-3 py-1.5 text-xs font-extrabold text-white shadow-lg backdrop-blur-md">
+                    {f.completionRate} SIAP PRAKTIK
+                  </div>
+                </div>
+
+                <div className="flex flex-col justify-between bg-white p-5 sm:p-8 lg:col-span-6 lg:p-10">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-blue-700">
+                        {f.subtitle}
+                      </span>
+                      <span className="shrink-0 font-mono text-xs font-bold text-slate-400">
+                        {String(i + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+                      </span>
+                    </div>
+                    <h3 className="text-2xl font-extrabold leading-snug tracking-tight text-slate-900 sm:text-3xl">
+                      {f.title}
+                    </h3>
+                    <p className="text-sm leading-relaxed text-slate-600">{f.description}</p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {f.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
+                    <button
+                      type="button"
+                      onClick={onRegisterClick}
+                      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 text-xs font-extrabold text-white shadow-md transition hover:from-blue-500 hover:to-indigo-500 active:scale-95 sm:text-sm"
+                    >
+                      <span>Daftar Jurusan Ini</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                    <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      <span>Tersertifikasi LSP & Industri</span>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="h-1 bg-slate-100">
+          <div
+            key={active}
+            className="h-full origin-left bg-blue-600"
+            style={{
+              animation: `fasilitas-progress ${FASILITAS_INTERVAL_MS}ms linear forwards`,
+              animationPlayState: paused ? 'paused' : 'running',
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 flex items-center justify-center gap-3">
+        <button
+          type="button"
+          onClick={goPrev}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95"
+          aria-label="Fasilitas sebelumnya"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+
+        <div className="flex items-center">
+          {FACILITIES.map((f, idx) => (
+            <button
+              key={f.title}
+              type="button"
+              onClick={() => setActive(idx)}
+              className="flex h-11 w-8 items-center justify-center"
+              aria-label={`Fasilitas ${idx + 1}: ${f.title}`}
+              aria-current={active === idx}
+            >
+              <span
+                className={`h-2.5 rounded-full transition-all duration-300 ${
+                  active === idx ? 'w-8 bg-blue-600' : 'w-2.5 bg-slate-300'
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={goNext}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95"
+          aria-label="Fasilitas berikutnya"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ===========================================================================
+// MAIN LANDING PAGE COMPONENT
+// ===========================================================================
+interface LandingPageProps {
+  onRegisterClick: () => void;
+  onLoginClick: () => void;
+  onPreloadRegister?: () => void;
+  onPreloadLogin?: () => void;
+}
+
+export const LandingPage: React.FC<LandingPageProps> = ({
+  onRegisterClick,
+  onLoginClick,
+  onPreloadRegister,
+  onPreloadLogin,
+}) => {
+  const [showBackToTop, setShowBackToTop] = useState<boolean>(false);
+
+  // State untuk kontrol deskripsi jurusan (Default: TERSEMBUNYI untuk semua jurusan)
+  const [expandedJurusan, setExpandedJurusan] = useState<Record<string, boolean>>({
+    to: false,
+    tjkt: false,
+    akl: false,
+  });
+
+  const toggleJurusanDesc = (id: string) => {
+    setExpandedJurusan((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const [isYtMuted, setIsYtMuted] = useState<boolean>(true);
+  const ytIframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  const { scrollY, scrollYProgress } = useScroll();
+  const heroBgY = useTransform(scrollY, [0, 800], [0, 160]);
+  const heroRingsY = useTransform(scrollY, [0, 800], [0, -80]);
+  const heroRingsRotate = useTransform(scrollY, [0, 800], [0, 40]);
+  const heroTextY = useTransform(scrollY, [0, 800], [0, 40]);
+  const heroCardY = useTransform(scrollY, [0, 800], [0, 65]);
+  const profilGlowY = useTransform(scrollY, [200, 1400], [-50, 60]);
+  const videoCardY = useTransform(scrollY, [300, 1200], [30, -20]);
+  const statsY = useTransform(scrollY, [500, 1200], [20, -10]);
+  const jurusanGlowY = useTransform(scrollY, [800, 2200], [-40, 50]);
+
+  const scrollToSection = (sectionId: string) => {
+    lockAutoScroll();
+    const el = document.getElementById(sectionId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const [showWhatsappButton, setShowWhatsappButton] = useState<boolean>(true);
+  const waTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const resetWaTimer = () => {
+      setShowWhatsappButton(true);
+
+      if (waTimerRef.current) {
+        clearTimeout(waTimerRef.current);
+      }
+
+      waTimerRef.current = setTimeout(() => {
+        setShowWhatsappButton(false);
+      }, 20000);
+    };
+
+    resetWaTimer();
+
+    const handleScroll = () => {
+      resetWaTimer();
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      if (waTimerRef.current) {
+        clearTimeout(waTimerRef.current);
+      }
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  const hasTriggeredQuickScroll = useRef(false);
+  const isAutoScrolling = useRef(false);
+
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+
+    const handleScrollSnap = () => {
+      const currentScrollY = window.scrollY;
+
+      if (isAutoScrollLocked() || isTouchDevice()) {
+        lastScrollY = currentScrollY;
+        return;
+      }
+
+      if (currentScrollY <= 20) {
+        hasTriggeredQuickScroll.current = false;
+        isAutoScrolling.current = false;
+      }
+
+      if (
+        !hasTriggeredQuickScroll.current &&
+        !isAutoScrolling.current &&
+        lastScrollY <= 30 &&
+        currentScrollY > 30 &&
+        currentScrollY < 320
+      ) {
+        hasTriggeredQuickScroll.current = true;
+        isAutoScrolling.current = true;
+
+        const target = document.getElementById('profil-sekolah');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(() => {
+            isAutoScrolling.current = false;
+          }, 900);
+        }
+      }
+
+      lastScrollY = currentScrollY;
+    };
+
+    const handleWheel = (e: WheelEvent) => {
+      if (isAutoScrollLocked()) return;
+      if (
+        window.scrollY <= 25 &&
+        e.deltaY > 15 &&
+        !hasTriggeredQuickScroll.current &&
+        !isAutoScrolling.current
+      ) {
+        hasTriggeredQuickScroll.current = true;
+        isAutoScrolling.current = true;
+
+        const target = document.getElementById('profil-sekolah');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(() => {
+            isAutoScrolling.current = false;
+          }, 900);
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScrollSnap, { passive: true });
+    window.addEventListener('wheel', handleWheel, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollSnap);
+      window.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
+  const toggleYtAudio = () => {
+    if (ytIframeRef.current && ytIframeRef.current.contentWindow) {
+      const command = isYtMuted ? 'unMute' : 'mute';
+      ytIframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: command, args: [] }),
+        '*'
+      );
+      setIsYtMuted(!isYtMuted);
+    }
+  };
+
+  const fallbackHeroImage =
+    'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjG8XVKrvlj5jkknTYzKlB2DYIKwYl1h-gKegies3GGfKcyk-1dkSbyfvt4Ghj1yFFkXhzsQ40PCyNUVALlRtkvQmnQtzCJe2vo7XL3Im96N_eQqnsxxRJkirDNC5NorqApzII5S2-bswtbk3wH3eUwOc6JCuHVkpKC3QCxZa2T2JPHtIJ9tvOEaMz45ZRb/s320/44857.png';
+
+  const testimonials = [
+    {
+      quote:
+        'Di jurusan TJKT SMK Muhammadiyah Bawang, saya belajar jaringan komputer dan program secara langsung. Praktiknya seru dan sesuai kebutuhan industri. Sekarang saya sudah punya bekal untuk bekerja di bidang IT dan jaringan.',
+      name: 'BENY-ARFAN - TKJ#1',
+      role: 'CEO and Co-Founder EGG-DEV',
+      color: 'bg-rose-100 text-rose-600',
+    },
+    {
+      quote:
+        'Belajar di jurusan Teknik Otomotif SMK Muhammadiyah Bawang sangat menyenangkan karena langsung praktik di bengkel sekolah. Guru-gurunya berpengalaman dan fasilitasnya lengkap. Saya jadi percaya diri dan siap bekerja di dunia otomotif setelah lulus.',
+      name: 'KHUSNUL ASAQOFI',
+      role: 'ALUMNI TBSM & OMPONK',
+      color: 'bg-amber-100 text-amber-600',
+    },
+    {
+      quote:
+        'Jurusan Akuntansi di SMK Muhammadiyah Bawang mengajarkan kami pembukuan dan akuntansi berbasis komputer. Selain ilmu, kami juga dibina untuk jujur dan teliti. Ilmu yang saya dapatkan sangat berguna untuk dunia kerja maupun usaha.',
+      name: 'EKA MAULIDIN',
+      role: 'ALUMNI AKUNTANSI - CEO KOPERASI',
+      color: 'bg-indigo-100 text-indigo-600',
+    },
+  ];
+
+  const smoothEase = [0.16, 1, 0.3, 1] as const;
+
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.12,
+        delayChildren: 0.08,
+      },
+    },
+  };
+
+  const fadeInUpItem = {
+    hidden: { opacity: 0, y: 22 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.55,
+        ease: smoothEase,
+      },
+    },
+  };
+
+  const cardStaggerVariants = {
+    hidden: { opacity: 0, y: 28, scale: 0.98 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: 0.55,
+        ease: smoothEase,
+      },
+    },
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden selection:bg-blue-600 selection:text-white relative">
+      
+      {/* BAR PROGRES GULIR HALUS */}
+      <motion.div
+        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-blue-500 to-indigo-500 z-50 origin-left pointer-events-none shadow-sm"
+        style={{ scaleX: scrollYProgress }}
+      />
+
+      {/* 1. HERO SECTION */}
+      <section id="hero-section" className="relative min-h-[640px] lg:min-h-[740px] flex items-center bg-slate-950 overflow-hidden section-snap scroll-mt-20">
+        <motion.div 
+          style={{ y: heroBgY }} 
+          className="absolute inset-0 z-0 overflow-hidden pointer-events-none will-change-transform"
+        >
+          <div
+            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 scale-105"
+            style={{
+              backgroundImage: `url(${fallbackHeroImage})`,
+            }}
+          />
+
+          <div className="absolute inset-0 w-full h-full opacity-90 scale-110 pointer-events-none overflow-hidden">
+            <iframe
+              src="https://www.tiktok.com/player/v1/7462604408816225541?autoplay=1&muted=1&controls=0&loop=1"
+              title="TikTok Video Background SMK Muhiba"
+              className="w-[120%] h-[120%] -ml-[10%] -mt-[10%] object-cover pointer-events-none border-0"
+              allow="autoplay; encrypted-media"
+              loading="lazy"
+            />
+          </div>
+
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-950/35 to-blue-950/20 z-10" />
+        </motion.div>
+
+        <motion.div 
+          style={{ y: heroRingsY, rotate: heroRingsRotate }}
+          className="absolute right-0 bottom-0 w-[500px] h-[500px] pointer-events-none opacity-20 z-10 will-change-transform"
+        >
+          <svg viewBox="0 0 400 400" className="w-full h-full text-blue-400 fill-current">
+            <circle cx="200" cy="200" r="180" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="6 8" />
+            <circle cx="200" cy="200" r="140" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5 7" />
+            <circle cx="200" cy="200" r="100" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 6" />
+            <circle cx="200" cy="200" r="60" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="3 5" />
+          </svg>
+        </motion.div>
+
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            <motion.div 
+              style={{ y: heroTextY }}
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="lg:col-span-7 space-y-6 text-white drop-shadow-md will-change-transform"
+            >
+              <motion.div variants={fadeInUpItem} className="space-y-2">
+                <p className="text-lg sm:text-xl text-blue-200 font-medium tracking-wide">
+                  Welcome To Our School
+                </p>
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
+                  SMK MUHAMMADIYAH <br />
+                  <span className="text-[#3b82f6] drop-shadow-sm">Bawang!</span>
+                </h1>
+              </motion.div>
+
+              <motion.p variants={fadeInUpItem} className="text-base sm:text-lg text-slate-300 max-w-xl leading-relaxed">
+                Sekolah Pusat Keunggulan dengan kurikulum link and match industri. Mencetak generasi tangguh, terampil, berakhlak mulia, dan siap bersaing di dunia kerja nasional maupun internasional.
+              </motion.p>
+
+              <motion.div variants={fadeInUpItem} className="pt-2 flex flex-wrap items-center gap-4">
+                <button
+                  onClick={onRegisterClick}
+                  onMouseEnter={onPreloadRegister}
+                  onTouchStart={onPreloadRegister}
+                  onFocus={onPreloadRegister}
+                  className="px-7 py-3.5 text-sm sm:text-base font-extrabold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-lg shadow-lg hover:shadow-blue-500/30 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                >
+                  DAFTAR SEKARANG !!!
+                </button>
+
+                <button
+                  onClick={onLoginClick}
+                  onMouseEnter={onPreloadLogin}
+                  onTouchStart={onPreloadLogin}
+                  onFocus={onPreloadLogin}
+                  className="px-6 py-3.5 text-sm sm:text-base font-bold text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600 rounded-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                >
+                  Cek Status / Login Siswa
+                </button>
+              </motion.div>
+
+              <motion.div variants={fadeInUpItem} className="pt-4 flex items-center gap-6 text-xs text-slate-300 border-t border-slate-800/80">
+                <div className="flex items-center gap-1.5 hover:text-white transition-colors">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Akreditasi A Unggul</span>
+                </div>
+                <div className="flex items-center gap-1.5 hover:text-white transition-colors">
+                  <Award className="w-4 h-4 text-yellow-400" />
+                  <span>Sekolah Pusat Keunggulan</span>
+                </div>
+                <div className="flex items-center gap-1.5 hover:text-white transition-colors">
+                  <BookOpen className="w-4 h-4 text-blue-400" />
+                  <span>3 Jurusan Pilihan</span>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            <motion.div 
+              style={{ y: heroCardY }}
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.25, ease: smoothEase }}
+              className="lg:col-span-5 relative will-change-transform"
+            >
+              <div className="relative mx-auto max-w-md rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-slate-900/60 backdrop-blur-sm group hover:border-blue-400/40 transition-all duration-300">
+                <img
+                  src={fallbackHeroImage}
+                  alt="Gedung SMK Muhammadiyah Bawang"
+                  className="w-full h-72 object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                  referrerPolicy="no-referrer"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div className="p-5 text-white">
+                  <div className="flex items-center justify-between text-xs text-blue-300 font-semibold mb-1">
+                    <span>KAMPUS TERPADU</span>
+                    <span>BAWANG, BATANG</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-white">SMK Muhammadiyah Bawang</h3>
+                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                    Jl. Raya Bawang - Sukorejo KM 01, Jlamprang, Bawang, Kabupaten Batang, Jawa Tengah 51274
+                  </p>
+                  
+                  <div className="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                    <a
+                      href="https://www.tiktok.com/@smartschool17/video/7462604408816225541"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-yellow-300 hover:text-yellow-200 transition-colors"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>Tonton Video Profil Sekolah (TikTok)</span>
+                    </a>
+                    <span className="text-[11px] text-slate-400">@smartschool17</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+          </div>
+        </div>
+
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+          <button
+            onClick={() => scrollToSection('profil-sekolah')}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/80 hover:bg-slate-900 text-blue-200 hover:text-white border border-blue-400/30 backdrop-blur-md text-xs font-semibold shadow-xl transition-all transform hover:scale-105 active:scale-95 group cursor-pointer"
+            title="Gulir Cepat ke Profil Sekolah"
+          >
+            <span>Profil Sekolah</span>
+            <ChevronDown className="w-4 h-4 text-blue-400 group-hover:translate-y-0.5 transition-transform animate-bounce" />
+          </button>
+        </div>
+      </section>
+
+      {/* 2. PROFIL SEKOLAH & VIDEO PROFIL */}
+      <section 
+        id="profil-sekolah" 
+        className="py-16 sm:py-24 bg-gradient-to-b from-[#FFFFFF] via-[#E8F1FD] to-[#D3E3FD] text-slate-900 relative overflow-hidden border-b border-blue-200/60 scroll-mt-24 section-snap"
+      >
+        <motion.div 
+          style={{ y: profilGlowY }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-blue-300/35 rounded-full blur-3xl pointer-events-none will-change-transform" 
+        />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <motion.div 
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.6, ease: smoothEase }}
+            className="text-center max-w-3xl mx-auto mb-12"
+          >
+            <span className="inline-flex items-center px-3.5 py-1 bg-blue-100 text-blue-800 border border-blue-200/80 rounded-full text-xs font-bold uppercase tracking-wider mb-3 shadow-2xs">
+              <span>Profil Sekolah Pusat Keunggulan</span>
+            </span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
+              Mengenal Lebih Dekat <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-700">SMK MUHIBA</span>
+            </h2>
+            <div className="w-20 h-1 bg-gradient-to-r from-blue-600 to-indigo-600 mx-auto mt-4 rounded-full" />
+            <p className="text-sm sm:text-base text-slate-700 mt-6 leading-relaxed font-medium">
+              “SMK Muhammadiyah Bawang (MUHIBA) adalah Sekolah Pusat Keunggulan yang mencetak generasi tangguh, terampil, dan berakhlak mulia. Dengan kurikulum link and match industri, kami mempersiapkan siswa siap kerja dan siap kuliah melalui program unggulan Teknik Otomotif, Teknik Jaringan Komputer & Telekomunikasi, serta Akuntansi dan Keuangan Lembaga.”
+            </p>
+          </motion.div>
+
+          <motion.div 
+            style={{ y: videoCardY }}
+            initial={{ opacity: 0, scale: 0.96 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.65, ease: smoothEase }}
+            className="max-w-4xl mx-auto will-change-transform"
+          >
+            <div className="p-2 sm:p-3 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 shadow-2xl ring-1 ring-blue-900/10">
+              <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-black shadow-inner aspect-video">
+                <iframe
+                  ref={ytIframeRef}
+                  src="https://www.youtube-nocookie.com/embed/MjqT0ORLm1w?autoplay=1&mute=1&loop=1&playlist=MjqT0ORLm1w&controls=0&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&enablejsapi=1"
+                  title="Profil SMK Muhammadiyah Bawang"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  loading="lazy"
+                  className="w-full h-full object-cover scale-[1.03] pointer-events-none select-none"
+                />
+
+                <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 pointer-events-none flex items-center gap-2 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 text-white text-[11px] font-bold shadow-lg">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span>OFFICIAL VIDEO PROFIL MUHIBA</span>
+                </div>
+
+                <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20">
+                  <button
+                    type="button"
+                    onClick={toggleYtAudio}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-white rounded-full backdrop-blur-md border border-white/20 text-xs font-semibold shadow-xl transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
+                    title={isYtMuted ? 'Nyalakan Audio Video' : 'Bisukan Audio Video'}
+                  >
+                    {isYtMuted ? (
+                      <>
+                        <VolumeX className="w-4 h-4 text-rose-400" />
+                        <span>Nyalakan Suara</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-4 h-4 text-emerald-400 animate-pulse" />
+                        <span>Suara Aktif</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-700 px-2">
+              <span className="font-bold flex items-center gap-1.5 text-slate-800">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Sekolah Pusat Keunggulan (SMK PK) Kemendikbudristek</span>
+              </span>
+              <a
+                href="https://youtu.be/MjqT0ORLm1w?si=LMWN7mZdpKYSBu6R"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-700 hover:text-blue-900 transition-colors flex items-center gap-1 font-bold underline"
+              >
+                <span>Buka di YouTube</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </motion.div>
+
+          <div className="mt-8 text-center">
+            <button
+              onClick={() => scrollToSection('jurusan-section')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/90 hover:bg-white text-blue-900 border border-blue-200/90 text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer group"
+              title="Lanjut ke Bagian Konsentrasi Keahlian"
+            >
+              <span>Lanjut ke Konsentrasi Keahlian (Jurusan)</span>
+              <ChevronDown className="w-3.5 h-3.5 text-blue-600 group-hover:translate-y-0.5 transition-transform animate-bounce" />
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 3. STATS STRIP */}
+      <section id="stats-section" className="bg-white border-y border-slate-200 py-8 relative z-20 section-snap scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div 
+            style={{ y: statsY }}
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.3 }}
+            className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center will-change-transform"
+          >
+            <motion.div variants={fadeInUpItem} className="p-3 hover:-translate-y-1 transition-transform">
+              <p className="text-3xl sm:text-4xl font-extrabold text-blue-700 tabular-nums">59</p>
+              <p className="text-xs font-semibold text-slate-600 mt-1">Sekolah Asal SMP/MTs</p>
+            </motion.div>
+            <motion.div variants={fadeInUpItem} className="p-3 border-l border-slate-100 hover:-translate-y-1 transition-transform">
+              <p className="text-3xl sm:text-4xl font-extrabold text-amber-600 tabular-nums">3</p>
+              <p className="text-xs font-semibold text-slate-600 mt-1">Konsentrasi Keahlian</p>
+            </motion.div>
+            <motion.div variants={fadeInUpItem} className="p-3 border-l border-slate-100 hover:-translate-y-1 transition-transform">
+              <p className="text-3xl sm:text-4xl font-extrabold text-emerald-600 tabular-nums">1.500</p>
+              <p className="text-xs font-semibold text-slate-600 mt-1">Total Kuota Pendaftar</p>
+            </motion.div>
+            <motion.div variants={fadeInUpItem} className="p-3 border-l border-slate-100 hover:-translate-y-1 transition-transform">
+              <p className="text-3xl sm:text-4xl font-extrabold text-indigo-600 tabular-nums">100%</p>
+              <p className="text-xs font-semibold text-slate-600 mt-1">Terserap Kerja & Kuliah</p>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 4. KONSENTRASI KEAHLIAN (JURUSAN) - DESAIN DASHBOARD MODERN & KONTROL VIEW */}
+      {/* ========================================================================= */}
+      <section id="jurusan-section" className="py-20 lg:py-24 bg-gradient-to-b from-slate-50 via-slate-100/70 to-blue-50/40 relative overflow-hidden scroll-mt-24 section-snap">
+        <motion.div 
           style={{ y: jurusanGlowY }}
           className="absolute -right-32 top-1/3 w-96 h-96 bg-blue-200/40 rounded-full blur-3xl pointer-events-none will-change-transform"
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
+          <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.55 }}
             className="text-center max-w-2xl mx-auto mb-16"
           >
-            <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider mb-2">
-              Program Unggulan
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              Program Unggalan
             </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1">
               Konsentrasi <span className="text-blue-600">Keahlian</span>
@@ -108,98 +1364,272 @@ const JURUSAN = [
             </p>
           </motion.div>
 
-          {/* items-stretch = semua kartu satu baris otomatis setinggi sama */}
-          <motion.div
+          <motion.div 
             variants={staggerContainer}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch"
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"
           >
-            {JURUSAN.map((j) => {
-              const Icon = j.icon;
-              const isOpen = expandedJurusan[j.id];
-              return (
-                <motion.div
-                  key={j.id}
-                  id={`jurusan-${j.id}`}
-                  variants={cardStaggerVariants}
-                  whileHover={{ y: -8, scale: 1.01, transition: { duration: 0.25 } }}
-                  className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${j.card} border p-7 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col h-full group scroll-mt-24`}
+            
+            {/* 1. TEKNIK OTOMOTIF (TO) - Merah Pudar Dashboard Style */}
+            <motion.div 
+              id="jurusan-to" 
+              variants={cardStaggerVariants}
+              whileHover={{ y: -8, scale: 1.01, transition: { duration: 0.25 } }}
+              className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-rose-50/90 via-rose-100/70 to-rose-200/50 border border-rose-200/90 p-7 shadow-lg hover:shadow-2xl hover:border-rose-400 transition-all duration-300 flex flex-col group scroll-mt-24"
+            >
+              {/* Background Watermark Icon (Estetik khas dashboard referensi) */}
+              <Wrench className="absolute -bottom-8 -right-8 w-44 h-44 text-rose-500/10 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700 ease-out pointer-events-none" />
+
+              {/* Tag Header */}
+              <div className="flex items-center justify-between mb-5 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-white/90 shadow-md border border-rose-200 flex items-center justify-center text-rose-600 group-hover:scale-110 group-hover:bg-rose-600 group-hover:text-white transition-all duration-300">
+                  <Wrench className="w-7 h-7" />
+                </div>
+                <span className="text-[11px] font-extrabold text-rose-800 bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-rose-300/60 shadow-2xs">
+                  Teknologi Mesin & TBSM
+                </span>
+              </div>
+
+              {/* Title */}
+              <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-rose-700 transition-colors relative z-10">
+                Teknik Otomotif (TO)
+              </h3>
+              <p className="text-xs font-semibold text-rose-800/80 mt-1 mb-4 relative z-10">
+                Otomotif Modern · Perawatan Berkala · Ototronik
+              </p>
+
+              {/* Toggle View Description Button */}
+              <div className="relative z-10">
+                <button
+                  type="button"
+                  onClick={() => toggleJurusanDesc('to')}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-rose-600 text-rose-700 hover:text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer border border-rose-300/70 group/btn"
                 >
-                  <Icon className={`absolute -bottom-8 -right-8 w-44 h-44 group-hover:scale-110 transition-transform duration-700 ease-out pointer-events-none ${j.watermark}`} />
+                  {expandedJurusan.to ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Sembunyikan Deskripsi</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Lihat Detail Deskripsi</span>
+                    </>
+                  )}
+                  <motion.span
+                    animate={{ rotate: expandedJurusan.to ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </motion.span>
+                </button>
+              </div>
 
-                  <div className="flex items-center justify-between gap-3 mb-5 relative z-10">
-                    <div className={`w-14 h-14 shrink-0 rounded-2xl bg-white/90 shadow-md border flex items-center justify-center group-hover:scale-110 group-hover:text-white transition-all duration-300 ${j.iconBox}`}>
-                      <Icon className="w-7 h-7" />
+              {/* Slide animation for description content */}
+              <AnimatePresence initial={false}>
+                {expandedJurusan.to && (
+                  <motion.div
+                    key="desc-to"
+                    initial={{ height: 0, opacity: 0, y: -10 }}
+                    animate={{ height: 'auto', opacity: 1, y: 0 }}
+                    exit={{ height: 0, opacity: 0, y: -10 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden relative z-10"
+                  >
+                    <div className="mt-4 pt-3 border-t border-rose-300/40 text-sm text-slate-700 leading-relaxed bg-white/70 backdrop-blur-sm p-4 rounded-2xl border border-white/80 shadow-inner">
+                      Pusat inovasi mesin dan otomotif! Jurusan TO membekali siswa dengan keahlian membongkar, merakit, dan menganalisis teknologi kendaraan bermotor terkini. Jadilah teknisi handal yang siap menguasai industri otomotif masa depan.
                     </div>
-                    <span className={`text-[11px] font-extrabold bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border shadow-2xs text-right ${j.tagCls}`}>
-                      {j.tag}
-                    </span>
-                  </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-                  {/* min-h menjaga judul 1 baris & 2-3 baris tetap sejajar */}
-                  <h3 className={`text-xl font-extrabold text-slate-900 transition-colors relative z-10 md:min-h-[5.25rem] ${j.titleHover}`}>
-                    {j.title}
-                  </h3>
-                  <p className={`text-xs font-semibold mt-1 mb-4 relative z-10 md:min-h-[2rem] ${j.subCls}`}>
-                    {j.sub}
-                  </p>
+              {/* Card Footer Button */}
+              <div className="mt-6 pt-4 border-t border-rose-300/50 flex items-center justify-between relative z-10">
+                <span className="text-[11px] font-bold text-rose-700">Kuota Terbatas</span>
+                <button
+                  onClick={onRegisterClick}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+                >
+                  <span>Daftar Jurusan</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </motion.div>
 
-                  <div className="relative z-10">
-                    <button
-                      type="button"
-                      onClick={() => toggleJurusanDesc(j.id)}
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer border ${j.toggleCls}`}
-                    >
-                      {isOpen ? (
-                        <>
-                          <EyeOff className="w-3.5 h-3.5" />
-                          <span>Sembunyikan Deskripsi</span>
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Lihat Detail Deskripsi</span>
-                        </>
-                      )}
-                      <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </motion.span>
-                    </button>
-                  </div>
+            {/* 2. TEKNIK JARINGAN KOMPUTER & TELEKOMUNIKASI (TJKT) - Biru Pudar Dashboard Style */}
+            <motion.div 
+              id="jurusan-tjkt" 
+              variants={cardStaggerVariants}
+              whileHover={{ y: -8, scale: 1.01, transition: { duration: 0.25 } }}
+              className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50/90 via-sky-100/70 to-blue-200/50 border border-blue-200/90 p-7 shadow-lg hover:shadow-2xl hover:border-blue-400 transition-all duration-300 flex flex-col group scroll-mt-24"
+            >
+              {/* Background Watermark Icon */}
+              <Cpu className="absolute -bottom-8 -right-8 w-44 h-44 text-blue-500/10 group-hover:scale-110 group-hover:-rotate-12 transition-transform duration-700 ease-out pointer-events-none" />
 
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        key={`desc-${j.id}`}
-                        initial={{ height: 0, opacity: 0, y: -10 }}
-                        animate={{ height: 'auto', opacity: 1, y: 0 }}
-                        exit={{ height: 0, opacity: 0, y: -10 }}
-                        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                        className="overflow-hidden relative z-10"
-                      >
-                        <div className={`mt-4 pt-3 border-t text-sm text-slate-700 leading-relaxed bg-white/70 backdrop-blur-sm p-4 rounded-2xl border border-white/80 shadow-inner ${j.descBorder}`}>
-                          {j.desc}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+              {/* Tag Header */}
+              <div className="flex items-center justify-between mb-5 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-white/90 shadow-md border border-blue-200 flex items-center justify-center text-blue-600 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                  <Cpu className="w-7 h-7" />
+                </div>
+                <span className="text-[11px] font-extrabold text-blue-800 bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-blue-300/60 shadow-2xs">
+                  Mikrotik & Fiber Optic
+                </span>
+              </div>
 
-                  {/* mt-auto = footer selalu menempel di dasar kartu */}
-                  <div className={`mt-auto pt-4 border-t flex items-center justify-between relative z-10 ${j.footBorder}`}>
-                    <span className={`text-[11px] font-bold ${j.quotaCls}`}>Kuota Terbatas</span>
-                    <button
-                      onClick={onRegisterClick}
-                      className={`inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer ${j.ctaCls}`}
-                    >
-                      <span>Daftar Jurusan</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </motion.div>
-              );
-            })}
+              {/* Title */}
+              <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-blue-700 transition-colors relative z-10">
+                Teknik Jaringan Komputer & Telekomunikasi (TJKT)
+              </h3>
+              <p className="text-xs font-semibold text-blue-800/80 mt-1 mb-4 relative z-10">
+                Cyber Security · Fiber Optic · Cloud Computing
+              </p>
+
+              {/* Toggle View Description Button */}
+              <div className="relative z-10">
+                <button
+                  type="button"
+                  onClick={() => toggleJurusanDesc('tjkt')}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-blue-600 text-blue-700 hover:text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer border border-blue-300/70 group/btn"
+                >
+                  {expandedJurusan.tjkt ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Sembunyikan Deskripsi</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Lihat Detail Deskripsi</span>
+                    </>
+                  )}
+                  <motion.span
+                    animate={{ rotate: expandedJurusan.tjkt ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </motion.span>
+                </button>
+              </div>
+
+              {/* Slide animation for description content */}
+              <AnimatePresence initial={false}>
+                {expandedJurusan.tjkt && (
+                  <motion.div
+                    key="desc-tjkt"
+                    initial={{ height: 0, opacity: 0, y: -10 }}
+                    animate={{ height: 'auto', opacity: 1, y: 0 }}
+                    exit={{ height: 0, opacity: 0, y: -10 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden relative z-10"
+                  >
+                    <div className="mt-4 pt-3 border-t border-blue-300/40 text-sm text-slate-700 leading-relaxed bg-white/70 backdrop-blur-sm p-4 rounded-2xl border border-white/80 shadow-inner">
+                      Gerbang menuju dunia digital tanpa batas. Di TJKT, kamu akan menguasai infrastruktur jaringan, keamanan siber, dan teknologi fiber optik. Persiapkan dirimu menjadi arsitek jaringan yang menghubungkan dunia.
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Card Footer Button */}
+              <div className="mt-6 pt-4 border-t border-blue-300/50 flex items-center justify-between relative z-10">
+                <span className="text-[11px] font-bold text-blue-700">Kuota Terbatas</span>
+                <button
+                  onClick={onRegisterClick}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+                >
+                  <span>Daftar Jurusan</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </motion.div>
+
+            {/* 3. AKUNTANSI DAN KEUANGAN LEMBAGA (AKL) - Hijau Pudar Dashboard Style */}
+            <motion.div 
+              id="jurusan-akl" 
+              variants={cardStaggerVariants}
+              whileHover={{ y: -8, scale: 1.01, transition: { duration: 0.25 } }}
+              className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50/90 via-green-100/70 to-emerald-200/50 border border-emerald-200/90 p-7 shadow-lg hover:shadow-2xl hover:border-emerald-400 transition-all duration-300 flex flex-col group scroll-mt-24"
+            >
+              {/* Background Watermark Icon */}
+              <Calculator className="absolute -bottom-8 -right-8 w-44 h-44 text-emerald-500/10 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700 ease-out pointer-events-none" />
+
+              {/* Tag Header */}
+              <div className="flex items-center justify-between mb-5 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-white/90 shadow-md border border-emerald-200 flex items-center justify-center text-emerald-600 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                  <Calculator className="w-7 h-7" />
+                </div>
+                <span className="text-[11px] font-extrabold text-emerald-800 bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-emerald-300/60 shadow-2xs">
+                  Fintech & Perbankan
+                </span>
+              </div>
+
+              {/* Title */}
+              <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors relative z-10">
+                Akuntansi & Keuangan Lembaga (AKL)
+              </h3>
+              <p className="text-xs font-semibold text-emerald-800/80 mt-1 mb-4 relative z-10">
+                Perbankan Syariah · Perpajakan Digital · Accurate Software
+              </p>
+
+              {/* Toggle View Description Button */}
+              <div className="relative z-10">
+                <button
+                  type="button"
+                  onClick={() => toggleJurusanDesc('akl')}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-emerald-600 text-emerald-700 hover:text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer border border-emerald-300/70 group/btn"
+                >
+                  {expandedJurusan.akl ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Sembunyikan Deskripsi</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Lihat Detail Deskripsi</span>
+                    </>
+                  )}
+                  <motion.span
+                    animate={{ rotate: expandedJurusan.akl ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </motion.span>
+                </button>
+              </div>
+
+              {/* Slide animation for description content */}
+              <AnimatePresence initial={false}>
+                {expandedJurusan.akl && (
+                  <motion.div
+                    key="desc-akl"
+                    initial={{ height: 0, opacity: 0, y: -10 }}
+                    animate={{ height: 'auto', opacity: 1, y: 0 }}
+                    exit={{ height: 0, opacity: 0, y: -10 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden relative z-10"
+                  >
+                    <div className="mt-4 pt-3 border-t border-emerald-300/40 text-sm text-slate-700 leading-relaxed bg-white/70 backdrop-blur-sm p-4 rounded-2xl border border-white/80 shadow-inner">
+                      Mencetak pahlawan finansial masa depan. Jurusan AKL melatih ketelitian dan keahlianmu dalam mengelola keuangan, perpajakan, dan akuntansi digital. Raih karir cemerlang di sektor perbankan maupun startup bisnis.
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Card Footer Button */}
+              <div className="mt-6 pt-4 border-t border-emerald-300/50 flex items-center justify-between relative z-10">
+                <span className="text-[11px] font-bold text-emerald-700">Kuota Terbatas</span>
+                <button
+                  onClick={onRegisterClick}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+                >
+                  <span>Daftar Jurusan</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </motion.div>
+
           </motion.div>
 
           <div className="mt-12 text-center">
@@ -214,3 +1644,309 @@ const JURUSAN = [
           </div>
         </div>
       </section>
+
+      {/* 5. FASILITAS & WORKSHOP */}
+      <section id="fasilitas-section" className="py-20 bg-slate-50 border-t border-slate-200 relative scroll-mt-24 section-snap">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.55 }}
+            className="text-center max-w-3xl mx-auto mb-10"
+          >
+            <span className="text-xs font-bold text-blue-700 tracking-wider uppercase">OUR COURSES & FACILITIES</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1">
+              Fasilitas & <span className="text-blue-600">Workshop Modern</span>
+            </h2>
+            <div className="w-16 h-1 bg-blue-600 mx-auto mt-3 rounded-full" />
+            <p className="text-sm text-slate-600 mt-4 leading-relaxed">
+              Jelajahi sarana praktik berstandar industri dengan kurikulum Link & Match. Dilengkapi laboratorium komputasi terkini, simulator akuntansi, bengkel otomotif resmi, serta sentra bisnis siswa.
+            </p>
+          </motion.div>
+
+          <FasilitasCarousel onRegisterClick={onRegisterClick} />
+        </div>
+      </section>
+
+      {/* 6. TESTIMONIALS */}
+      <section id="testimonials-section" className="py-20 bg-white scroll-mt-24 section-snap">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.55 }}
+            className="text-center max-w-2xl mx-auto mb-16"
+          >
+            <span className="text-xs font-bold text-blue-700 tracking-wider uppercase">TESTIMONIALS</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1">
+              What They <span className="text-blue-600">Think</span>
+            </h2>
+            <div className="w-16 h-1 bg-blue-600 mx-auto mt-3 rounded-full" />
+            <p className="text-sm text-slate-600 mt-4">
+              Kisah sukses alumni SMK Muhammadiyah Bawang yang telah berkiprah di dunia usaha, industri, dan startup digital.
+            </p>
+          </motion.div>
+
+          <motion.div 
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          >
+            {testimonials.map((testi, idx) => (
+              <motion.div
+                key={idx}
+                variants={cardStaggerVariants}
+                whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                className="bg-slate-50 border border-slate-200/80 rounded-2xl p-7 flex flex-col justify-between hover:shadow-xl transition-all"
+              >
+                <div>
+                  <p className="text-sm text-slate-700 italic leading-relaxed">
+                    "{testi.quote}"
+                  </p>
+                </div>
+
+                <div className="mt-8 pt-4 border-t border-slate-200/80 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-extrabold text-sm text-slate-900">{testi.name}</h4>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase mt-0.5">{testi.role}</p>
+                  </div>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-serif text-lg font-bold ${testi.color}`}>
+                    ”
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          <div className="mt-12 text-center">
+            <button
+              onClick={() => scrollToSection('alur-pendaftaran')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/90 text-xs font-bold transition-all cursor-pointer group"
+              title="Lanjut ke Alur Pendaftaran SPMB"
+            >
+              <span>Lanjut ke Alur Pendaftaran</span>
+              <ChevronDown className="w-3.5 h-3.5 text-blue-600 group-hover:translate-y-0.5 transition-transform animate-bounce" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. ALUR PENDAFTARAN SPMB */}
+      <AlurPendaftaran onRegisterClick={onRegisterClick} onLoginClick={onLoginClick} />
+
+      {/* 8. HUBUNGI KAMI & GOOGLE MAPS EMBED */}
+      <section 
+        id="kontak-section" 
+        className="py-20 bg-gradient-to-b from-[#FFFFFF] via-[#E8F1FD] to-[#D3E3FD] text-slate-900 relative overflow-hidden border-t border-slate-200 scroll-mt-24 section-snap"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            <motion.div 
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.3 }}
+              className="lg:col-span-5 space-y-6"
+            >
+              <motion.span variants={fadeInUpItem} className="text-xs font-bold text-blue-700 tracking-wider uppercase block">
+                HUBUNGI KAMI
+              </motion.span>
+              <motion.h2 variants={fadeInUpItem} className="text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight">
+                Ayo Bergabung Bersama SMK Muhammadiyah Bawang
+              </motion.h2>
+              <motion.p variants={fadeInUpItem} className="text-sm text-slate-600 leading-relaxed">
+                Jika Anda membutuhkan informasi pendaftaran peserta didik baru (PPDB), jurusan, biaya pendidikan, atau fasilitas sekolah, silakan hubungi kami. Tim PPDB SMK Muhammadiyah Bawang siap melayani dan membantu Anda dengan ramah.
+              </motion.p>
+
+              <motion.div variants={fadeInUpItem} className="space-y-3 pt-2">
+                <a
+                  href="https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang%2C%20perkenalkan%20saya%20ingin%20menanyakan%20informasi%20terkait%20pendaftaran%20peserta%20didik%20baru%20(PPDB).%20Terima%20kasih."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-4 rounded-xl bg-white/95 border border-slate-200/90 hover:border-emerald-500 shadow-xs hover:shadow-md transition-all flex items-center gap-4 group cursor-pointer hover:-translate-y-0.5"
+                >
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <MessageCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-500 font-semibold block">WHATSAPP PPDB</span>
+                    <span className="text-sm font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
+                      0856-1333-392
+                    </span>
+                  </div>
+                </a>
+
+                <a
+                  href="tel:085741977501"
+                  className="p-4 rounded-xl bg-white/95 border border-slate-200/90 hover:border-blue-500 shadow-xs hover:shadow-md transition-all flex items-center gap-4 group cursor-pointer hover:-translate-y-0.5"
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-500 font-semibold block">MOBILE / TELEPON</span>
+                    <span className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                      0857-4197-7501
+                    </span>
+                  </div>
+                </a>
+              </motion.div>
+
+              <motion.div variants={fadeInUpItem} className="pt-2">
+                <button
+                  onClick={onRegisterClick}
+                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-sm rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                >
+                  Daftar Sekarang Online
+                </button>
+              </motion.div>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, x: 25 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.65, ease: smoothEase }}
+              className="lg:col-span-7"
+            >
+              <div className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-xl hover:shadow-2xl transition-all">
+                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                    <MapPin className="w-4 h-4 text-rose-500" />
+                    <span>SMKS MUHAMMADIYAH BAWANG - Jl. Raya Bawang - Sukorejo KM 01, Jlamprang, Bawang, Batang 51274</span>
+                  </div>
+                  <a
+                    href="https://maps.google.com/?q=SMK+Muhammadiyah+Bawang+Batang"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1 font-bold"
+                  >
+                    <span>Buka Peta</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+
+                <div className="relative w-full h-[360px]">
+                  <iframe
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15837.288219468936!2d109.91494559999999!3d-7.0886111!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7073289069d519%3A0xe54efda6cb94ea9c!2sSMK%20Muhammadiyah%20Bawang!5e0!3m2!1sid!2sid!4v1700000000000!5m2!1sid!2sid"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen={false}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title="Google Maps Lokasi SMK Muhammadiyah Bawang"
+                  />
+                </div>
+              </div>
+            </motion.div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* FLOATING WHATSAPP BUTTON */}
+      <AnimatePresence>
+        {showWhatsappButton && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 16 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="fixed bottom-6 left-6 z-40"
+          >
+            <a
+              href="https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang%2C%20perkenalkan%20saya%20ingin%20berkonsultasi%20mengenai%20pendaftaran%20dan%20program%20keahlian%20di%20SMK%20Muhammadiyah%20Bawang.%20Terima%20kasih."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-white px-4 py-2.5 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-105 group"
+            >
+              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                <MessageCircle className="w-4 h-4 fill-current" />
+              </div>
+              <div className="text-left pr-1">
+                <p className="text-[10px] uppercase font-bold leading-tight tracking-tight">Hubungi Kami Disini</p>
+                <p className="text-xs font-semibold leading-none">WhatsApp PPDB</p>
+              </div>
+            </a>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* FLOATING BACK TO TOP BUTTON */}
+      <AnimatePresence>
+        {showBackToTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 16 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="fixed bottom-6 right-6 z-40 p-3.5 bg-gradient-to-tr from-blue-700 to-indigo-600 hover:from-blue-600 hover:to-indigo-500 text-white rounded-full shadow-2xl border border-white/20 transition-all flex items-center justify-center group focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
+            title="Kembali ke Atas (Smooth Scroll)"
+            aria-label="Kembali ke Atas"
+          >
+            <ArrowUp className="w-5 h-5 group-hover:-translate-y-1 transition-transform" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* FOOTER */}
+      <footer className="relative overflow-hidden border-t-4 border-yellow-300 bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 text-slate-950">
+        <div className="absolute inset-0 pointer-events-none opacity-25" aria-hidden="true">
+          <div className="absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white blur-3xl" />
+          <div className="absolute right-0 bottom-0 h-72 w-72 rounded-full bg-orange-700 blur-3xl" />
+          <div className="absolute right-[-5%] top-8 h-8 w-[38%] rotate-[-12deg] bg-white/50" />
+          <div className="absolute right-[-8%] top-24 h-5 w-[32%] rotate-[-12deg] bg-white/35" />
+        </div>
+
+        <div className="relative mx-auto flex max-w-7xl flex-col items-center gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:justify-between lg:gap-8 lg:px-8 lg:py-9">
+          <div className="flex w-full flex-col items-center gap-4 sm:flex-row sm:justify-center lg:w-auto lg:justify-start">
+            <img
+              src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEitrsbiiNxOvmcHcN42oOETm0n2rp4n_UYCdRDLH05Z0fD7mLw5rNXwVxft7SBrIMQyi3LSs9DUa-v6QZBrKjE8o9G7RQ171bu0cirIUmWWD6E8wxn9Ua-t61RbRENkAb-U9bhBgdtq-eh0JYAN3hu0r9sCeNdjGFODdPWaNN-5v-NmQB63uOuMRAvgkODt/s1774/69228.png"
+              alt="Logo SMK Muhammadiyah Bawang"
+              className="h-24 w-auto max-w-[180px] object-contain drop-shadow-xl sm:h-28"
+              loading="lazy"
+            />
+            <div className="hidden h-20 w-px bg-slate-950/35 sm:block" />
+            <div className="text-center sm:text-left">
+              <p className="text-3xl font-black italic tracking-tight drop-shadow-sm sm:text-4xl">Follow US</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-900/70">SPMB SMK Muhammadiyah Bawang</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 sm:gap-4">
+            <a href="https://www.instagram.com/Instastemba" target="_blank" rel="noopener noreferrer" aria-label="Instagram SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl">
+              <Instagram className="h-6 w-6" />
+            </a>
+            <a href="https://www.youtube.com/@SMK_Muhammadiyah_Bawang" target="_blank" rel="noopener noreferrer" aria-label="YouTube SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl">
+              <Youtube className="h-6 w-6" />
+            </a>
+            <a href="https://www.tiktok.com/@smartschool17" target="_blank" rel="noopener noreferrer" aria-label="TikTok SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl">
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true">
+                <path d="M16.7 4.2c.6 1.8 1.8 3 3.5 3.4v3.1a8.2 8.2 0 0 1-3.5-1.1v5.8a5.6 5.6 0 1 1-5.6-5.6c.3 0 .7 0 1 .1v3.2a2.6 2.6 0 1 0 1.5 2.3V2.9h3.1c0 .5 0 .9 0 1.3Z"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <div className="relative border-t border-slate-950/15 bg-orange-600/25 px-4 py-3 text-center text-[11px] font-semibold text-slate-950/75 flex flex-col sm:flex-row items-center justify-center gap-2">
+          <span>© 2026 SPMB SMK MUHIBA · SMK Muhammadiyah Bawang · All rights reserved.</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 font-semibold text-white transition hover:bg-white/20">
+            <Code2 className="h-3.5 w-3.5 text-yellow-300" />
+            Developed by <span className="font-black text-yellow-300">@hndx07</span>
+          </span>
+        </div>
+      </footer>
+
+    </div>
+  );
+};
+
+export default LandingPage;
+
