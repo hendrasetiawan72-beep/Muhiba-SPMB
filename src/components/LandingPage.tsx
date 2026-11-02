@@ -35,11 +35,14 @@ import {
   AlertTriangle,
   Instagram,
   Youtube,
-  Code2
+  Code2,
+  Sparkles,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 // ===========================================================================
-// KOMPONEN ALUR PENDAFTARAN SPMB (di dalam file yang sama)
+// KOMPONEN ALUR PENDAFTARAN SPMB
 // ===========================================================================
 interface AlurPendaftaranProps {
   onRegisterClick?: () => void;
@@ -160,7 +163,6 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
   const allOpen = open.size === STEPS.length;
   const progress = (active + 1) / STEPS.length;
 
-  // Geser halus ke langkah yang baru dibuka (dilewati saat pertama render)
   useEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
@@ -208,12 +210,10 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
       id="alur-pendaftaran"
       className="relative scroll-mt-24 section-snap overflow-hidden bg-gradient-to-b from-slate-50 via-blue-50/60 to-white py-16 sm:py-20"
     >
-      {/* Hiasan latar */}
       <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-blue-200/40 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-amber-200/40 blur-3xl" />
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
-        {/* Judul */}
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -232,7 +232,6 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
           </p>
         </motion.div>
 
-        {/* Infografis alur: responsif, parallax saat digulir, dan dapat ditekan */}
         <motion.div
           ref={alurImageRef}
           initial={reduce ? false : { opacity: 0 }}
@@ -268,7 +267,6 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
         </motion.div>
 
         <div className="grid gap-8 lg:grid-cols-[17rem_1fr] lg:gap-12">
-          {/* Panel progres */}
           <aside className="self-start lg:sticky lg:top-24">
             <div className="flex items-center gap-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:flex-col lg:gap-4 lg:p-6">
               <div className="relative h-28 w-28 shrink-0">
@@ -336,7 +334,6 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
             </div>
           </aside>
 
-          {/* Daftar langkah */}
           <ol className="relative">
             {STEPS.map((s, i) => {
               const Icon = s.icon;
@@ -356,7 +353,6 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
                   transition={{ duration: 0.45, delay: Math.min(i, 3) * 0.05 }}
                   className="relative flex gap-4 pb-5 sm:gap-6 last:pb-0"
                 >
-                  {/* Rel + ikon */}
                   <div className="relative flex w-14 shrink-0 flex-col items-center sm:w-16">
                     <button
                       type="button"
@@ -395,7 +391,6 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
                     )}
                   </div>
 
-                  {/* Kartu */}
                   <div
                     className={`min-w-0 flex-1 self-start overflow-hidden rounded-2xl border bg-white transition-shadow ${
                       isActive ? 'shadow-lg' : 'shadow-sm hover:shadow-md'
@@ -498,7 +493,6 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
           </ol>
         </div>
 
-        {/* Lanjut ke bagian berikutnya (Kontak) */}
         <div className="mt-12 text-center">
           <button
             type="button"
@@ -518,7 +512,7 @@ const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
 };
 
 // ===========================================================================
-// Pembantu gulir: mencegah skrip "gulir cepat ke Profil" membajak gulir menu
+// HELPER GULIR HALUS
 // ===========================================================================
 const lockAutoScroll = (ms = 1800) => {
   (window as any).__spmbNavLockUntil = Date.now() + ms;
@@ -528,7 +522,7 @@ const isTouchDevice = () =>
   typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 
 // ===========================================================================
-// FASILITAS: carousel berurutan, otomatis tiap 5 detik, gambar saja
+// FASILITAS CAROUSEL
 // ===========================================================================
 const FACILITIES = [
   {
@@ -586,13 +580,10 @@ const FasilitasCarousel: React.FC<{ onRegisterClick: () => void }> = ({ onRegist
 
   const paused = hovered || touching || !inView || !tabVisible;
 
-  // Slide baru -> hitung ulang 5 detik penuh
   useEffect(() => {
     remaining.current = FASILITAS_INTERVAL_MS;
   }, [active]);
 
-  // Maju otomatis TIAP 5 DETIK, selalu berurutan (1 -> 2 -> 3 -> 4 -> 1 ...).
-  // Saat dijeda (hover / sentuh / di luar layar / tab tersembunyi), sisa waktu disimpan.
   useEffect(() => {
     if (paused) return;
     startedAt.current = Date.now();
@@ -603,7 +594,6 @@ const FasilitasCarousel: React.FC<{ onRegisterClick: () => void }> = ({ onRegist
     };
   }, [active, paused, total]);
 
-  // Jeda bila carousel tidak terlihat atau tab browser tidak aktif (hemat baterai)
   useEffect(() => {
     const node = rootRef.current;
     let observer: IntersectionObserver | undefined;
@@ -624,7 +614,6 @@ const FasilitasCarousel: React.FC<{ onRegisterClick: () => void }> = ({ onRegist
   const goNext = () => setActive((i) => (i + 1) % total);
   const goPrev = () => setActive((i) => (i - 1 + total) % total);
 
-  // Geser jari: hanya satu mekanisme (tanpa drag ganda), abaikan gerakan vertikal
   const onTouchStart = (e: React.TouchEvent) => {
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     setTouching(true);
@@ -666,7 +655,6 @@ const FasilitasCarousel: React.FC<{ onRegisterClick: () => void }> = ({ onRegist
       <style>{`@keyframes fasilitas-progress{from{transform:scaleX(0)}to{transform:scaleX(1)}}`}</style>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xl sm:rounded-3xl [touch-action:pan-y]">
-        {/* Semua slide ditumpuk di satu sel: tinggi stabil, tidak pernah kosong */}
         <div className="grid">
           {FACILITIES.map((f, i) => {
             const isCurrent = i === active;
@@ -739,7 +727,6 @@ const FasilitasCarousel: React.FC<{ onRegisterClick: () => void }> = ({ onRegist
           })}
         </div>
 
-        {/* Bar waktu 5 detik (CSS murni, ikut berhenti saat dijeda) */}
         <div className="h-1 bg-slate-100">
           <div
             key={active}
@@ -752,7 +739,6 @@ const FasilitasCarousel: React.FC<{ onRegisterClick: () => void }> = ({ onRegist
         </div>
       </div>
 
-      {/* Kendali: sebelumnya - titik - berikutnya */}
       <div className="mt-6 flex items-center justify-center gap-3">
         <button
           type="button"
@@ -795,6 +781,9 @@ const FasilitasCarousel: React.FC<{ onRegisterClick: () => void }> = ({ onRegist
   );
 };
 
+// ===========================================================================
+// MAIN LANDING PAGE COMPONENT
+// ===========================================================================
 interface LandingPageProps {
   onRegisterClick: () => void;
   onLoginClick: () => void;
@@ -810,11 +799,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 }) => {
   const [showBackToTop, setShowBackToTop] = useState<boolean>(false);
 
-  // States & refs for Profile Video (YouTube)
+  // State untuk kontrol deskripsi jurusan (Default: TERSEMBUNYI untuk semua jurusan)
+  const [expandedJurusan, setExpandedJurusan] = useState<Record<string, boolean>>({
+    to: false,
+    tjkt: false,
+    akl: false,
+  });
+
+  const toggleJurusanDesc = (id: string) => {
+    setExpandedJurusan((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
   const [isYtMuted, setIsYtMuted] = useState<boolean>(true);
   const ytIframeRef = useRef<HTMLIFrameElement | null>(null);
 
-  // Parallax scroll hooks
   const { scrollY, scrollYProgress } = useScroll();
   const heroBgY = useTransform(scrollY, [0, 800], [0, 160]);
   const heroRingsY = useTransform(scrollY, [0, 800], [0, -80]);
@@ -834,7 +835,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   };
 
-  // Smooth scroll listener for back to top button
   useEffect(() => {
     const handleScroll = () => {
       setShowBackToTop(window.scrollY > 400);
@@ -843,7 +843,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Floating WhatsApp button visibility timer (hilang dalam 20 detik jika diam, muncul kembali saat scroll)
   const [showWhatsappButton, setShowWhatsappButton] = useState<boolean>(true);
   const waTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -860,10 +859,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       }, 20000);
     };
 
-    // Mulai timer 20 detik saat pertama kali halaman dimuat
     resetWaTimer();
 
-    // Munculkan kembali tombol dan reset countdown 20 detik setiap kali pengguna melakukan scroll
     const handleScroll = () => {
       resetWaTimer();
     };
@@ -878,7 +875,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     };
   }, []);
 
-  // Efek gulir cepat ke profil sekolah saat pengguna scroll dari bagian paling atas laman
   const hasTriggeredQuickScroll = useRef(false);
   const isAutoScrolling = useRef(false);
 
@@ -888,19 +884,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     const handleScrollSnap = () => {
       const currentScrollY = window.scrollY;
 
-      // Jangan membajak gulir yang dipicu menu/tombol, atau di layar sentuh (HP/tablet)
       if (isAutoScrollLocked() || isTouchDevice()) {
         lastScrollY = currentScrollY;
         return;
       }
 
-      // Reset kemampuan trigger jika pengguna kembali ke paling atas halaman (< 20px)
       if (currentScrollY <= 20) {
         hasTriggeredQuickScroll.current = false;
         isAutoScrolling.current = false;
       }
 
-      // Deteksi gerakan scroll ke bawah dari puncak laman (20px - 320px)
       if (
         !hasTriggeredQuickScroll.current &&
         !isAutoScrolling.current &&
@@ -991,7 +984,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     },
   ];
 
-  // Stagger animation variants
   const smoothEase = [0.16, 1, 0.3, 1] as const;
 
   const staggerContainer = {
@@ -1033,26 +1025,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden selection:bg-blue-600 selection:text-white relative">
       
-      {/* ========================================================================= */}
-      {/* SMOOTH SCROLL TOP PROGRESS BAR */}
-      {/* ========================================================================= */}
+      {/* BAR PROGRES GULIR HALUS */}
       <motion.div
         className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-blue-500 to-indigo-500 z-50 origin-left pointer-events-none shadow-sm"
         style={{ scaleX: scrollYProgress }}
       />
 
-
-      {/* ========================================================================= */}
-      {/* 1. HERO SECTION WITH VIDEO BACKGROUND & PARALLAX OVERLAY */}
-      {/* ========================================================================= */}
+      {/* 1. HERO SECTION */}
       <section id="hero-section" className="relative min-h-[640px] lg:min-h-[740px] flex items-center bg-slate-950 overflow-hidden section-snap scroll-mt-20">
-        
-        {/* Parallax Background Layer: TikTok Video & Fallback Image */}
         <motion.div 
           style={{ y: heroBgY }} 
           className="absolute inset-0 z-0 overflow-hidden pointer-events-none will-change-transform"
         >
-          {/* Fallback image */}
           <div
             className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 scale-105"
             style={{
@@ -1060,7 +1044,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             }}
           />
 
-          {/* TikTok Dynamic Video Overlay Embed */}
           <div className="absolute inset-0 w-full h-full opacity-90 scale-110 pointer-events-none overflow-hidden">
             <iframe
               src="https://www.tiktok.com/player/v1/7462604408816225541?autoplay=1&muted=1&controls=0&loop=1"
@@ -1071,11 +1054,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             />
           </div>
 
-          {/* Scrim Overlay */}
           <div className="absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-950/35 to-blue-950/20 z-10" />
         </motion.div>
 
-        {/* Parallax Decorative Rings */}
         <motion.div 
           style={{ y: heroRingsY, rotate: heroRingsRotate }}
           className="absolute right-0 bottom-0 w-[500px] h-[500px] pointer-events-none opacity-20 z-10 will-change-transform"
@@ -1088,11 +1069,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </svg>
         </motion.div>
 
-        {/* Hero Content with Staggered Elements & Parallax Floating Card */}
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 w-full">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
-            {/* Left Column: Staggered Heading & Action Content */}
             <motion.div 
               style={{ y: heroTextY }}
               variants={staggerContainer}
@@ -1136,7 +1115,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </button>
               </motion.div>
 
-              {/* Verified school trust markers */}
               <motion.div variants={fadeInUpItem} className="pt-4 flex items-center gap-6 text-xs text-slate-300 border-t border-slate-800/80">
                 <div className="flex items-center gap-1.5 hover:text-white transition-colors">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -1153,7 +1131,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </motion.div>
             </motion.div>
 
-            {/* Right Column: Building Visual Card with Parallax Float */}
             <motion.div 
               style={{ y: heroCardY }}
               initial={{ opacity: 0, scale: 0.95, y: 30 }}
@@ -1199,7 +1176,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
 
-        {/* Quick Scroll Indicator Button to Profil Sekolah */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
           <button
             onClick={() => scrollToSection('profil-sekolah')}
@@ -1212,22 +1188,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* ========================================================================= */}
-      {/* 2. PROFIL SEKOLAH & VIDEO PROFIL RESMI (AUTOPLAY LOOP YOUTUBE) */}
-      {/* Background gradasi memudar: Warna Atas #FFFFFF ke Warna Bawah #D3E3FD */}
-      {/* ========================================================================= */}
+      {/* 2. PROFIL SEKOLAH & VIDEO PROFIL */}
       <section 
         id="profil-sekolah" 
         className="py-16 sm:py-24 bg-gradient-to-b from-[#FFFFFF] via-[#E8F1FD] to-[#D3E3FD] text-slate-900 relative overflow-hidden border-b border-blue-200/60 scroll-mt-24 section-snap"
       >
-        {/* Parallax decorative background glow */}
         <motion.div 
           style={{ y: profilGlowY }}
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-blue-300/35 rounded-full blur-3xl pointer-events-none will-change-transform" 
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          
           <motion.div 
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1247,7 +1218,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
           </motion.div>
 
-          {/* YouTube Video Player with Parallax Shift */}
           <motion.div 
             style={{ y: videoCardY }}
             initial={{ opacity: 0, scale: 0.96 }}
@@ -1258,8 +1228,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           >
             <div className="p-2 sm:p-3 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 shadow-2xl ring-1 ring-blue-900/10">
               <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-black shadow-inner aspect-video">
-                
-                {/* Embedded YouTube Video */}
                 <iframe
                   ref={ytIframeRef}
                   src="https://www.youtube-nocookie.com/embed/MjqT0ORLm1w?autoplay=1&mute=1&loop=1&playlist=MjqT0ORLm1w&controls=0&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&enablejsapi=1"
@@ -1269,13 +1237,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   className="w-full h-full object-cover scale-[1.03] pointer-events-none select-none"
                 />
 
-                {/* Minimalist Top Badge */}
                 <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 pointer-events-none flex items-center gap-2 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 text-white text-[11px] font-bold shadow-lg">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                   <span>OFFICIAL VIDEO PROFIL MUHIBA</span>
                 </div>
 
-                {/* Custom Minimalist Sound Toggle Button */}
                 <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20">
                   <button
                     type="button"
@@ -1317,7 +1283,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </motion.div>
 
-          {/* Quick scroll to next section (Jurusan) */}
           <div className="mt-8 text-center">
             <button
               onClick={() => scrollToSection('jurusan-section')}
@@ -1332,9 +1297,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* ========================================================================= */}
-      {/* 3. STATS QUICK STRIP WITH STAGGERED REVEAL */}
-      {/* ========================================================================= */}
+      {/* 3. STATS STRIP */}
       <section id="stats-section" className="bg-white border-y border-slate-200 py-8 relative z-20 section-snap scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
@@ -1366,13 +1329,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ========================================================================= */}
-      {/* 4. KONSENTRASI KEAHLIAN (JURUSAN) WITH STAGGERED CARDS */}
+      {/* 4. KONSENTRASI KEAHLIAN (JURUSAN) - DESAIN DASHBOARD MODERN & KONTROL VIEW */}
       {/* ========================================================================= */}
-      <section id="jurusan-section" className="py-20 lg:py-24 bg-white relative overflow-hidden scroll-mt-24 section-snap">
-        {/* Parallax Background Accent Glow */}
+      <section id="jurusan-section" className="py-20 lg:py-24 bg-gradient-to-b from-slate-50 via-slate-100/70 to-blue-50/40 relative overflow-hidden scroll-mt-24 section-snap">
         <motion.div 
           style={{ y: jurusanGlowY }}
-          className="absolute -right-32 top-1/3 w-96 h-96 bg-blue-100/60 rounded-full blur-3xl pointer-events-none will-change-transform"
+          className="absolute -right-32 top-1/3 w-96 h-96 bg-blue-200/40 rounded-full blur-3xl pointer-events-none will-change-transform"
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -1383,13 +1345,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             transition={{ duration: 0.55 }}
             className="text-center max-w-2xl mx-auto mb-16"
           >
-            <span className="text-xs font-bold text-blue-700 tracking-wider uppercase">JURUSAN</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              Program Unggalan
+            </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1">
               Konsentrasi <span className="text-blue-600">Keahlian</span>
             </h2>
             <div className="w-16 h-1 bg-blue-600 mx-auto mt-3 rounded-full" />
-            <p className="text-sm text-slate-600 mt-4">
-              Pilihan program keahlian unggulan berbasis kebutuhan revolusi industri modern dan digitalisasi global.
+            <p className="text-sm text-slate-600 mt-4 leading-relaxed">
+              Klik <span className="font-semibold text-slate-800">"Lihat Detail Deskripsi"</span> untuk mengeksplorasi kurikulum dan profil lengkap tiap konsentrasi keahlian.
             </p>
           </motion.div>
 
@@ -1398,125 +1363,285 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"
           >
             
-            {/* 1. TEKNIK OTOMOTIF (TO) */}
+            {/* 1. TEKNIK OTOMOTIF (TO) - Merah Pudar Dashboard Style */}
             <motion.div 
               id="jurusan-to" 
               variants={cardStaggerVariants}
-              whileHover={{ y: -8, transition: { duration: 0.25 } }}
-              className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 hover:shadow-2xl hover:border-amber-300 transition-all duration-300 flex flex-col group scroll-mt-24"
+              whileHover={{ y: -8, scale: 1.01, transition: { duration: 0.25 } }}
+              className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-rose-50/90 via-rose-100/70 to-rose-200/50 border border-rose-200/90 p-7 shadow-lg hover:shadow-2xl hover:border-rose-400 transition-all duration-300 flex flex-col group scroll-mt-24"
             >
-              <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 mb-6 group-hover:scale-110 group-hover:bg-amber-100 transition-all">
-                <Wrench className="w-8 h-8" />
+              {/* Background Watermark Icon (Estetik khas dashboard referensi) */}
+              <Wrench className="absolute -bottom-8 -right-8 w-44 h-44 text-rose-500/10 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700 ease-out pointer-events-none" />
+
+              {/* Tag Header */}
+              <div className="flex items-center justify-between mb-5 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-white/90 shadow-md border border-rose-200 flex items-center justify-center text-rose-600 group-hover:scale-110 group-hover:bg-rose-600 group-hover:text-white transition-all duration-300">
+                  <Wrench className="w-7 h-7" />
+                </div>
+                <span className="text-[11px] font-extrabold text-rose-800 bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-rose-300/60 shadow-2xs">
+                  Teknologi Mesin & TBSM
+                </span>
               </div>
 
-              <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-amber-600 transition-colors">
+              {/* Title */}
+              <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-rose-700 transition-colors relative z-10">
                 Teknik Otomotif (TO)
               </h3>
-
-              <p className="text-sm text-slate-600 leading-relaxed flex-grow">
-                Pusat inovasi mesin dan otomotif! Jurusan TO membekali siswa dengan keahlian membongkar, merakit, dan menganalisis teknologi kendaraan bermotor terkini. Jadilah teknisi handal yang siap menguasai industri otomotif masa depan.
+              <p className="text-xs font-semibold text-rose-800/80 mt-1 mb-4 relative z-10">
+                Otomotif Modern · Perawatan Berkala · Ototronik
               </p>
 
-              <div className="mt-6 pt-5 border-t border-slate-200/80 flex items-center justify-between text-xs font-semibold">
-                <span className="text-amber-700 bg-amber-100/70 px-2.5 py-1 rounded">Teknologi Mesin & TBSM</span>
+              {/* Toggle View Description Button */}
+              <div className="relative z-10">
+                <button
+                  type="button"
+                  onClick={() => toggleJurusanDesc('to')}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-rose-600 text-rose-700 hover:text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer border border-rose-300/70 group/btn"
+                >
+                  {expandedJurusan.to ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Sembunyikan Deskripsi</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Lihat Detail Deskripsi</span>
+                    </>
+                  )}
+                  <motion.span
+                    animate={{ rotate: expandedJurusan.to ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </motion.span>
+                </button>
+              </div>
+
+              {/* Slide animation for description content */}
+              <AnimatePresence initial={false}>
+                {expandedJurusan.to && (
+                  <motion.div
+                    key="desc-to"
+                    initial={{ height: 0, opacity: 0, y: -10 }}
+                    animate={{ height: 'auto', opacity: 1, y: 0 }}
+                    exit={{ height: 0, opacity: 0, y: -10 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden relative z-10"
+                  >
+                    <div className="mt-4 pt-3 border-t border-rose-300/40 text-sm text-slate-700 leading-relaxed bg-white/70 backdrop-blur-sm p-4 rounded-2xl border border-white/80 shadow-inner">
+                      Pusat inovasi mesin dan otomotif! Jurusan TO membekali siswa dengan keahlian membongkar, merakit, dan menganalisis teknologi kendaraan bermotor terkini. Jadilah teknisi handal yang siap menguasai industri otomotif masa depan.
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Card Footer Button */}
+              <div className="mt-6 pt-4 border-t border-rose-300/50 flex items-center justify-between relative z-10">
+                <span className="text-[11px] font-bold text-rose-700">Kuota Terbatas</span>
                 <button
                   onClick={onRegisterClick}
-                  className="text-blue-600 hover:text-blue-700 flex items-center gap-1 group/btn cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   <span>Daftar Jurusan</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>
 
-            {/* 2. TEKNIK JARINGAN KOMPUTER & TELEKOMUNIKASI (TJKT) */}
+            {/* 2. TEKNIK JARINGAN KOMPUTER & TELEKOMUNIKASI (TJKT) - Biru Pudar Dashboard Style */}
             <motion.div 
               id="jurusan-tjkt" 
               variants={cardStaggerVariants}
-              whileHover={{ y: -8, transition: { duration: 0.25 } }}
-              className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 hover:shadow-2xl hover:border-blue-300 transition-all duration-300 flex flex-col group scroll-mt-24"
+              whileHover={{ y: -8, scale: 1.01, transition: { duration: 0.25 } }}
+              className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50/90 via-sky-100/70 to-blue-200/50 border border-blue-200/90 p-7 shadow-lg hover:shadow-2xl hover:border-blue-400 transition-all duration-300 flex flex-col group scroll-mt-24"
             >
-              <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200/80 flex items-center justify-center text-blue-600 mb-6 group-hover:scale-110 group-hover:bg-blue-100 transition-all">
-                <Cpu className="w-8 h-8" />
+              {/* Background Watermark Icon */}
+              <Cpu className="absolute -bottom-8 -right-8 w-44 h-44 text-blue-500/10 group-hover:scale-110 group-hover:-rotate-12 transition-transform duration-700 ease-out pointer-events-none" />
+
+              {/* Tag Header */}
+              <div className="flex items-center justify-between mb-5 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-white/90 shadow-md border border-blue-200 flex items-center justify-center text-blue-600 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                  <Cpu className="w-7 h-7" />
+                </div>
+                <span className="text-[11px] font-extrabold text-blue-800 bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-blue-300/60 shadow-2xs">
+                  Mikrotik & Fiber Optic
+                </span>
               </div>
 
-              <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">
+              {/* Title */}
+              <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-blue-700 transition-colors relative z-10">
                 Teknik Jaringan Komputer & Telekomunikasi (TJKT)
               </h3>
-
-              <p className="text-sm text-slate-600 leading-relaxed flex-grow">
-                Gerbang menuju dunia digital tanpa batas. Di TJKT, kamu akan menguasai infrastruktur jaringan, keamanan siber, dan teknologi fiber optik. Persiapkan dirimu menjadi arsitek jaringan yang menghubungkan dunia.
+              <p className="text-xs font-semibold text-blue-800/80 mt-1 mb-4 relative z-10">
+                Cyber Security · Fiber Optic · Cloud Computing
               </p>
 
-              <div className="mt-6 pt-5 border-t border-slate-200/80 flex items-center justify-between text-xs font-semibold">
-                <span className="text-blue-700 bg-blue-100/70 px-2.5 py-1 rounded">Mikrotik & Fiber Optic</span>
+              {/* Toggle View Description Button */}
+              <div className="relative z-10">
+                <button
+                  type="button"
+                  onClick={() => toggleJurusanDesc('tjkt')}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-blue-600 text-blue-700 hover:text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer border border-blue-300/70 group/btn"
+                >
+                  {expandedJurusan.tjkt ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Sembunyikan Deskripsi</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Lihat Detail Deskripsi</span>
+                    </>
+                  )}
+                  <motion.span
+                    animate={{ rotate: expandedJurusan.tjkt ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </motion.span>
+                </button>
+              </div>
+
+              {/* Slide animation for description content */}
+              <AnimatePresence initial={false}>
+                {expandedJurusan.tjkt && (
+                  <motion.div
+                    key="desc-tjkt"
+                    initial={{ height: 0, opacity: 0, y: -10 }}
+                    animate={{ height: 'auto', opacity: 1, y: 0 }}
+                    exit={{ height: 0, opacity: 0, y: -10 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden relative z-10"
+                  >
+                    <div className="mt-4 pt-3 border-t border-blue-300/40 text-sm text-slate-700 leading-relaxed bg-white/70 backdrop-blur-sm p-4 rounded-2xl border border-white/80 shadow-inner">
+                      Gerbang menuju dunia digital tanpa batas. Di TJKT, kamu akan menguasai infrastruktur jaringan, keamanan siber, dan teknologi fiber optik. Persiapkan dirimu menjadi arsitek jaringan yang menghubungkan dunia.
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Card Footer Button */}
+              <div className="mt-6 pt-4 border-t border-blue-300/50 flex items-center justify-between relative z-10">
+                <span className="text-[11px] font-bold text-blue-700">Kuota Terbatas</span>
                 <button
                   onClick={onRegisterClick}
-                  className="text-blue-600 hover:text-blue-700 flex items-center gap-1 group/btn cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   <span>Daftar Jurusan</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>
 
-            {/* 3. AKUNTANSI DAN KEUANGAN LEMBAGA (AKL) */}
+            {/* 3. AKUNTANSI DAN KEUANGAN LEMBAGA (AKL) - Hijau Pudar Dashboard Style */}
             <motion.div 
               id="jurusan-akl" 
               variants={cardStaggerVariants}
-              whileHover={{ y: -8, transition: { duration: 0.25 } }}
-              className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 hover:shadow-2xl hover:border-emerald-300 transition-all duration-300 flex flex-col group scroll-mt-24"
+              whileHover={{ y: -8, scale: 1.01, transition: { duration: 0.25 } }}
+              className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50/90 via-green-100/70 to-emerald-200/50 border border-emerald-200/90 p-7 shadow-lg hover:shadow-2xl hover:border-emerald-400 transition-all duration-300 flex flex-col group scroll-mt-24"
             >
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 mb-6 group-hover:scale-110 group-hover:bg-emerald-100 transition-all">
-                <Calculator className="w-8 h-8" />
+              {/* Background Watermark Icon */}
+              <Calculator className="absolute -bottom-8 -right-8 w-44 h-44 text-emerald-500/10 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700 ease-out pointer-events-none" />
+
+              {/* Tag Header */}
+              <div className="flex items-center justify-between mb-5 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-white/90 shadow-md border border-emerald-200 flex items-center justify-center text-emerald-600 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                  <Calculator className="w-7 h-7" />
+                </div>
+                <span className="text-[11px] font-extrabold text-emerald-800 bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-emerald-300/60 shadow-2xs">
+                  Fintech & Perbankan
+                </span>
               </div>
 
-              <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-emerald-600 transition-colors">
-                Akuntansi dan Keuangan Lembaga (AKL)
+              {/* Title */}
+              <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors relative z-10">
+                Akuntansi & Keuangan Lembaga (AKL)
               </h3>
-
-              <p className="text-sm text-slate-600 leading-relaxed flex-grow">
-                Mencetak pahlawan finansial masa depan. Jurusan AKL melatih ketelitian dan keahlianmu dalam mengelola keuangan, perpajakan, dan akuntansi digital. Raih karir cemerlang di sektor perbankan maupun startup bisnis.
+              <p className="text-xs font-semibold text-emerald-800/80 mt-1 mb-4 relative z-10">
+                Perbankan Syariah · Perpajakan Digital · Accurate Software
               </p>
 
-              <div className="mt-6 pt-5 border-t border-slate-200/80 flex items-center justify-between text-xs font-semibold">
-                <span className="text-emerald-700 bg-emerald-100/70 px-2.5 py-1 rounded">Fintech & Perbankan</span>
+              {/* Toggle View Description Button */}
+              <div className="relative z-10">
+                <button
+                  type="button"
+                  onClick={() => toggleJurusanDesc('akl')}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-emerald-600 text-emerald-700 hover:text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer border border-emerald-300/70 group/btn"
+                >
+                  {expandedJurusan.akl ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Sembunyikan Deskripsi</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Lihat Detail Deskripsi</span>
+                    </>
+                  )}
+                  <motion.span
+                    animate={{ rotate: expandedJurusan.akl ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </motion.span>
+                </button>
+              </div>
+
+              {/* Slide animation for description content */}
+              <AnimatePresence initial={false}>
+                {expandedJurusan.akl && (
+                  <motion.div
+                    key="desc-akl"
+                    initial={{ height: 0, opacity: 0, y: -10 }}
+                    animate={{ height: 'auto', opacity: 1, y: 0 }}
+                    exit={{ height: 0, opacity: 0, y: -10 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden relative z-10"
+                  >
+                    <div className="mt-4 pt-3 border-t border-emerald-300/40 text-sm text-slate-700 leading-relaxed bg-white/70 backdrop-blur-sm p-4 rounded-2xl border border-white/80 shadow-inner">
+                      Mencetak pahlawan finansial masa depan. Jurusan AKL melatih ketelitian dan keahlianmu dalam mengelola keuangan, perpajakan, dan akuntansi digital. Raih karir cemerlang di sektor perbankan maupun startup bisnis.
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Card Footer Button */}
+              <div className="mt-6 pt-4 border-t border-emerald-300/50 flex items-center justify-between relative z-10">
+                <span className="text-[11px] font-bold text-emerald-700">Kuota Terbatas</span>
                 <button
                   onClick={onRegisterClick}
-                  className="text-blue-600 hover:text-blue-700 flex items-center gap-1 group/btn cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   <span>Daftar Jurusan</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>
 
           </motion.div>
 
-          {/* Quick scroll to next section (Fasilitas) */}
           <div className="mt-12 text-center">
             <button
               onClick={() => scrollToSection('fasilitas-section')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/90 text-xs font-bold transition-all cursor-pointer group"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/90 text-xs font-bold transition-all cursor-pointer group shadow-xs hover:shadow-md"
               title="Lanjut ke Bagian Fasilitas & Workshop"
             >
               <span>Lanjut ke Fasilitas & Workshop Modern</span>
               <ChevronDown className="w-3.5 h-3.5 text-blue-600 group-hover:translate-y-0.5 transition-transform animate-bounce" />
             </button>
           </div>
-
         </div>
       </section>
 
-      {/* ========================================================================= */}
-      {/* 5. FASILITAS & WORKSHOP (CAROUSEL BERURUTAN, OTOMATIS 5 DETIK, GAMBAR SAJA) */}
-      {/* ========================================================================= */}
+      {/* 5. FASILITAS & WORKSHOP */}
       <section id="fasilitas-section" className="py-20 bg-slate-50 border-t border-slate-200 relative scroll-mt-24 section-snap">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1535,16 +1660,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </motion.div>
 
           <FasilitasCarousel onRegisterClick={onRegisterClick} />
-
         </div>
       </section>
 
-      {/* ========================================================================= */}
-      {/* 6. TESTIMONIALS (WHAT THEY THINK) WITH STAGGERED REVEAL */}
-      {/* ========================================================================= */}
+      {/* 6. TESTIMONIALS */}
       <section id="testimonials-section" className="py-20 bg-white scroll-mt-24 section-snap">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1595,7 +1716,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             ))}
           </motion.div>
 
-          {/* Quick scroll to next section (Kontak) */}
           <div className="mt-12 text-center">
             <button
               onClick={() => scrollToSection('alur-pendaftaran')}
@@ -1606,28 +1726,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <ChevronDown className="w-3.5 h-3.5 text-blue-600 group-hover:translate-y-0.5 transition-transform animate-bounce" />
             </button>
           </div>
-
         </div>
       </section>
 
-      {/* ========================================================================= */}
       {/* 7. ALUR PENDAFTARAN SPMB */}
-      {/* ========================================================================= */}
       <AlurPendaftaran onRegisterClick={onRegisterClick} onLoginClick={onLoginClick} />
 
-      {/* ========================================================================= */}
-      {/* 8. HUBUNGI KAMI & GOOGLE MAPS EMBED (BAGIAN BAWAH ATAS FOOTER DENGAN GRADASI) */}
-      {/* Background gradasi memudar: Warna Atas #FFFFFF ke Warna Bawah #D3E3FD */}
-      {/* ========================================================================= */}
+      {/* 8. HUBUNGI KAMI & GOOGLE MAPS EMBED */}
       <section 
         id="kontak-section" 
         className="py-20 bg-gradient-to-b from-[#FFFFFF] via-[#E8F1FD] to-[#D3E3FD] text-slate-900 relative overflow-hidden border-t border-slate-200 scroll-mt-24 section-snap"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
-            {/* Left Contact description with Staggered items */}
             <motion.div 
               variants={staggerContainer}
               initial="hidden"
@@ -1645,7 +1757,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 Jika Anda membutuhkan informasi pendaftaran peserta didik baru (PPDB), jurusan, biaya pendidikan, atau fasilitas sekolah, silakan hubungi kami. Tim PPDB SMK Muhammadiyah Bawang siap melayani dan membantu Anda dengan ramah.
               </motion.p>
 
-              {/* Contact direct boxes */}
               <motion.div variants={fadeInUpItem} className="space-y-3 pt-2">
                 <a
                   href="https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang%2C%20perkenalkan%20saya%20ingin%20menanyakan%20informasi%20terkait%20pendaftaran%20peserta%20didik%20baru%20(PPDB).%20Terima%20kasih."
@@ -1690,7 +1801,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </motion.div>
             </motion.div>
 
-            {/* Right Google Maps Embed with Smooth Scale Reveal */}
             <motion.div 
               initial={{ opacity: 0, x: 25 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -1731,13 +1841,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </motion.div>
 
           </div>
-
         </div>
       </section>
 
-      {/* ========================================================================= */}
-      {/* FLOATING WHATSAPP BUTTON (BOTTOM-LEFT) - HILANG DALAM 20 DETIK JIKA DIAM, MUNCUL LAGI SAAT SCROLL */}
-      {/* ========================================================================= */}
+      {/* FLOATING WHATSAPP BUTTON */}
       <AnimatePresence>
         {showWhatsappButton && (
           <motion.div
@@ -1765,9 +1872,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         )}
       </AnimatePresence>
 
-      {/* ========================================================================= */}
-      {/* FLOATING SMOOTH SCROLL TO TOP BUTTON (BOTTOM-RIGHT) */}
-      {/* ========================================================================= */}
+      {/* FLOATING BACK TO TOP BUTTON */}
       <AnimatePresence>
         {showBackToTop && (
           <motion.button
@@ -1785,7 +1890,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         )}
       </AnimatePresence>
 
-      {/* FOOTER — desain kuning/oranye + logo + sosial media */}
+      {/* FOOTER */}
       <footer className="relative overflow-hidden border-t-4 border-yellow-300 bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 text-slate-950">
         <div className="absolute inset-0 pointer-events-none opacity-25" aria-hidden="true">
           <div className="absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white blur-3xl" />
@@ -1810,41 +1915,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
-            <a
-              href="https://www.instagram.com/Instastemba"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Instagram SMK Muhammadiyah Bawang"
-              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl"
-            >
+            <a href="https://www.instagram.com/Instastemba" target="_blank" rel="noopener noreferrer" aria-label="Instagram SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl">
               <Instagram className="h-6 w-6" />
             </a>
-            <a
-              href="https://www.youtube.com/@SMK_Muhammadiyah_Bawang"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="YouTube SMK Muhammadiyah Bawang"
-              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl"
-            >
+            <a href="https://www.youtube.com/@SMK_Muhammadiyah_Bawang" target="_blank" rel="noopener noreferrer" aria-label="YouTube SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl">
               <Youtube className="h-6 w-6" />
             </a>
-            <a
-              href="https://www.tiktok.com/@smartschool17"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="TikTok SMK Muhammadiyah Bawang"
-              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl"
-            >
+            <a href="https://www.tiktok.com/@smartschool17" target="_blank" rel="noopener noreferrer" aria-label="TikTok SMK Muhammadiyah Bawang" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl">
               <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true">
-                <path d="M16.7 4.2c.6 1.8 1.8 3 3.5 3.4v3.1a8.2 8.2 0 0 1-3.5-1.1v5.8a5.6 5.6 0 1 1-5.6-5.6c.3 0 .7 0 1 .1v3.2a2.6 2.6 0 1 0 1.5 2.3V2.9h3.1c0 .5 0 .9 0 1.3Z" />
+                <path d="M16.7 4.2c.6 1.8 1.8 3 3.5 3.4v3.1a8.2 8.2 0 0 1-3.5-1.1v5.8a5.6 5.6 0 1 1-5.6-5.6c.3 0 .7 0 1 .1v3.2a2.6 2.6 0 1 0 1.5 2.3V2.9h3.1c0 .5 0 .9 0 1.3Z"/>
               </svg>
             </a>
           </div>
         </div>
 
-        <div className="relative border-t border-slate-950/15 bg-orange-600/25 px-4 py-3 text-center text-[11px] font-semibold text-slate-950/75">
-          © 2026 SPMB SMK MUHIBA · SMK Muhammadiyah Bawang · All rights reserved.
-          <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 font-semibold text-white transition hover:bg-white/20">
+        <div className="relative border-t border-slate-950/15 bg-orange-600/25 px-4 py-3 text-center text-[11px] font-semibold text-slate-950/75 flex flex-col sm:flex-row items-center justify-center gap-2">
+          <span>© 2026 SPMB SMK MUHIBA · SMK Muhammadiyah Bawang · All rights reserved.</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 font-semibold text-white transition hover:bg-white/20">
             <Code2 className="h-3.5 w-3.5 text-yellow-300" />
             Developed by <span className="font-black text-yellow-300">@hndx07</span>
           </span>
@@ -1854,3 +1941,5 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     </div>
   );
 };
+
+export default LandingPage;
