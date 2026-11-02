@@ -1,515 +1,216 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, useScroll, useTransform, AnimatePresence, useReducedMotion } from 'motion/react';
-import type { LucideIcon } from 'lucide-react';
-import { 
-  Wrench, 
-  Cpu, 
-  Calculator, 
-  MapPin, 
-  Phone, 
-  MessageCircle, 
-  ExternalLink, 
-  CheckCircle2, 
-  Award, 
-  Play, 
-  ChevronRight,
-  ChevronLeft,
-  ChevronDown,
-  BookOpen,
-  ArrowRight,
-  ArrowUp,
-  Volume2,
-  VolumeX,
-  X,
-  Globe,
-  UserPlus,
-  ClipboardList,
-  CloudUpload,
-  FileSearch,
-  ShieldCheck,
-  Megaphone,
-  ChevronsDown,
-  ChevronsUp,
-  RotateCcw,
-  LogIn,
-  AlertTriangle,
-  Instagram,
-  Youtube,
-  Code2,
-  Eye,
-  EyeOff
-} from 'lucide-react';
+// ===========================================================================
+// PERUBAHAN 1 — IMPORT lucide-react
+// Hapus baris "Sparkles," dari daftar import. Contoh akhirnya:
+//   ...
+//   Code2,
+//   Eye,
+//   EyeOff
+// } from 'lucide-react';
+// ===========================================================================
+
 
 // ===========================================================================
-// KOMPONEN ALUR PENDAFTARAN SPMB
+// PERUBAHAN 2 — Tambahkan data jurusan DI ATAS "export const LandingPage"
+// (taruh setelah komponen FasilitasCarousel)
 // ===========================================================================
-interface AlurPendaftaranProps {
-  onRegisterClick?: () => void;
-  onLoginClick?: () => void;
-}
-
-interface Step {
-  title: string;
-  desc: React.ReactNode;
-  color: string;
-  icon: LucideIcon;
-  chip?: string;
-  warn?: boolean;
-  action?: 'register' | 'login';
-}
-
-const STEPS: Step[] = [
+const JURUSAN = [
   {
-    title: 'Buka Website SPMB',
-    color: '#6c63d9',
-    icon: Globe,
-    desc: <>Scan barcode atau buka alamat website SPMB SMK Muhammadiyah Bawang.</>,
+    id: 'to' as const,
+    icon: Wrench,
+    title: 'Teknik Otomotif (TO)',
+    tag: 'Teknologi Mesin & TBSM',
+    sub: 'Otomotif Modern · Perawatan Berkala · Ototronik',
+    desc: 'Pusat inovasi mesin dan otomotif! Jurusan TO membekali siswa dengan keahlian membongkar, merakit, dan menganalisis teknologi kendaraan bermotor terkini. Jadilah teknisi handal yang siap menguasai industri otomotif masa depan.',
+    card: 'from-rose-50/90 via-rose-100/70 to-rose-200/50 border-rose-200/90 hover:border-rose-400',
+    watermark: 'text-rose-500/10 group-hover:rotate-12',
+    iconBox: 'border-rose-200 text-rose-600 group-hover:bg-rose-600',
+    tagCls: 'text-rose-800 border-rose-300/60',
+    titleHover: 'group-hover:text-rose-700',
+    subCls: 'text-rose-800/80',
+    toggleCls: 'hover:bg-rose-600 text-rose-700 border-rose-300/70',
+    descBorder: 'border-rose-300/40',
+    footBorder: 'border-rose-300/50',
+    quotaCls: 'text-rose-700',
+    ctaCls: 'from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500',
   },
   {
-    title: 'Klik “Daftar Sekarang”',
-    color: '#e8344a',
-    icon: UserPlus,
-    desc: (
-      <>
-        Tekan tombol <b>Daftar Sekarang</b> di halaman utama SPMB.
-      </>
-    ),
-    action: 'register',
+    id: 'tjkt' as const,
+    icon: Cpu,
+    title: 'Teknik Jaringan Komputer & Telekomunikasi (TJKT)',
+    tag: 'Mikrotik & Fiber Optic',
+    sub: 'Cyber Security · Fiber Optic · Cloud Computing',
+    desc: 'Gerbang menuju dunia digital tanpa batas. Di TJKT, kamu akan menguasai infrastruktur jaringan, keamanan siber, dan teknologi fiber optik. Persiapkan dirimu menjadi arsitek jaringan yang menghubungkan dunia.',
+    card: 'from-blue-50/90 via-sky-100/70 to-blue-200/50 border-blue-200/90 hover:border-blue-400',
+    watermark: 'text-blue-500/10 group-hover:-rotate-12',
+    iconBox: 'border-blue-200 text-blue-600 group-hover:bg-blue-600',
+    tagCls: 'text-blue-800 border-blue-300/60',
+    titleHover: 'group-hover:text-blue-700',
+    subCls: 'text-blue-800/80',
+    toggleCls: 'hover:bg-blue-600 text-blue-700 border-blue-300/70',
+    descBorder: 'border-blue-300/40',
+    footBorder: 'border-blue-300/50',
+    quotaCls: 'text-blue-700',
+    ctaCls: 'from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500',
   },
   {
-    title: 'Isi Data Awal',
-    color: '#1fa463',
-    icon: ClipboardList,
-    desc: (
-      <>
-        Isi <b>NIK, nama, nomor WhatsApp, pilihan jurusan</b> (TO / TJKT / AKL), lalu buat{' '}
-        <b>password</b>.
-      </>
-    ),
-    chip: 'Catat No. Pendaftaran & password untuk login',
-    warn: true,
-  },
-  {
-    title: 'Login & Lengkapi Formulir',
-    color: '#1c3f8f',
-    icon: CloudUpload,
-    desc: (
-      <>
-        Login dengan No. Pendaftaran / NIK. Isi <b>biodata, alamat, data orang tua</b>, lalu upload{' '}
-        <b>KK, Ijazah/SKL, Akta Lahir</b>.
-      </>
-    ),
-    chip: 'Status: Menunggu Verifikasi',
-    action: 'login',
-  },
-  {
-    title: 'Verifikasi oleh Admin SPMB',
-    color: '#f28c1e',
-    icon: FileSearch,
-    desc: <>Panitia memeriksa data dan berkas. Pantau status & catatan panitia di dashboard.</>,
-    chip: 'Menunggu Verifikasi → Terverifikasi',
-  },
-  {
-    title: 'Terverifikasi: Bayar & Cetak',
-    color: '#0f9d8a',
-    icon: ShieldCheck,
-    desc: (
-      <>
-        Buka menu <b>Biaya & Pembayaran</b>, lalu cetak formulir pendaftaran.
-      </>
-    ),
-  },
-  {
-    title: 'Pengumuman Hasil Seleksi',
-    color: '#2f80ed',
-    icon: Megaphone,
-    desc: (
-      <>
-        Cek hasil: <b>Diterima</b> atau <b>Cadangan</b>. Ikuti arahan panitia untuk daftar ulang,
-        seragam & MPLS.
-      </>
-    ),
-    chip: 'Cek dashboard secara berkala',
+    id: 'akl' as const,
+    icon: Calculator,
+    title: 'Akuntansi & Keuangan Lembaga (AKL)',
+    tag: 'Fintech & Perbankan',
+    sub: 'Perbankan Syariah · Perpajakan Digital · Accurate Software',
+    desc: 'Mencetak pahlawan finansial masa depan. Jurusan AKL melatih ketelitian dan keahlianmu dalam mengelola keuangan, perpajakan, dan akuntansi digital. Raih karir cemerlang di sektor perbankan maupun startup bisnis.',
+    card: 'from-emerald-50/90 via-green-100/70 to-emerald-200/50 border-emerald-200/90 hover:border-emerald-400',
+    watermark: 'text-emerald-500/10 group-hover:rotate-12',
+    iconBox: 'border-emerald-200 text-emerald-600 group-hover:bg-emerald-600',
+    tagCls: 'text-emerald-800 border-emerald-300/60',
+    titleHover: 'group-hover:text-emerald-700',
+    subCls: 'text-emerald-800/80',
+    toggleCls: 'hover:bg-emerald-600 text-emerald-700 border-emerald-300/70',
+    descBorder: 'border-emerald-300/40',
+    footBorder: 'border-emerald-300/50',
+    quotaCls: 'text-emerald-700',
+    ctaCls: 'from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500',
   },
 ];
 
-const RING_R = 52;
-const RING_C = 2 * Math.PI * RING_R;
 
-const AlurPendaftaran: React.FC<AlurPendaftaranProps> = ({
-  onRegisterClick,
-  onLoginClick,
-}) => {
-  const reduce = useReducedMotion();
-  const [open, setOpen] = useState<Set<number>>(new Set([0]));
-  const [active, setActive] = useState<number>(0);
-  const [alurImageOpen, setAlurImageOpen] = useState(false);
-  const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
-  const alurImageRef = useRef<HTMLDivElement | null>(null);
-  const mounted = useRef(false);
+// ===========================================================================
+// PERUBAHAN 3 — GANTI SELURUH BAGIAN
+//   "{/* 4. KONSENTRASI KEAHLIAN (JURUSAN) ... */}"
+// sampai penutup </section> sebelum "{/* 5. FASILITAS & WORKSHOP */}"
+// dengan kode di bawah ini.
+// ===========================================================================
 
-  const { scrollYProgress: alurImageProgress } = useScroll({
-    target: alurImageRef,
-    offset: ['start end', 'end start'],
-  });
-  const alurImageY = useTransform(alurImageProgress, [0, 0.5, 1], reduce ? [0, 0, 0] : [34, 0, -26]);
-  const alurImageScale = useTransform(
-    alurImageProgress,
-    [0, 0.5, 1],
-    reduce ? [1, 1, 1] : [0.94, 1, 0.96],
-  );
-
-  const allOpen = open.size === STEPS.length;
-  const progress = (active + 1) / STEPS.length;
-
-  useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
-    const t = window.setTimeout(() => {
-      itemRefs.current[active]?.scrollIntoView({
-        behavior: reduce ? 'auto' : 'smooth',
-        block: 'nearest',
-      });
-    }, 280);
-    return () => window.clearTimeout(t);
-  }, [active, reduce]);
-
-  const toggle = (i: number) => {
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
-      return next;
-    });
-    setActive(i);
-  };
-
-  const openAll = () => setOpen(new Set(STEPS.map((_, i) => i)));
-  const closeAll = () => setOpen(new Set());
-
-  const goNext = (i: number) => {
-    if (i >= STEPS.length - 1) {
-      setOpen(new Set([0]));
-      setActive(0);
-      return;
-    }
-    setOpen(new Set([i + 1]));
-    setActive(i + 1);
-  };
-
-  const runAction = (a?: Step['action']) => {
-    if (a === 'register') onRegisterClick?.();
-    if (a === 'login') onLoginClick?.();
-  };
-
-  return (
-    <section
-      id="alur-pendaftaran"
-      className="relative scroll-mt-24 section-snap overflow-hidden bg-gradient-to-b from-slate-50 via-blue-50/60 to-white py-16 sm:py-20"
-    >
-      <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-blue-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-amber-200/40 blur-3xl" />
-
-      <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+      {/* 4. KONSENTRASI KEAHLIAN (JURUSAN) */}
+      <section id="jurusan-section" className="py-20 lg:py-24 bg-gradient-to-b from-slate-50 via-slate-100/70 to-blue-50/40 relative overflow-hidden scroll-mt-24 section-snap">
         <motion.div
-          initial={reduce ? false : { opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.5 }}
-          className="mx-auto mb-10 max-w-2xl text-center"
-        >
-          <span className="inline-block rounded-full bg-amber-100 px-4 py-1 text-xs font-bold uppercase tracking-widest text-amber-700">
-            Panduan Pendaftaran
-          </span>
-          <h2 className="mt-3 text-3xl font-extrabold text-slate-900 sm:text-4xl">
-            Alur SPMB Online
-          </h2>
-          <p className="mt-2 text-sm text-slate-600 sm:text-base">
-            SMK Muhammadiyah Bawang · Ikuti 7 langkah dari awal sampai pengumuman.
-          </p>
-        </motion.div>
+          style={{ y: jurusanGlowY }}
+          className="absolute -right-32 top-1/3 w-96 h-96 bg-blue-200/40 rounded-full blur-3xl pointer-events-none will-change-transform"
+        />
 
-        <motion.div
-          ref={alurImageRef}
-          initial={reduce ? false : { opacity: 0 }}
-          whileInView={reduce ? undefined : { opacity: 1 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.65, ease: 'easeOut' }}
-          style={{ y: alurImageY, scale: alurImageScale }}
-          className="relative z-10 mx-auto mb-10 w-full max-w-6xl [transform-style:preserve-3d]"
-        >
-          <button
-            type="button"
-            onClick={() => setAlurImageOpen((value) => !value)}
-            aria-label={alurImageOpen ? 'Perkecil infografis alur pendaftaran' : 'Perbesar infografis alur pendaftaran'}
-            aria-pressed={alurImageOpen}
-            className="group relative block w-full overflow-hidden rounded-3xl border border-white/80 bg-white p-1 shadow-[0_20px_60px_-25px_rgba(30,64,175,0.35)] outline-none transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_-28px_rgba(30,64,175,0.45)] focus-visible:ring-4 focus-visible:ring-blue-300/60 active:scale-[0.995]"
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.55 }}
+            className="text-center max-w-2xl mx-auto mb-16"
           >
-            <div className="relative overflow-hidden rounded-[1.35rem] bg-slate-100">
-              <motion.img
-                src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhiIuDeq9J_WXO2KBegPfvLCQivkwkbWElfSF07iItWPEB79-w0y7zyYxkSA9jkni23z6pkuzm7KYKoqsfOZ7XbYqmw7_Ic8vwU6UQhyphenhyphen4g_P5P-zvADaKnp-tJCISFdODUggAa9OiuK5QMBP_i5xJ8X3lnJR5PZoA51SqxzZfTy5yVxqq7BIYPLewRPa1Jt/s1672/69252.png"
-                alt="Infografis alur pendaftaran SPMB SMK Muhammadiyah Bawang"
-                loading="lazy"
-                decoding="async"
-                className={`block h-auto w-full select-none object-contain transition-transform duration-700 ease-out ${
-                  alurImageOpen ? 'scale-[1.025]' : 'scale-100 group-hover:scale-[1.015]'
-                }`}
-              />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-blue-950/15 via-transparent to-white/10 opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
-              <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-slate-950/75 px-3 py-1.5 text-[10px] font-bold tracking-wide text-white opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100 sm:text-xs">
-                {alurImageOpen ? 'Tekan untuk perkecil' : 'Tekan untuk lihat lebih jelas'}
-              </span>
-            </div>
-          </button>
-        </motion.div>
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider mb-2">
+              Program Unggulan
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1">
+              Konsentrasi <span className="text-blue-600">Keahlian</span>
+            </h2>
+            <div className="w-16 h-1 bg-blue-600 mx-auto mt-3 rounded-full" />
+            <p className="text-sm text-slate-600 mt-4 leading-relaxed">
+              Klik <span className="font-semibold text-slate-800">"Lihat Detail Deskripsi"</span> untuk mengeksplorasi kurikulum dan profil lengkap tiap konsentrasi keahlian.
+            </p>
+          </motion.div>
 
-        <div className="grid gap-8 lg:grid-cols-[17rem_1fr] lg:gap-12">
-          <aside className="self-start lg:sticky lg:top-24">
-            <div className="flex items-center gap-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:flex-col lg:gap-4 lg:p-6">
-              <div className="relative h-28 w-28 shrink-0">
-                <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
-                  <circle cx="60" cy="60" r={RING_R} fill="none" stroke="#e2e8f0" strokeWidth="10" />
-                  <motion.circle
-                    cx="60"
-                    cy="60"
-                    r={RING_R}
-                    fill="none"
-                    stroke={STEPS[active].color}
-                    strokeWidth="10"
-                    strokeLinecap="round"
-                    strokeDasharray={RING_C}
-                    initial={false}
-                    animate={{ strokeDashoffset: RING_C * (1 - progress), stroke: STEPS[active].color }}
-                    transition={{ duration: reduce ? 0 : 0.6, ease: 'easeOut' }}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-extrabold text-slate-900">
-                    {active + 1}
-                    <span className="text-sm font-semibold text-slate-400">/{STEPS.length}</span>
-                  </span>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                    Langkah
-                  </span>
-                </div>
-              </div>
-
-              <div className="min-w-0 flex-1 lg:w-full lg:text-center">
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={active}
-                    initial={reduce ? false : { opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.2 }}
-                    className="text-sm font-bold leading-snug"
-                    style={{ color: STEPS[active].color }}
-                  >
-                    {STEPS[active].title}
-                  </motion.p>
-                </AnimatePresence>
-
-                <div className="mt-3 flex flex-wrap gap-2 lg:justify-center">
-                  <button
-                    type="button"
-                    onClick={allOpen ? closeAll : openAll}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-700 active:scale-95"
-                  >
-                    {allOpen ? <ChevronsUp className="h-4 w-4" /> : <ChevronsDown className="h-4 w-4" />}
-                    {allOpen ? 'Tutup Semua' : 'Buka Semua'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onRegisterClick}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-red-700 active:scale-95"
-                  >
-                    Daftar Sekarang
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          <ol className="relative">
-            {STEPS.map((s, i) => {
-              const Icon = s.icon;
-              const isOpen = open.has(i);
-              const isActive = active === i;
-              const done = i < active;
-              const panelId = `alur-panel-${i}`;
+          {/* items-stretch = semua kartu satu baris otomatis setinggi sama */}
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch"
+          >
+            {JURUSAN.map((j) => {
+              const Icon = j.icon;
+              const isOpen = expandedJurusan[j.id];
               return (
-                <motion.li
-                  key={s.title}
-                  ref={(el) => {
-                    itemRefs.current[i] = el;
-                  }}
-                  initial={reduce ? false : { opacity: 0, y: 28 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.3 }}
-                  transition={{ duration: 0.45, delay: Math.min(i, 3) * 0.05 }}
-                  className="relative flex gap-4 pb-5 sm:gap-6 last:pb-0"
+                <motion.div
+                  key={j.id}
+                  id={`jurusan-${j.id}`}
+                  variants={cardStaggerVariants}
+                  whileHover={{ y: -8, scale: 1.01, transition: { duration: 0.25 } }}
+                  className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${j.card} border p-7 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col h-full group scroll-mt-24`}
                 >
-                  <div className="relative flex w-14 shrink-0 flex-col items-center sm:w-16">
-                    <button
-                      type="button"
-                      onClick={() => toggle(i)}
-                      aria-label={`Langkah ${i + 1}: ${s.title}`}
-                      className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white text-white shadow-lg transition-transform hover:scale-110 active:scale-95 sm:h-16 sm:w-16"
-                      style={{ backgroundColor: s.color }}
-                    >
-                      {isActive && !reduce && (
-                        <motion.span
-                          className="absolute inset-0 rounded-full"
-                          style={{ backgroundColor: s.color }}
-                          animate={{ scale: [1, 1.55], opacity: [0.45, 0] }}
-                          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
-                        />
-                      )}
-                      <Icon className="relative h-6 w-6 sm:h-7 sm:w-7" />
-                      <span
-                        className="absolute -top-1.5 -left-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs font-extrabold shadow"
-                        style={{ color: s.color }}
-                      >
-                        {i + 1}
-                      </span>
-                    </button>
+                  <Icon className={`absolute -bottom-8 -right-8 w-44 h-44 group-hover:scale-110 transition-transform duration-700 ease-out pointer-events-none ${j.watermark}`} />
 
-                    {i < STEPS.length - 1 && (
-                      <div className="relative -mt-1 w-1 flex-1 overflow-hidden rounded-full bg-slate-200">
-                        <motion.div
-                          className="absolute inset-0 origin-top rounded-full"
-                          style={{ backgroundColor: s.color }}
-                          initial={false}
-                          animate={{ scaleY: done ? 1 : 0 }}
-                          transition={{ duration: reduce ? 0 : 0.5 }}
-                        />
-                      </div>
-                    )}
+                  <div className="flex items-center justify-between gap-3 mb-5 relative z-10">
+                    <div className={`w-14 h-14 shrink-0 rounded-2xl bg-white/90 shadow-md border flex items-center justify-center group-hover:scale-110 group-hover:text-white transition-all duration-300 ${j.iconBox}`}>
+                      <Icon className="w-7 h-7" />
+                    </div>
+                    <span className={`text-[11px] font-extrabold bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border shadow-2xs text-right ${j.tagCls}`}>
+                      {j.tag}
+                    </span>
                   </div>
 
-                  <div
-                    className={`min-w-0 flex-1 self-start overflow-hidden rounded-2xl border bg-white transition-shadow ${
-                      isActive ? 'shadow-lg' : 'shadow-sm hover:shadow-md'
-                    }`}
-                    style={{
-                      borderColor: isActive ? s.color : '#e2e8f0',
-                      borderLeftWidth: 6,
-                      borderLeftColor: s.color,
-                    }}
-                  >
+                  {/* min-h menjaga judul 1 baris & 2-3 baris tetap sejajar */}
+                  <h3 className={`text-xl font-extrabold text-slate-900 transition-colors relative z-10 md:min-h-[5.25rem] ${j.titleHover}`}>
+                    {j.title}
+                  </h3>
+                  <p className={`text-xs font-semibold mt-1 mb-4 relative z-10 md:min-h-[2rem] ${j.subCls}`}>
+                    {j.sub}
+                  </p>
+
+                  <div className="relative z-10">
                     <button
                       type="button"
-                      onClick={() => toggle(i)}
-                      aria-expanded={isOpen}
-                      aria-controls={panelId}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left sm:px-6"
+                      onClick={() => toggleJurusanDesc(j.id)}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer border ${j.toggleCls}`}
                     >
-                      <span className="text-base font-bold leading-snug sm:text-xl" style={{ color: s.color }}>
-                        {s.title}
-                      </span>
-                      <motion.span
-                        animate={{ rotate: isOpen ? 180 : 0 }}
-                        transition={{ duration: reduce ? 0 : 0.25 }}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600"
-                      >
-                        <ChevronDown className="h-5 w-5" />
+                      {isOpen ? (
+                        <>
+                          <EyeOff className="w-3.5 h-3.5" />
+                          <span>Sembunyikan Deskripsi</span>
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Lihat Detail Deskripsi</span>
+                        </>
+                      )}
+                      <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
+                        <ChevronDown className="w-3.5 h-3.5" />
                       </motion.span>
                     </button>
-
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          id={panelId}
-                          key="panel"
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: reduce ? 0 : 0.3, ease: 'easeInOut' }}
-                          className="overflow-hidden"
-                        >
-                          <div className="px-4 pb-5 sm:px-6">
-                            <p className="text-sm leading-relaxed text-slate-600 sm:text-base [&_b]:font-bold [&_b]:text-slate-900">
-                              {s.desc}
-                            </p>
-
-                            {s.chip && (
-                              <span
-                                className="mt-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold sm:text-sm"
-                                style={{
-                                  color: s.color,
-                                  backgroundColor: `${s.color}1a`,
-                                  borderColor: `${s.color}55`,
-                                }}
-                              >
-                                {s.warn && <AlertTriangle className="h-4 w-4" />}
-                                {s.chip}
-                              </span>
-                            )}
-
-                            <div className="mt-4 flex flex-wrap gap-2">
-                              {s.action && (
-                                <button
-                                  type="button"
-                                  onClick={() => runAction(s.action)}
-                                  className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow transition hover:brightness-110 active:scale-95"
-                                  style={{ backgroundColor: s.color }}
-                                >
-                                  {s.action === 'login' ? (
-                                    <LogIn className="h-4 w-4" />
-                                  ) : (
-                                    <UserPlus className="h-4 w-4" />
-                                  )}
-                                  {s.action === 'login' ? 'Login Sekarang' : 'Daftar Sekarang'}
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => goNext(i)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-95"
-                              >
-                                {i === STEPS.length - 1 ? (
-                                  <>
-                                    <RotateCcw className="h-4 w-4" /> Ulangi dari awal
-                                  </>
-                                ) : (
-                                  <>
-                                    Langkah berikutnya <ArrowRight className="h-4 w-4" />
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </div>
-                </motion.li>
+
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        key={`desc-${j.id}`}
+                        initial={{ height: 0, opacity: 0, y: -10 }}
+                        animate={{ height: 'auto', opacity: 1, y: 0 }}
+                        exit={{ height: 0, opacity: 0, y: -10 }}
+                        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                        className="overflow-hidden relative z-10"
+                      >
+                        <div className={`mt-4 pt-3 border-t text-sm text-slate-700 leading-relaxed bg-white/70 backdrop-blur-sm p-4 rounded-2xl border border-white/80 shadow-inner ${j.descBorder}`}>
+                          {j.desc}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* mt-auto = footer selalu menempel di dasar kartu */}
+                  <div className={`mt-auto pt-4 border-t flex items-center justify-between relative z-10 ${j.footBorder}`}>
+                    <span className={`text-[11px] font-bold ${j.quotaCls}`}>Kuota Terbatas</span>
+                    <button
+                      onClick={onRegisterClick}
+                      className={`inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer ${j.ctaCls}`}
+                    >
+                      <span>Daftar Jurusan</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </motion.div>
               );
             })}
-          </ol>
-        </div>
+          </motion.div>
 
-        <div className="mt-12 text-center">
-          <button
-            type="button"
-            onClick={() =>
-              document.getElementById('kontak-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }
-            className="group inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200/90 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-blue-50 hover:text-blue-700"
-            title="Lanjut ke Bagian Kontak & Lokasi Peta"
-          >
-            <span>Lanjut ke Kontak & Lokasi Peta</span>
-            <ChevronDown className="h-3.5 w-3.5 animate-bounce text-blue-600 transition-transform group-hover:translate-y-0.5" />
-          </button>
+          <div className="mt-12 text-center">
+            <button
+              onClick={() => scrollToSection('fasilitas-section')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/90 text-xs font-bold transition-all cursor-pointer group shadow-xs hover:shadow-md"
+              title="Lanjut ke Bagian Fasilitas & Workshop"
+            >
+              <span>Lanjut ke Fasilitas & Workshop Modern</span>
+              <ChevronDown className="w-3.5 h-3.5 text-blue-600 group-hover:translate-y-0.5 transition-transform animate-bounce" />
+            </button>
+          </div>
         </div>
-      </div>
-    </section>
-  );
-};
-
-// ===========================================================================
-// HELPER GULIR HALUS
-// ===========================================================================
+      </section>
