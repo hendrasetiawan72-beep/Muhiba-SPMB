@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { dbService } from '../services/supabase';
 import { User, Student } from '../types/database';
-import { AlertCircle, Lock, User as UserIcon, Phone, ArrowLeft, ShieldCheck, HelpCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Lock, User as UserIcon, Phone, ArrowLeft, ArrowRight, ShieldCheck, HelpCircle, Loader2, Eye, EyeOff, MapPin, ExternalLink, Info } from 'lucide-react';
+import { Hero, Stagger, PanelTitle, itemVariants } from './ui/kit';
 
 interface LoginPageProps {
   onSuccessLogin: (user: User, student?: Student) => void;
@@ -19,6 +20,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const shouldReduceMotion = useReducedMotion();
 
   // Cloudflare Turnstile: wajib karena CAPTCHA Supabase Auth aktif (token sekali pakai)
@@ -103,238 +105,216 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     }
   };
 
+  const fieldBase =
+    'peer w-full h-14 pl-12 pr-4 rounded-2xl border-2 border-slate-200 bg-slate-50/80 text-base text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 hover:border-slate-300 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100';
+  const iconBase =
+    'pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 transition-colors duration-200 peer-focus:text-indigo-600';
+
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8 flex flex-col justify-center relative">
-      <div className="max-w-4xl mx-auto w-full space-y-6">
+    <div className="ui-scope ui-page px-4 pb-10 pt-5 sm:px-6 lg:px-8 lg:pt-8">
+      <div className="mx-auto w-full max-w-5xl space-y-5">
 
-        {/* Top bar with back to home */}
-        <motion.div 
-          initial={shouldReduceMotion ? false : { opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-          className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-5 flex items-center justify-between"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-sm ring-1 ring-white/20">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-sm sm:text-base font-extrabold text-slate-800 tracking-tight">
-                PORTAL MASUK PESERTA DIDIK
-              </h1>
-              <p className="text-xs text-slate-500 font-medium">SMK Muhammadiyah Bawang</p>
-            </div>
-          </div>
+        <Hero
+          chip="SPMB 2026 / 2027"
+          title="Masuk ke Akun Pendaftaran"
+          subtitle="Gunakan 16 digit NIK atau nomor pendaftaran, lalu masukkan kata sandi Anda."
+          actions={
+            <motion.button
+              type="button"
+              whileTap={shouldReduceMotion ? undefined : { scale: 0.95 }}
+              onClick={onNavigateHome}
+              className="ui-cta ui-cta--ghost !px-5 !py-3 !text-sm"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Kembali ke Web</span>
+            </motion.button>
+          }
+        />
 
-          <motion.button
-            whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
-            whileHover={shouldReduceMotion ? undefined : { scale: 1.02 }}
-            onClick={onNavigateHome}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-[0.97] rounded-xl transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Kembali ke Web</span>
-          </motion.button>
-        </motion.div>
+        <Stagger className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
 
-        {/* Login Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-          
-          {/* Left card: Form Login Masuk */}
-          <motion.div 
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="md:col-span-7 bg-white rounded-3xl shadow-sm border border-slate-100 p-6 sm:p-8"
-          >
-            <div className="mb-6">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-[11px] font-bold text-indigo-700 mb-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span>SPMB 2026 / 2027</span>
+          {/* Kartu form masuk */}
+          <motion.div variants={itemVariants} className="ui-panel p-5 sm:p-8 lg:col-span-7">
+            <div className="mb-6 flex items-center gap-3.5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-[0_14px_24px_-12px_rgba(91,61,240,.9)]">
+                <ShieldCheck className="h-6 w-6" />
               </div>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                Masuk ke Akun Pendaftaran
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Masukkan 16 digit NIK atau Nomor Pendaftaran dan password Anda.
-              </p>
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold leading-tight tracking-tight text-slate-900 sm:text-xl">Portal Masuk Peserta Didik</h2>
+                <p className="text-sm text-slate-500">SMK Muhammadiyah Bawang</p>
+              </div>
             </div>
 
             {errorMessage && (
-              <motion.div 
+              <motion.div
+                role="alert"
                 initial={shouldReduceMotion ? false : { x: -6, opacity: 0 }}
                 animate={shouldReduceMotion ? { opacity: 1 } : { x: [-6, 6, -4, 4, 0], opacity: 1 }}
-                transition={{ duration: 0.25 }}
-                className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-700"
+                transition={{ duration: 0.3 }}
+                className="mb-5 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"
               >
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
                 <div className="flex-1 font-medium">{errorMessage}</div>
               </motion.div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="login-nik" className="mb-2 block text-sm font-semibold text-slate-700">
                   Nomor Pendaftaran / NIK
                 </label>
                 <div className="relative">
-                  <UserIcon className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
                   <input
+                    id="login-nik"
                     type="text"
                     required
+                    autoComplete="username"
                     value={usernameNik}
                     onChange={(e) => setUsernameNik(e.target.value)}
                     placeholder="Contoh: 3325123456780001"
-                    className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 text-slate-800 bg-slate-50/50 transition-all duration-200 focus-visible:outline-none"
+                    className={fieldBase}
                   />
+                  <UserIcon className={iconBase} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="login-pass" className="mb-2 block text-sm font-semibold text-slate-700">
                   Kata Sandi (Password)
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
                   <input
-                    type="password"
+                    id="login-pass"
+                    type={showPassword ? 'text' : 'password'}
                     required
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Masukkan kata sandi"
-                    className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 text-slate-800 bg-slate-50/50 transition-all duration-200 focus-visible:outline-none"
+                    className={`${fieldBase} !pr-14`}
                   />
+                  <Lock className={iconBase} />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                    aria-pressed={showPassword}
+                    className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-slate-500 transition-all hover:bg-slate-100 hover:text-indigo-600 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
               </div>
 
               {siteKey && <div ref={turnstileContainerRef} className="pt-1" />}
 
-              <div className="text-[11px] text-slate-500 space-y-1 pt-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <p>• Gunakan <strong>NIK 16 digit</strong> atau nomor pendaftaran resmi sebagai username.</p>
-                <p>
-                  • Lupa password? Hubungi panitia via kontak WhatsApp di samping dengan menyebutkan nomor pendaftaran.
-                </p>
+              <div className="flex gap-3 rounded-2xl bg-indigo-50/80 p-4 text-[13px] leading-relaxed text-slate-600">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+                <div className="space-y-1">
+                  <p>Gunakan <strong className="text-slate-800">NIK 16 digit</strong> atau nomor pendaftaran resmi sebagai username.</p>
+                  <p>Lupa password? Hubungi panitia via kontak WhatsApp dengan menyebutkan nomor pendaftaran.</p>
+                </div>
               </div>
 
-              <div className="pt-2">
-                <motion.button
-                  whileTap={shouldReduceMotion || isLoading ? undefined : { scale: 0.96 }}
-                  whileHover={shouldReduceMotion || isLoading ? undefined : { scale: 1.01 }}
-                  type="submit"
-                  disabled={isLoading || (!!siteKey && !turnstileToken)}
-                  className="w-full py-3.5 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-indigo-700 active:brightness-95 rounded-xl shadow-md shadow-indigo-500/20 transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Memverifikasi Akun...</span>
-                    </>
-                  ) : (
+              <motion.button
+                whileTap={shouldReduceMotion || isLoading ? undefined : { scale: 0.97 }}
+                type="submit"
+                disabled={isLoading || (!!siteKey && !turnstileToken)}
+                className="ui-shine group flex h-14 w-full cursor-pointer items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 text-base font-bold text-white shadow-[0_22px_36px_-18px_rgba(91,61,240,.95)] transition-[filter,box-shadow] duration-200 hover:brightness-110 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300 disabled:pointer-events-none disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Memverifikasi Akun...</span>
+                  </>
+                ) : (
+                  <>
                     <span>Masuk ke Dashboard</span>
-                  )}
-                </motion.button>
-              </div>
+                    <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
+                  </>
+                )}
+              </motion.button>
             </form>
 
-            <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+            <div className="mt-6 border-t border-slate-100 pt-5 text-center">
               <button
                 type="button"
                 onClick={onNavigateRegister}
-                className="text-xs text-indigo-600 hover:text-indigo-800 font-bold transition-colors active:scale-[0.98] py-1 px-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-all hover:bg-indigo-50 hover:text-indigo-700 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               >
-                Belum punya akun? <span className="underline">Daftar Sekarang di Sini</span>
+                Belum punya akun? <span className="font-bold text-indigo-600 underline decoration-indigo-300 underline-offset-4">Daftar sekarang</span>
               </button>
             </div>
           </motion.div>
 
-          {/* Right card: Info & Kontak Panitia */}
-          <motion.div 
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: shouldReduceMotion ? 0 : 0.08 }}
-            className="md:col-span-5 bg-white rounded-3xl shadow-sm border border-slate-100 p-6 sm:p-7 space-y-5"
-          >
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-              <HelpCircle className="w-4 h-4 text-indigo-600" />
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Bantuan & Kontak Panitia
-              </h3>
-            </div>
+          {/* Kartu bantuan & kontak */}
+          <motion.div variants={itemVariants} className="ui-panel space-y-5 p-5 sm:p-7 lg:col-span-5">
+            <PanelTitle title="Bantuan & Kontak Panitia" />
 
             <div className="space-y-3">
-              <motion.div 
-                whileHover={shouldReduceMotion ? undefined : { y: -2 }}
-                className="flex items-center gap-3.5 p-3.5 rounded-2xl border border-slate-100 bg-slate-50/80 transition-all duration-150 hover:shadow-sm"
-              >
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 font-bold">
-                  <UserIcon className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-900">EDI SETIANTO</p>
-                  <p className="text-[11px] text-slate-500">Panitia PPDB</p>
+              {[
+                { name: 'EDI SETIANTO', initials: 'ES', tone: 'from-blue-500 to-indigo-600', tel: '0856-1333-392', href: 'https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Bapak%20Edi%20Setianto%20(Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang)%2C%20perkenalkan%20saya%20ingin%20menanyakan%20informasi%20mengenai%20pendaftaran%20dan%20akun%20login%20siswa.%20Terima%20kasih.' },
+                { name: 'SUGI HARNOTO', initials: 'SH', tone: 'from-amber-400 to-orange-500', tel: '0857-4197-7501', href: 'https://wa.me/6285741977501?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Bapak%20Sugi%20Harnoto%20(Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang)%2C%20perkenalkan%20saya%20ingin%20menanyakan%20informasi%20mengenai%20alur%20pendaftaran%20dan%20akun%20login%20siswa.%20Terima%20kasih.' },
+              ].map((c) => (
+                <motion.div
+                  key={c.name}
+                  whileHover={shouldReduceMotion ? undefined : { y: -3 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 26 }}
+                  className="rounded-3xl border border-slate-100 bg-slate-50/80 p-4"
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${c.tone} text-sm font-extrabold text-white shadow-md`}>
+                      {c.initials}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-slate-900">{c.name}</p>
+                      <p className="text-xs text-slate-500">Panitia PPDB</p>
+                    </div>
+                  </div>
                   <a
-                    href="https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Bapak%20Edi%20Setianto%20(Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang)%2C%20perkenalkan%20saya%20ingin%20menanyakan%20informasi%20mengenai%20pendaftaran%20dan%20akun%20login%20siswa.%20Terima%20kasih."
+                    href={c.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 active:scale-[0.97] transition-all mt-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 rounded"
+                    className="mt-3 flex h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-500 text-sm font-semibold text-white shadow-[0_14px_24px_-14px_rgba(16,185,129,.9)] transition-all hover:bg-emerald-600 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
                   >
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>0856-1333-392</span>
+                    <Phone className="h-4 w-4" />
+                    <span>{c.tel}</span>
                   </a>
-                </div>
-              </motion.div>
-
-              <motion.div 
-                whileHover={shouldReduceMotion ? undefined : { y: -2 }}
-                className="flex items-center gap-3.5 p-3.5 rounded-2xl border border-slate-100 bg-slate-50/80 transition-all duration-150 hover:shadow-sm"
-              >
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 font-bold">
-                  <UserIcon className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-900">SUGI HARNOTO</p>
-                  <p className="text-[11px] text-slate-500">Panitia PPDB</p>
-                  <a
-                    href="https://wa.me/6285741977501?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Bapak%20Sugi%20Harnoto%20(Panitia%20PPDB%20SMK%20Muhammadiyah%20Bawang)%2C%20perkenalkan%20saya%20ingin%20menanyakan%20informasi%20mengenai%20alur%20pendaftaran%20dan%20akun%20login%20siswa.%20Terima%20kasih."
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 active:scale-[0.97] transition-all mt-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 rounded"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>0857-4197-7501</span>
-                  </a>
-                </div>
-              </motion.div>
+                </motion.div>
+              ))}
             </div>
 
-            <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/60 text-xs text-amber-900 leading-relaxed">
-              <p className="font-bold mb-1">Catatan Penting:</p>
-              <p>Simpan username dan password Anda dengan aman untuk melengkapi berkas pendaftaran, konfirmasi pembayaran, serta melihat pengumuman seleksi.</p>
+            <div className="ui-tile text-left" data-tone="amber" style={{ padding: '1rem 1.1rem 1.15rem', textAlign: 'left' }}>
+              <p className="mb-1 text-sm font-bold">Catatan Penting</p>
+              <p className="text-[13px] leading-relaxed">
+                Simpan username dan password Anda dengan aman untuk melengkapi berkas pendaftaran, konfirmasi pembayaran, serta melihat pengumuman seleksi.
+              </p>
             </div>
           </motion.div>
+        </Stagger>
 
-        </div>
-
-        {/* Footer info & website */}
-        <div className="pt-4 border-t border-slate-200/80 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <div>
-            <p className="font-semibold text-slate-700">SMK Muhammadiyah Bawang</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Jl. Raya Bawang - Sukorejo KM 01, Jlamprang, Bawang, Kabupaten Batang, Jawa Tengah 51274
-            </p>
+        {/* Info sekolah */}
+        <div className="flex flex-col items-center justify-between gap-4 px-2 pt-2 text-center sm:flex-row sm:text-left">
+          <div className="flex items-start gap-2.5 text-slate-500">
+            <MapPin className="mt-0.5 hidden h-4 w-4 shrink-0 text-indigo-400 sm:block" />
+            <div>
+              <p className="text-sm font-semibold text-slate-700">SMK Muhammadiyah Bawang</p>
+              <p className="mt-0.5 text-xs leading-relaxed">
+                Jl. Raya Bawang - Sukorejo KM 01, Jlamprang, Bawang, Kabupaten Batang, Jawa Tengah 51274
+              </p>
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex flex-col items-center gap-2 sm:items-end">
             <a
               href="https://www.smkmuhiba.sch.id"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 active:scale-[0.97] text-indigo-700 font-bold rounded-xl text-xs transition-all duration-150 border border-indigo-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              className="ui-linkpill !py-2 !text-xs"
             >
-              smkmuhiba.sch.id
+              <span>smkmuhiba.sch.id</span>
+              <ExternalLink className="h-3.5 w-3.5" />
             </a>
-            <span className="text-[11px] text-slate-400">
-              © 2026 SPMB SMK MUHIBA
-            </span>
+            <span className="text-[11px] text-slate-400">© 2026 SPMB SMK MUHIBA</span>
           </div>
         </div>
 

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { User, Student } from './types/database';
 import { dbService } from './services/supabase';
 import { Navbar } from './components/Navbar';
-import { LoadingFallback } from './components/LoadingFallback';
+import { ViewSkeleton } from './components/ui/Skeletons';
+import { SwipeBackLayer } from './components/ui/navigation';
 import { LazyErrorBoundary } from './components/LazyErrorBoundary';
 import { lazyWithPreload } from './Utils/lazyLoad';
 
@@ -33,6 +34,71 @@ export default function App() {
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
   const [activeView, setActiveView] = useState<'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard'>('home');
   const [showChangePassword, setShowChangePassword] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Riwayat browser (UI saja): tombol/gestur "back" & geser-kembali -> halaman sebelumnya.
+  // Tidak mengubah alur autentikasi; dashboard tetap dijaga oleh pengecekan user di bawah.
+  // ---------------------------------------------------------------------------
+  type View = 'home' | 'portal' | 'login' | 'student-dashboard' | 'admin-dashboard';
+  const activeViewRef = useRef<View>(activeView);
+  const userRef = useRef<User | null>(null);
+  const studentRef = useRef<Student | null>(null);
+  const prevViewRef = useRef<View | null>(null);
+  const mountedAtRef = useRef(Date.now());
+  activeViewRef.current = activeView;
+  userRef.current = currentUser;
+  studentRef.current = currentStudent;
+
+  useEffect(() => {
+    const st = (window.history.state as { view?: View; idx?: number } | null) || {};
+    const prev = prevViewRef.current;
+    prevViewRef.current = activeView;
+    const isDash = (v: View) => v === 'student-dashboard' || v === 'admin-dashboard';
+
+    if (prev === null) {
+      // render pertama: tandai entri awal
+      if (!st.view) window.history.replaceState({ ...st, view: activeView, idx: st.idx ?? 0 }, '');
+      return;
+    }
+    if (st.view === activeView) return; // entri sudah sesuai (datang dari tombol back/forward)
+
+    const idx = typeof st.idx === 'number' ? st.idx : 0;
+    const restoredSession = prev === 'home' && isDash(activeView) && Date.now() - mountedAtRef.current < 4000;
+    const afterAuth = (prev === 'login' || prev === 'portal') && isDash(activeView);
+    const afterLogout = activeView === 'home' && isDash(prev) && !userRef.current;
+
+    if (afterAuth || restoredSession || afterLogout) {
+      // ganti entri (bukan tambah) agar tombol back tidak kembali ke form login / dashboard yang sudah keluar
+      window.history.replaceState({ view: activeView, idx }, '');
+    } else {
+      window.history.pushState({ view: activeView, idx: idx + 1 }, '');
+    }
+  }, [activeView]);
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const target = (e.state as { view?: View } | null)?.view;
+      if (!target) return;
+      let next: View = target;
+      if (target === 'student-dashboard' && !(userRef.current && studentRef.current)) next = 'home';
+      if (target === 'admin-dashboard' && userRef.current?.role !== 'admin') next = 'home';
+      if (next !== target) window.history.replaceState({ ...(e.state as object), view: next }, '');
+      setActiveView(next);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  const canGoBack = useCallback(() => {
+    const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
+    return idx > 0 || activeViewRef.current !== 'home';
+  }, []);
+
+  const goBack = useCallback(() => {
+    const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
+    if (idx > 0) window.history.back();
+    else if (activeViewRef.current !== 'home') setActiveView('home');
+  }, []);
 
   // Check persisted Supabase Auth session & listen to auth state changes
   useEffect(() => {
@@ -142,6 +208,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
+      <SwipeBackLayer canGoBack={canGoBack} onBack={goBack} />
       {/* Show Navbar on Home, Portal, and Login */}
       {(activeView === 'home' || activeView === 'portal' || activeView === 'login') && (
         <Navbar
@@ -156,7 +223,7 @@ export default function App() {
       )}
 
       <LazyErrorBoundary>
-        <Suspense fallback={<LoadingFallback />}>
+        <Suspense fallback={<ViewSkeleton view={activeView} />}>
           {/* VIEW: HOME / LANDING PAGE */}
           {activeView === 'home' && (
             <LandingPage

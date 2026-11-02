@@ -18,8 +18,12 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  LogIn,
+  MapPin,
+  ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
+import { Hero, Stagger, StatCard, SegTabs, ViewTransition, PanelTitle, CountUp, itemVariants } from './ui/kit';
 import { dbService } from '../services/supabase';
 import { Student, User as UserType, JurusanType } from '../types/database';
 
@@ -198,6 +202,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
   const shouldReduceMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<'info' | 'syarat' | 'kontak'>('info');
   const [showRegisterForm, setShowRegisterForm] = useState<boolean>(false);
+  const [alurLoaded, setAlurLoaded] = useState(false);
   const [buktiPendaftaran, setBuktiPendaftaran] = useState<{
     student: Student;
     rawPassword: string;
@@ -404,223 +409,184 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 py-6 sm:py-10 px-4 sm:px-6 lg:px-8 print:bg-white print:py-0 print:px-0">
-      
-      <div className="max-w-5xl mx-auto space-y-6 print:hidden">
+    <div className="ui-scope ui-page px-4 pb-10 pt-5 sm:px-6 lg:px-8 lg:pt-8 print:bg-white print:py-0 print:px-0">
 
-        {/* TOP WELCOME BAR */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <h1 className="text-base sm:text-lg font-bold text-slate-800 tracking-wide">
-              SELAMAT DATANG CALON PESERTA DIDIK
-            </h1>
-            <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded-full text-[10px] font-bold text-emerald-700">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span>Terhubung</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setShowRegisterForm(true);
-                setBuktiPendaftaran(null);
-              }}
-              className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-md shadow-sm transition-colors uppercase tracking-wider"
-            >
-              DAFTAR SEKARANG
-            </button>
-            <button
-              onClick={onNavigateLogin}
-              className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors uppercase tracking-wider"
-            >
-              MASUK KE WEB
-            </button>
-          </div>
-        </div>
+      <div className="mx-auto max-w-5xl space-y-5 print:hidden">
 
-        {/* 3 STATS COUNTERS */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-red-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Data Sekolah</p>
-              <p className="text-2xl font-extrabold text-slate-900 tabular-nums">59</p>
-              <p className="text-[11px] text-slate-400">Sekolah Asal</p>
-            </div>
-          </div>
+        {/* HERO SELAMAT DATANG */}
+        <Hero
+          chip="Terhubung"
+          title="Selamat Datang Calon Peserta Didik"
+          subtitle="SPMB SMK Muhammadiyah Bawang • Tahun Ajaran 2026/2027"
+          actions={
+            <>
+              <motion.button
+                type="button"
+                whileTap={shouldReduceMotion ? undefined : { scale: 0.95 }}
+                onClick={() => {
+                  setShowRegisterForm(true);
+                  setBuktiPendaftaran(null);
+                }}
+                className="ui-cta ui-shine"
+              >
+                <FileText className="h-5 w-5 text-indigo-600" />
+                <span>Daftar Sekarang</span>
+              </motion.button>
+              <motion.button
+                type="button"
+                whileTap={shouldReduceMotion ? undefined : { scale: 0.95 }}
+                onClick={onNavigateLogin}
+                className="ui-cta ui-cta--ghost"
+              >
+                <LogIn className="h-5 w-5" />
+                <span>Masuk ke Web</span>
+              </motion.button>
+            </>
+          }
+        />
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <BookMarked className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Data Jurusan</p>
-              <p className="text-2xl font-extrabold text-slate-900 tabular-nums">3</p>
-              <p className="text-[11px] text-slate-400">Program Keahlian</p>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Kuota Pendaftaran</p>
-              <p className="text-2xl font-extrabold text-slate-900 tabular-nums">1.500</p>
-              <p className="text-[11px] text-slate-400">Siswa Total Kuota</p>
-            </div>
-          </div>
-        </div>
+        {/* 3 KARTU STATISTIK */}
+        <Stagger className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+          <StatCard
+            tone="blue"
+            index={0}
+            label="Data Sekolah"
+            icon={Building2}
+            value={<CountUp value={59} />}
+            unit="sekolah asal"
+          />
+          <StatCard
+            tone="amber"
+            index={1}
+            label="Data Jurusan"
+            icon={BookMarked}
+            value={<CountUp value={3} />}
+            unit="program keahlian"
+          />
+          <StatCard
+            tone="green"
+            index={2}
+            className="col-span-2 lg:col-span-1"
+            label="Kuota Pendaftaran"
+            icon={Users}
+            value={<CountUp value={1500} />}
+            unit="siswa total kuota"
+          />
+        </Stagger>
 
         {/* ALUR SPMB GAMBAR PENUH */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-3 sm:p-6">
-          <div className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-2xl rounded-lg overflow-hidden border border-slate-100 bg-slate-50">
+        <motion.div
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={{ duration: 0.45 }}
+          className="ui-panel space-y-4 p-4 sm:p-7"
+        >
+          <PanelTitle title="Alur SPMB Online" live />
+          <div className="relative mx-auto w-full max-w-md overflow-hidden rounded-3xl border border-slate-100 bg-slate-50 sm:max-w-xl lg:max-w-2xl">
+            {!alurLoaded && <div className="ui-skel absolute inset-0 !rounded-none" aria-hidden />}
             <img
               src={alurImageUrl}
               alt="Alur SPMB Online SMK Muhammadiyah Bawang - Sekolah SMART"
-              className="block w-full h-auto"
+              className={`block h-auto w-full min-h-[14rem] transition-opacity duration-500 ${alurLoaded ? 'opacity-100' : 'opacity-0'}`}
               loading="lazy"
               decoding="async"
               referrerPolicy="no-referrer"
+              onLoad={() => setAlurLoaded(true)}
+              onError={() => setAlurLoaded(true)}
             />
           </div>
-        </div>
+        </motion.div>
 
-        {/* TABBED INFORMATION BOX */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-5 sm:p-8">
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-1.5 bg-slate-100/80 rounded-2xl mb-6 border border-slate-200/60">
-            <motion.button
-              whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
-              onClick={() => setActiveTab('info')}
-              className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                activeTab === 'info'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 active:scale-[0.98]'
-              }`}
-            >
-              <FileText className="w-4 h-4 shrink-0" />
-              <span>Informasi Pendaftaran</span>
-            </motion.button>
+        {/* INFORMASI: TAB */}
+        <div className="ui-panel space-y-5 p-4 sm:p-7">
+          <SegTabs
+            id="portal"
+            ariaLabel="Informasi pendaftaran"
+            className="w-full justify-between sm:w-auto"
+            active={activeTab}
+            onChange={(k) => setActiveTab(k as 'info' | 'syarat' | 'kontak')}
+            items={[
+              { key: 'info', icon: FileText, label: <><span className="sm:hidden">Info</span><span className="hidden sm:inline">Informasi Pendaftaran</span></> },
+              { key: 'syarat', icon: CheckCircle, label: <><span className="sm:hidden">Syarat</span><span className="hidden sm:inline">Syarat Pendaftaran</span></> },
+              { key: 'kontak', icon: Phone, label: <><span className="sm:hidden">Kontak</span><span className="hidden sm:inline">Kontak Pendaftaran</span></> },
+            ]}
+          />
 
-            <motion.button
-              whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
-              onClick={() => setActiveTab('syarat')}
-              className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                activeTab === 'syarat'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 active:scale-[0.98]'
-              }`}
-            >
-              <CheckCircle className="w-4 h-4 shrink-0" />
-              <span>Syarat Pendaftaran</span>
-            </motion.button>
-
-            <motion.button
-              whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
-              onClick={() => setActiveTab('kontak')}
-              className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                activeTab === 'kontak'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 active:scale-[0.98]'
-              }`}
-            >
-              <Phone className="w-4 h-4 shrink-0" />
-              <span>Kontak Pendaftaran</span>
-            </motion.button>
-          </div>
-
-          <div className="bg-slate-50/70 p-5 sm:p-7 rounded-2xl border border-slate-200/70">
+          <ViewTransition viewKey={activeTab}>
             {activeTab === 'info' && (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Alur & Langkah Pendaftaran Online</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Ikuti 3 tahapan mudah untuk mendaftar sebagai calon peserta didik baru SMK Muhiba.</p>
+                  <h3 className="text-lg font-bold tracking-tight text-slate-900">Alur & Langkah Pendaftaran Online</h3>
+                  <p className="mt-1 text-sm text-slate-500">Ikuti 3 tahapan mudah untuk mendaftar sebagai calon peserta didik baru SMK Muhiba.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <motion.div 
-                    whileHover={shouldReduceMotion ? undefined : { y: -3 }}
-                    className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-indigo-300 hover:shadow-md transition-all duration-200"
-                  >
-                    <div>
-                      <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 font-extrabold text-xs flex items-center justify-center mb-3">01</div>
-                      <h4 className="font-bold text-sm text-slate-900 mb-1">Daftar Online</h4>
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        Calon siswa mengisi data dasar (NIK, Nama, WhatsApp, Pilihan Jurusan) dan membuat password akun.
-                      </p>
-                    </div>
-                    <div className="pt-4 mt-3 border-t border-slate-100">
-                      <motion.button
-                        whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
-                        onClick={() => setShowRegisterForm(true)}
-                        className="w-full py-2.5 px-3 text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 active:scale-[0.97] rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>Daftar Sekarang</span>
-                      </motion.button>
-                    </div>
-                  </motion.div>
-
-                  <motion.div 
-                    whileHover={shouldReduceMotion ? undefined : { y: -3 }}
-                    className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-emerald-300 hover:shadow-md transition-all duration-200"
-                  >
-                    <div>
-                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 font-extrabold text-xs flex items-center justify-center mb-3">02</div>
-                      <h4 className="font-bold text-sm text-slate-900 mb-1">Login Masuk</h4>
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        Gunakan nomor pendaftaran / NIK dan password yang didapat untuk masuk ke dashboard siswa.
-                      </p>
-                    </div>
-                    <div className="pt-4 mt-3 border-t border-slate-100">
-                      <motion.button
-                        whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
-                        onClick={onNavigateLogin}
-                        className="w-full py-2.5 px-3 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97] rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                      >
-                        <ArrowRight className="w-3.5 h-3.5" />
-                        <span>Login Masuk</span>
-                      </motion.button>
-                    </div>
-                  </motion.div>
-
-                  <motion.div 
-                    whileHover={shouldReduceMotion ? undefined : { y: -3 }}
-                    className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-blue-300 hover:shadow-md transition-all duration-200"
-                  >
-                    <div>
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 font-extrabold text-xs flex items-center justify-center mb-3">03</div>
-                      <h4 className="font-bold text-sm text-slate-900 mb-1">Lengkapi Berkas</h4>
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        Lengkapi formulir biodata diri, alamat, data orang tua, serta serahkan / upload berkas pendaftaran.
-                      </p>
-                    </div>
-                    <div className="pt-4 mt-3 border-t border-slate-100">
-                      <div className="w-full py-2 px-3 text-xs font-semibold text-blue-700 bg-blue-50 rounded-xl flex items-center justify-center gap-1 text-center">
-                        <Check className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Verifikasi Panitia</span>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  {[
+                    { n: 1, title: 'Daftar Online', desc: 'Calon siswa mengisi data dasar (NIK, Nama, WhatsApp, Pilihan Jurusan) dan membuat password akun.', grad: 'from-indigo-500 to-violet-600', tile: 'violet' },
+                    { n: 2, title: 'Login Masuk', desc: 'Gunakan nomor pendaftaran / NIK dan password yang didapat untuk masuk ke dashboard siswa.', grad: 'from-emerald-500 to-teal-600', tile: 'green' },
+                    { n: 3, title: 'Lengkapi Berkas', desc: 'Lengkapi formulir biodata diri, alamat, data orang tua, serta serahkan / upload berkas pendaftaran.', grad: 'from-sky-500 to-blue-600', tile: 'blue' },
+                  ].map((st) => (
+                    <motion.div
+                      key={st.n}
+                      whileHover={shouldReduceMotion ? undefined : { y: -4 }}
+                      transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+                      className="flex flex-col justify-between rounded-3xl border border-slate-100 bg-gradient-to-b from-white to-slate-50/80 p-5 shadow-[0_18px_30px_-24px_rgba(67,56,202,.5)]"
+                    >
+                      <div>
+                        <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br ${st.grad} text-base font-extrabold text-white shadow-md`}>
+                          {st.n}
+                        </div>
+                        <h4 className="mb-1 text-base font-bold text-slate-900">{st.title}</h4>
+                        <p className="text-sm leading-relaxed text-slate-600">{st.desc}</p>
                       </div>
-                    </div>
-                  </motion.div>
+                      <div className="mt-4 border-t border-slate-100 pt-4">
+                        {st.n === 1 && (
+                          <motion.button
+                            type="button"
+                            whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
+                            onClick={() => setShowRegisterForm(true)}
+                            className="ui-shine flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-sm font-bold text-white shadow-[0_16px_26px_-16px_rgba(91,61,240,.95)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200"
+                          >
+                            <FileText className="h-4 w-4" />
+                            <span>Daftar Sekarang</span>
+                          </motion.button>
+                        )}
+                        {st.n === 2 && (
+                          <motion.button
+                            type="button"
+                            whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
+                            onClick={onNavigateLogin}
+                            className="ui-shine flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-sm font-bold text-white shadow-[0_16px_26px_-16px_rgba(5,150,105,.95)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                            <span>Login Masuk</span>
+                          </motion.button>
+                        )}
+                        {st.n === 3 && (
+                          <div className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-50 text-sm font-semibold text-blue-700">
+                            <Check className="h-4 w-4 text-blue-600" />
+                            <span>Verifikasi Panitia</span>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               </div>
             )}
 
             {activeTab === 'syarat' && (
               <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200/80">
+                <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">Dokumen & Syarat Pendaftaran Siswa Baru</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">Siapkan berkas-berkas berikut sebelum verifikasi dan penyerahan formulir:</p>
+                    <h3 className="text-lg font-bold tracking-tight text-slate-900">Dokumen & Syarat Pendaftaran Siswa Baru</h3>
+                    <p className="mt-1 text-sm text-slate-500">Siapkan berkas-berkas berikut sebelum verifikasi dan penyerahan formulir:</p>
                   </div>
-                  <span className="self-start sm:self-auto text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
-                    8 Berkas Wajib & Pendukung
-                  </span>
+                  <span className="ui-live self-start sm:self-auto">8 Berkas Wajib & Pendukung</span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                <Stagger className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {[
                     { title: 'Surat Keterangan Lulus (SKL) Asli', desc: 'Asli dari SMP / MTs yang telah dilegalisir' },
                     { title: 'Fotocopy Ijazah SMP / MTs / Paket B', desc: 'FC Ijazah SD/MI jika ijazah SMP belum terbit' },
@@ -631,37 +597,38 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                     { title: 'Fotocopy KIP / PKH / KKS / SKTM', desc: 'Khusus bagi pemegang kartu bantuan pemerintah' },
                     { title: 'Fotocopy Piagam Penghargaan', desc: 'Bagi pendaftar jalur prestasi akademik / non-akademik' },
                   ].map((item, i) => (
-                    <div
+                    <motion.div
                       key={i}
-                      className="bg-white p-3.5 rounded-lg border border-slate-200/90 shadow-2xs flex items-start gap-3 hover:border-blue-300 transition-colors"
+                      variants={itemVariants}
+                      className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 transition-colors hover:border-indigo-200 hover:bg-white"
                     >
-                      <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
-                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm ring-4 ring-emerald-50">
+                        <Check className="h-3.5 w-3.5 stroke-[3]" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-800">{item.title}</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">{item.desc}</p>
+                        <p className="text-sm font-bold text-slate-800">{item.title}</p>
+                        <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{item.desc}</p>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
-                </div>
+                </Stagger>
               </div>
             )}
 
             {activeTab === 'kontak' && (
               <div className="space-y-4">
-                <div className="pb-2 border-b border-slate-200/80">
-                  <h3 className="text-base font-bold text-slate-900">Kontak Panitia SPMB SMK MUHIBA</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Ada pertanyaan seputar jurusan, biaya, atau alur pendaftaran? Hubungi panitia resmi kami.</p>
+                <div>
+                  <h3 className="text-lg font-bold tracking-tight text-slate-900">Kontak Panitia SPMB SMK MUHIBA</h3>
+                  <p className="mt-1 text-sm text-slate-500">Ada pertanyaan seputar jurusan, biaya, atau alur pendaftaran? Hubungi panitia resmi kami.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="flex flex-col justify-between gap-4 rounded-3xl border border-slate-100 bg-slate-50/70 p-5">
                     <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 font-extrabold text-sm">ES</div>
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-extrabold text-white shadow-md">ES</div>
                       <div>
-                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase">Panitia PPDB 1</span>
-                        <h4 className="text-sm font-bold text-slate-900 mt-1">EDI SETIANTO</h4>
+                        <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700">Panitia PPDB 1</span>
+                        <h4 className="mt-1 text-base font-bold text-slate-900">EDI SETIANTO</h4>
                         <p className="text-xs text-slate-500">Pelayanan & Konsultasi Jurusan</p>
                       </div>
                     </div>
@@ -669,19 +636,19 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                       href="https://wa.me/628561333392?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Bapak%20Edi%20Setianto%2C%20perkenalkan%20saya%20calon%20pendaftar%20%2F%20orang%20tua%2C%20ingin%20berkonsultasi%20mengenai%20pelayanan%20pendaftaran%20dan%20pilihan%20konsentrasi%20keahlian%20di%20SMK%20Muhammadiyah%20Bawang.%20Terima%20kasih."
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-xs"
+                      className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 text-sm font-semibold text-white shadow-[0_14px_24px_-14px_rgba(16,185,129,.9)] transition-all hover:bg-emerald-600 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
                     >
-                      <Phone className="w-3.5 h-3.5" />
+                      <Phone className="h-4 w-4" />
                       <span>Chat WhatsApp (08561333392)</span>
                     </a>
                   </div>
 
-                  <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between gap-4">
+                  <div className="flex flex-col justify-between gap-4 rounded-3xl border border-slate-100 bg-slate-50/70 p-5">
                     <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-extrabold text-sm">SH</div>
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-sm font-extrabold text-white shadow-md">SH</div>
                       <div>
-                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded uppercase">Panitia PPDB 2</span>
-                        <h4 className="text-sm font-bold text-slate-900 mt-1">SUGI HARNOTO</h4>
+                        <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">Panitia PPDB 2</span>
+                        <h4 className="mt-1 text-base font-bold text-slate-900">SUGI HARNOTO</h4>
                         <p className="text-xs text-slate-500">Informasi Alur & Berkas Fisik</p>
                       </div>
                     </div>
@@ -689,37 +656,40 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                       href="https://wa.me/6285741977501?text=Assalamu%27alaikum%20Warahmatullahi%20Wabarakatuh.%20Yth.%20Bapak%20Sugi%20Harnoto%2C%20perkenalkan%20saya%20calon%20pendaftar%20%2F%20orang%20tua%2C%20ingin%20menanyakan%20informasi%20terkait%20alur%20pendaftaran%20dan%20kelengkapan%20berkas%20fisik%20PPDB%20SMK%20Muhammadiyah%20Bawang.%20Terima%20kasih."
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-xs"
+                      className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 text-sm font-semibold text-white shadow-[0_14px_24px_-14px_rgba(16,185,129,.9)] transition-all hover:bg-emerald-600 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
                     >
-                      <Phone className="w-3.5 h-3.5" />
+                      <Phone className="h-4 w-4" />
                       <span>Chat WhatsApp (085741977501)</span>
                     </a>
                   </div>
                 </div>
               </div>
             )}
-          </div>
+          </ViewTransition>
         </div>
 
-        <div className="pt-4 border-t border-slate-200/80 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <div>
-            <p className="font-semibold text-slate-700">SMK Muhammadiyah Bawang</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Jl. Raya Bawang - Sukorejo KM 01, Jlamprang, Bawang, Kabupaten Batang, Jawa Tengah 51274
-            </p>
+        {/* INFO SEKOLAH */}
+        <div className="flex flex-col items-center justify-between gap-4 px-2 pt-2 text-center sm:flex-row sm:text-left">
+          <div className="flex items-start gap-2.5 text-slate-500">
+            <MapPin className="mt-0.5 hidden h-4 w-4 shrink-0 text-indigo-400 sm:block" />
+            <div>
+              <p className="text-sm font-semibold text-slate-700">SMK Muhammadiyah Bawang</p>
+              <p className="mt-0.5 text-xs leading-relaxed">
+                Jl. Raya Bawang - Sukorejo KM 01, Jlamprang, Bawang, Kabupaten Batang, Jawa Tengah 51274
+              </p>
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex flex-col items-center gap-2 sm:items-end">
             <a
               href="https://www.smkmuhiba.sch.id"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded text-xs transition-colors border border-blue-200"
+              className="ui-linkpill !py-2 !text-xs"
             >
-              Kunjungi Web Sekolah (smkmuhiba.sch.id)
+              <span>Kunjungi Web Sekolah (smkmuhiba.sch.id)</span>
+              <ExternalLink className="h-3.5 w-3.5" />
             </a>
-            <span className="text-[11px] text-slate-400">
-              Copyright © 2026 SPMB SMK MUHIBA | by @hndx07
-            </span>
+            <span className="text-[11px] text-slate-400">Copyright © 2026 SPMB SMK MUHIBA | by @hndx07</span>
           </div>
         </div>
 
@@ -728,7 +698,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
       {/* REGISTRATION MODAL FORM */}
       <AnimatePresence>
         {showRegisterForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div data-swipe-lock className="ui-scope fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <motion.div
               initial={shouldReduceMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -741,14 +711,15 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 12 }}
               transition={{ duration: 0.25 }}
-              className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-8 relative my-8 z-10 border border-slate-100"
+              className="bg-white rounded-[2rem] shadow-[0_40px_80px_-30px_rgba(30,27,75,.65)] max-w-lg w-full p-5 sm:p-8 relative my-4 sm:my-8 z-10 overflow-hidden"
             >
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600" aria-hidden />
               <motion.button
                 whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
                 type="button"
                 onClick={closeRegisterForm}
                 aria-label="Tutup formulir"
-                className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-2.5 rounded-full hover:bg-slate-100 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               >
                 <X className="w-5 h-5" />
               </motion.button>
@@ -780,14 +751,14 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                 </motion.div>
               )}
 
-            <form onSubmit={handleRegisterSubmit} noValidate className="space-y-4">
+            <form onSubmit={handleRegisterSubmit} noValidate className="space-y-5">
               {/* NIK */}
               <div>
-                <label htmlFor="reg-nik" className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="reg-nik" className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Nomor Induk Kependudukan (NIK) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <CreditCard className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <CreditCard className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
                   <input
                     id="reg-nik"
                     ref={nikRef}
@@ -800,14 +771,14 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                     onBlur={() => touch('nik')}
                     aria-invalid={!!(touched.nik && fieldErrors.nik)}
                     placeholder="16 digit angka sesuai KTP / KK"
-                    className={`w-full pl-9 pr-16 py-2 text-xs border rounded-lg focus:ring-2 ${
+                    className={`w-full pl-11 pr-16 h-12 text-base sm:text-sm border-2 rounded-2xl outline-none transition-all duration-200 focus:ring-4 ${
                       touched.nik && fieldErrors.nik
-                        ? 'border-red-400 focus:ring-red-400 focus:border-red-400 bg-red-50/40'
-                        : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
+                        ? 'border-red-400 focus:ring-red-100 focus:border-red-500 bg-red-50/50'
+                        : 'border-slate-200 bg-slate-50/80 hover:border-slate-300 focus:bg-white focus:ring-indigo-100 focus:border-indigo-500'
                     }`}
                   />
                   <span
-                    className={`absolute right-3 top-2.5 text-[11px] font-bold tabular-nums ${
+                    className={`absolute right-4 top-3.5 text-xs font-bold tabular-nums ${
                       nik.length === 16 && !fieldErrors.nik
                         ? 'text-emerald-600'
                         : touched.nik
@@ -827,11 +798,11 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
 
               {/* Nama */}
               <div>
-                <label htmlFor="reg-nama" className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="reg-nama" className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Nama Lengkap Siswa <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <User className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
                   <input
                     id="reg-nama"
                     ref={namaRef}
@@ -841,10 +812,10 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                     onChange={(e) => setNamaLengkap(e.target.value)}
                     onBlur={() => touch('nama')}
                     placeholder="Nama lengkap sesuai ijazah / akta"
-                    className={`w-full pl-9 pr-3 py-2 text-xs border rounded-lg focus:ring-2 ${
+                    className={`w-full pl-11 pr-3 h-12 text-base sm:text-sm border-2 rounded-2xl outline-none transition-all duration-200 focus:ring-4 ${
                       touched.nama && fieldErrors.nama
-                        ? 'border-red-400 focus:ring-red-400 focus:border-red-400 bg-red-50/40'
-                        : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
+                        ? 'border-red-400 focus:ring-red-100 focus:border-red-500 bg-red-50/50'
+                        : 'border-slate-200 bg-slate-50/80 hover:border-slate-300 focus:bg-white focus:ring-indigo-100 focus:border-indigo-500'
                     }`}
                   />
                 </div>
@@ -855,14 +826,14 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
 
               {/* Jurusan */}
               <div>
-                <label htmlFor="reg-jurusan" className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="reg-jurusan" className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Pilihan Konsentrasi Keahlian (Jurusan) <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="reg-jurusan"
                   value={jurusanPilihan}
                   onChange={(e) => setJurusanPilihan(e.target.value as JurusanType)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-semibold"
+                  className="w-full h-12 px-3.5 text-base sm:text-sm border-2 border-slate-200 bg-slate-50/80 hover:border-slate-300 rounded-2xl outline-none transition-all duration-200 focus:bg-white focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 font-semibold"
                 >
                   <option value="TO">Teknik Otomotif (TO)</option>
                   <option value="TJKT">Teknik Jaringan Komputer & Telekomunikasi (TJKT)</option>
@@ -872,11 +843,11 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
 
               {/* WhatsApp */}
               <div>
-                <label htmlFor="reg-wa" className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="reg-wa" className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Nomor WhatsApp Siswa / Orang Tua <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <Phone className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <Phone className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
                   <input
                     id="reg-wa"
                     ref={waRef}
@@ -888,10 +859,10 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                     onChange={(e) => setNoWa(e.target.value)}
                     onBlur={() => touch('wa')}
                     placeholder="Contoh: 081234567890"
-                    className={`w-full pl-9 pr-3 py-2 text-xs border rounded-lg focus:ring-2 ${
+                    className={`w-full pl-11 pr-3 h-12 text-base sm:text-sm border-2 rounded-2xl outline-none transition-all duration-200 focus:ring-4 ${
                       touched.wa && fieldErrors.wa
-                        ? 'border-red-400 focus:ring-red-400 focus:border-red-400 bg-red-50/40'
-                        : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
+                        ? 'border-red-400 focus:ring-red-100 focus:border-red-500 bg-red-50/50'
+                        : 'border-slate-200 bg-slate-50/80 hover:border-slate-300 focus:bg-white focus:ring-indigo-100 focus:border-indigo-500'
                     }`}
                   />
                 </div>
@@ -903,11 +874,11 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
               {/* Password */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="reg-pass" className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor="reg-pass" className="block text-sm font-semibold text-slate-700 mb-1.5">
                     Buat Password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                    <Lock className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
                     <input
                       id="reg-pass"
                       ref={passRef}
@@ -917,10 +888,10 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                       onChange={(e) => setPassword(e.target.value)}
                       onBlur={() => touch('password')}
                       placeholder="Min. 8 karakter"
-                      className={`w-full pl-9 pr-10 py-2 text-xs border rounded-lg focus:ring-2 ${
+                      className={`w-full pl-11 pr-10 h-12 text-base sm:text-sm border-2 rounded-2xl outline-none transition-all duration-200 focus:ring-4 ${
                         touched.password && fieldErrors.password
-                          ? 'border-red-400 focus:ring-red-400 focus:border-red-400 bg-red-50/40'
-                          : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
+                          ? 'border-red-400 focus:ring-red-100 focus:border-red-500 bg-red-50/50'
+                          : 'border-slate-200 bg-slate-50/80 hover:border-slate-300 focus:bg-white focus:ring-indigo-100 focus:border-indigo-500'
                       }`}
                     />
                     <button
@@ -928,7 +899,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                       onClick={() => setShowPassword((v) => !v)}
                       aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                       aria-pressed={showPassword}
-                      className="absolute right-1.5 top-1 flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                      className="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-all hover:bg-slate-100 hover:text-indigo-600 active:scale-90"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -947,11 +918,11 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                 </div>
 
                 <div>
-                  <label htmlFor="reg-confirm" className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor="reg-confirm" className="block text-sm font-semibold text-slate-700 mb-1.5">
                     Konfirmasi Password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                    <Lock className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
                     <input
                       id="reg-confirm"
                       ref={confirmRef}
@@ -961,10 +932,10 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       onBlur={() => touch('confirm')}
                       placeholder="Ulangi password"
-                      className={`w-full pl-9 pr-10 py-2 text-xs border rounded-lg focus:ring-2 ${
+                      className={`w-full pl-11 pr-10 h-12 text-base sm:text-sm border-2 rounded-2xl outline-none transition-all duration-200 focus:ring-4 ${
                         touched.confirm && fieldErrors.confirm
-                          ? 'border-red-400 focus:ring-red-400 focus:border-red-400 bg-red-50/40'
-                          : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
+                          ? 'border-red-400 focus:ring-red-100 focus:border-red-500 bg-red-50/50'
+                          : 'border-slate-200 bg-slate-50/80 hover:border-slate-300 focus:bg-white focus:ring-indigo-100 focus:border-indigo-500'
                       }`}
                     />
                     <button
@@ -972,7 +943,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                       onClick={() => setShowConfirm((v) => !v)}
                       aria-label={showConfirm ? 'Sembunyikan konfirmasi password' : 'Tampilkan konfirmasi password'}
                       aria-pressed={showConfirm}
-                      className="absolute right-1.5 top-1 flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                      className="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-all hover:bg-slate-100 hover:text-indigo-600 active:scale-90"
                     >
                       {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -1022,11 +993,11 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                   whileHover={shouldReduceMotion || isSubmitting ? undefined : { scale: 1.01 }}
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-indigo-700 active:brightness-95 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-indigo-500/20 transition-all duration-150 disabled:opacity-60 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                  className="ui-shine w-full h-14 bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 text-white font-bold text-base rounded-2xl shadow-[0_22px_36px_-18px_rgba(91,61,240,.95)] transition-[filter] duration-200 hover:brightness-110 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300 disabled:opacity-60 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-5 h-5 animate-spin" />
                       <span>Memproses Pendaftaran...</span>
                     </>
                   ) : (
@@ -1062,8 +1033,8 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
           </style>
 
           {/* Menghilangkan modal layang pada saat dicetak, dibuat seakan dokumen statis full layar */}
-          <div id="print-section" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 overflow-y-auto print:absolute print:inset-0 print:bg-white print:p-0 print:block print:z-[99999]">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 relative my-8 animate-in fade-in duration-200 print:shadow-none print:m-0 print:max-w-full print:border-none print:p-0 print:block">
+          <div id="print-section" data-swipe-lock className="ui-scope fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 overflow-y-auto print:absolute print:inset-0 print:bg-white print:p-0 print:block print:z-[99999]">
+            <div className="bg-white rounded-[2rem] shadow-[0_40px_80px_-30px_rgba(30,27,75,.65)] max-w-lg w-full p-5 sm:p-8 relative my-4 sm:my-8 animate-in fade-in zoom-in-95 duration-300 print:rounded-none print:shadow-none print:m-0 print:max-w-full print:border-none print:p-0 print:block">
               
               <div className="flex items-start justify-between border-b pb-4 mb-5">
                 <div>
@@ -1082,7 +1053,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                 </button>
               </div>
 
-              <div className="border border-slate-200 rounded-lg overflow-hidden text-xs">
+              <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs sm:text-sm">
                 <table className="w-full divide-y divide-slate-200">
                   <tbody className="divide-y divide-slate-100">
                     <tr className="bg-slate-50/50">
@@ -1113,7 +1084,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                 </table>
               </div>
 
-              <div className="mt-4 text-[11px] text-slate-600 leading-relaxed bg-blue-50/60 p-3 rounded-lg border border-blue-100">
+              <div className="mt-4 text-[11px] sm:text-xs text-slate-600 leading-relaxed bg-blue-50/60 p-3.5 rounded-2xl border border-blue-100">
                 <p className="font-semibold text-blue-900 mb-1">
                   Dengan ini menyatakan bahwa peserta didik di atas telah <span className="font-extrabold uppercase">BERHASIL MELAKUKAN PENDAFTARAN</span> secara online.
                 </p>
@@ -1128,7 +1099,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
               </div>
 
               {/* PERINGATAN KEAMANAN HIGHLIGHT BESAR (Sembunyikan saat di print) */}
-              <div className="mt-2 border-2 border-red-500 bg-red-50 p-4 sm:p-5 rounded-xl shadow-sm mb-6 print:hidden">
+              <div className="mt-2 border-2 border-red-500 bg-red-50 p-4 sm:p-5 rounded-3xl shadow-sm mb-6 print:hidden">
                 <div className="flex items-start gap-3 sm:gap-4">
                   <ShieldAlert className="w-8 h-8 sm:w-10 sm:h-10 text-red-600 shrink-0 animate-bounce mt-1" />
                   <div>
@@ -1165,7 +1136,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
               <div className="mt-2 flex flex-col sm:flex-row gap-3 print:hidden">
                 <button
                   onClick={handlePrint}
-                  className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95"
+                  className="flex-1 min-h-12 py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:brightness-110 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition-all flex items-center justify-center gap-2 shadow-[0_18px_28px_-16px_rgba(59,68,220,.9)] active:scale-95"
                 >
                   <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span>DOWNLOAD / CETAK PDF (WAJIB)</span>
@@ -1174,7 +1145,7 @@ export const RegistrationPortal: React.FC<RegistrationPortalProps> = ({
                 <button
                   onClick={handleEnterDashboard}
                   disabled={isEntering}
-                  className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                  className="flex-1 min-h-12 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-2xl transition-all flex items-center justify-center gap-2 shadow-[0_18px_28px_-16px_rgba(5,150,105,.9)] active:scale-95 disabled:opacity-50"
                 >
                   <span>{isEntering ? 'Memproses...' : 'Masuk Ke Dashboard Siswa'}</span>
                   <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />

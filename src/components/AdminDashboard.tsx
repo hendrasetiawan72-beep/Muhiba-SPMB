@@ -237,9 +237,14 @@ import {
   Clock,
   CheckCircle2,
   GraduationCap,
+  MessageCircle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Student, User, StatusPendaftaran, JurusanType, BerkasItem } from '../types/database';
 import { motion, useReducedMotion } from 'motion/react';
+import { useHistorySync } from './ui/navigation';
+import { Hero, Stagger, StatCard, StatusTile, PanelTitle, SegTabs, CountUp, ViewTransition, LOGO_URL, itemVariants } from './ui/kit';
 import { dbService } from '../services/supabase';
 const AdminResetPasswordModal = React.lazy(() =>
   import('./AdminResetPasswordModal').then((m) => ({ default: m.AdminResetPasswordModal }))
@@ -707,9 +712,9 @@ const LogPanel: React.FC<{ refreshKey: number }> = ({ refreshKey }) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {setupNeeded && (
-        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-xs text-amber-900">
+        <div className="p-4 rounded-3xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-sm text-amber-900">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
           <div className="space-y-1">
             <p className="font-bold">Tabel log aktivitas belum dibuat.</p>
@@ -721,15 +726,15 @@ const LogPanel: React.FC<{ refreshKey: number }> = ({ refreshKey }) => {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="ui-panel ui-form p-4 sm:p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari nama pendaftar, NIK, atau admin..."
-            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full pl-11 pr-4"
           />
         </div>
 
@@ -740,7 +745,7 @@ const LogPanel: React.FC<{ refreshKey: number }> = ({ refreshKey }) => {
             <select
               value={actionFilter}
               onChange={(e) => setActionFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-md bg-white font-semibold"
+              className="px-3 font-semibold text-slate-700"
             >
               <option value="ALL">Semua aktivitas</option>
               {(Object.keys(ACTION_META) as LogAction[]).map((a) => (
@@ -755,7 +760,7 @@ const LogPanel: React.FC<{ refreshKey: number }> = ({ refreshKey }) => {
             type="button"
             onClick={() => fetchLogs(0, true)}
             disabled={loading}
-            className="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-800 disabled:opacity-60 text-white rounded-md text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
+            className="h-11 px-5 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-60 text-indigo-700 rounded-2xl text-sm font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Muat ulang</span>
@@ -764,16 +769,16 @@ const LogPanel: React.FC<{ refreshKey: number }> = ({ refreshKey }) => {
       </div>
 
       {error && (
-        <div className="p-3.5 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-xs text-red-700">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-3xl flex items-start gap-2.5 text-sm text-red-700">
           <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div className="ui-panel overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+            <thead className="bg-indigo-50/70 text-indigo-900/70 font-semibold text-xs">
               <tr>
                 <th className="px-4 py-3.5 whitespace-nowrap">Waktu</th>
                 <th className="px-4 py-3.5">Admin</th>
@@ -800,7 +805,7 @@ const LogPanel: React.FC<{ refreshKey: number }> = ({ refreshKey }) => {
                   return (
                     <React.Fragment key={log.id}>
                       <tr
-                        className="hover:bg-blue-50/40 transition-colors cursor-pointer"
+                        className="hover:bg-indigo-50/50 transition-colors cursor-pointer"
                         onClick={() => setExpandedId(open ? null : log.id)}
                       >
                         <td className="px-4 py-3.5 whitespace-nowrap text-slate-600 tabular-nums">
@@ -851,7 +856,7 @@ const LogPanel: React.FC<{ refreshKey: number }> = ({ refreshKey }) => {
               type="button"
               onClick={() => fetchLogs(logs.length, false)}
               disabled={loading}
-              className="px-3 py-1.5 border border-slate-300 hover:bg-slate-50 disabled:opacity-60 rounded-md text-xs font-semibold text-slate-700"
+              className="h-10 px-4 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-60 rounded-full text-sm font-semibold text-indigo-700 transition-all active:scale-95"
             >
               Muat lebih banyak
             </button>
@@ -886,6 +891,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [filterJurusan, setFilterJurusan] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState<'pendaftar' | 'log'>('pendaftar');
+  // Geser/tombol kembali: tab aktif tersimpan di riwayat browser
+  useHistorySync('ad', activeTab, (v: 'pendaftar' | 'log') => setActiveTab(v));
   const [logRefreshKey, setLogRefreshKey] = useState(0);
 
   // Detail / verifikasi
@@ -1396,490 +1403,500 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // ==========================================================================
   // RENDER
   // ==========================================================================
+  const waHref = (std: Student) =>
+    `https://wa.me/62${(std.no_wa || '').replace(/^0/, '')}?text=${encodeURIComponent(
+      `Assalamu'alaikum Warahmatullahi Wabarakatuh. Yth. Saudara/i ${std.nama_lengkap} (No. Pendaftaran: ${std.nomor_pendaftaran}), kami dari Panitia PPDB SMK Muhammadiyah Bawang ingin mengonfirmasikan status pendaftaran Anda (${std.status_pendaftaran}). Terima kasih.`
+    )}`;
+
+  const jurusanBadge = (j: string) =>
+    j === 'TO' ? 'bg-amber-100 text-amber-800' : j === 'TJKT' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800';
+
+  const statusBadge = (st: string) =>
+    st === 'Diterima'
+      ? 'bg-emerald-100 text-emerald-800'
+      : st === 'Terverifikasi'
+      ? 'bg-blue-100 text-blue-800'
+      : st === 'Menunggu Verifikasi'
+      ? 'bg-purple-100 text-purple-800'
+      : st === 'Cadangan'
+      ? 'bg-amber-100 text-amber-800'
+      : 'bg-slate-200 text-slate-700';
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
-      {/* Toast Alert */}
+    <div className="ui-scope ui-page flex flex-col">
+      {/* Toast */}
       {notification && (
         <div
           role="status"
-          className={`fixed top-5 right-5 z-[80] text-white px-5 py-3 rounded-lg shadow-xl flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200 max-w-sm ${
+          className={`fixed left-1/2 top-4 z-[80] flex w-[calc(100%_-_2rem)] max-w-sm -translate-x-1/2 items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-[0_24px_40px_-16px_rgba(15,23,42,.6)] animate-in fade-in slide-in-from-top-4 duration-200 ${
             notification.kind === 'error' ? 'bg-rose-600' : 'bg-emerald-600'
           }`}
         >
           {notification.kind === 'error' ? (
-            <AlertCircle className="w-4 h-4 shrink-0" />
+            <AlertCircle className="h-5 w-5 shrink-0" />
           ) : (
-            <Check className="w-4 h-4 bg-emerald-700 p-0.5 rounded-full shrink-0" />
+            <Check className="h-5 w-5 shrink-0 rounded-full bg-emerald-700 p-0.5" />
           )}
           <span>{notification.msg}</span>
         </div>
       )}
 
-      {/* Header Admin - Operational Panel Style */}
-      <header className="bg-[#151329] text-white border-b border-indigo-950/80 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white font-extrabold shadow ring-1 ring-white/20">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-xs sm:text-sm font-black tracking-wider uppercase text-white">
-              PANEL OPERASIONAL SPMB
-            </h1>
-            <p className="text-[10px] text-indigo-300 font-medium">SMK Muhammadiyah Bawang</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <button
-            onClick={onNavigateHome}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-950/70 hover:bg-indigo-900/90 border border-indigo-800/60 text-indigo-200 text-xs font-semibold transition-all"
-            title="Buka Halaman Utama PPDB"
-          >
-            <span>Lihat Tampilan Web</span>
-            <ExternalLink className="w-3 h-3" />
-          </button>
-
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-950/70 border border-indigo-800/40 text-xs">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold text-[11px] flex items-center justify-center shadow-xs">
-              A
-            </div>
-            <div className="text-left hidden sm:block">
-              <div className="text-[11px] font-bold text-white leading-tight">Admin PPDB</div>
-              <div className="text-[9px] text-indigo-300 uppercase tracking-wider font-semibold">ADMINISTRATOR</div>
+      {/* Header Admin */}
+      <header className="ui-header">
+        <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <img src={LOGO_URL} alt="Logo SMK Muhammadiyah Bawang" className="h-10 w-10 shrink-0 object-contain drop-shadow-md" referrerPolicy="no-referrer" />
+            <div className="min-w-0 leading-tight">
+              <p className="truncate text-base font-extrabold tracking-tight sm:text-lg">SPMB Muhiba</p>
+              <p className="hidden truncate text-xs text-indigo-100 sm:block">SMK Muhammadiyah Bawang</p>
             </div>
           </div>
 
-          <button
-            onClick={onLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-black rounded-xl shadow-sm transition-all cursor-pointer"
-            title="Keluar dari Panel Admin"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={onNavigateHome}
+              className="ui-hbtn"
+              title="Buka Halaman Utama PPDB"
+              aria-label="Lihat Tampilan Web"
+            >
+              <ExternalLink className="h-4 w-4" />
+              <span className="hidden md:inline">Lihat Tampilan Web</span>
+            </button>
+
+            <div className="flex items-center gap-2.5">
+              <div className="hidden text-right leading-tight sm:block">
+                <p className="text-sm font-semibold">Admin PPDB</p>
+                <p className="text-[0.65rem] font-medium tracking-wider text-indigo-100">ADMINISTRATOR</p>
+              </div>
+              <span className="ui-avatar" aria-hidden>A</span>
+            </div>
+
+            <span className="hidden h-7 w-px bg-white/25 sm:block" aria-hidden />
+
+            <button type="button" onClick={onLogout} className="ui-hbtn !px-0 w-10" title="Keluar dari Panel Admin" aria-label="Logout">
+              <LogOut className="h-[1.1rem] w-[1.1rem]" />
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Main Admin Viewport */}
-      <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-8 space-y-6">
-        {/* Tab Segmented Control */}
-        <div role="tablist" className="inline-flex gap-1 bg-slate-200/80 p-1.5 rounded-2xl border border-slate-200 shadow-xs">
-          <button
-            role="tab"
-            aria-selected={activeTab === 'pendaftar'}
-            onClick={() => setActiveTab('pendaftar')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'pendaftar' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Data Pendaftar
-          </button>
-          <button
-            role="tab"
-            aria-selected={activeTab === 'log'}
-            onClick={() => setActiveTab('log')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 ${
-              activeTab === 'log' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <History className="w-3.5 h-3.5" />
-            <span>Log Aktivitas</span>
-          </button>
-        </div>
+      {/* Viewport Admin */}
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 sm:px-6 sm:py-8">
+        <SegTabs
+          id="admin"
+          ariaLabel="Menu panel admin"
+          active={activeTab}
+          onChange={(k) => setActiveTab(k as 'pendaftar' | 'log')}
+          items={[
+            { key: 'pendaftar', label: 'Data Pendaftar', icon: Users },
+            { key: 'log', label: 'Log Aktivitas', icon: History },
+          ]}
+        />
 
-        {activeTab === 'log' && <LogPanel refreshKey={logRefreshKey} />}
+        <ViewTransition viewKey={activeTab} className="space-y-5">
+          {activeTab === 'log' && <LogPanel refreshKey={logRefreshKey} />}
 
-        {activeTab === 'pendaftar' && (
-          <>
-            {/* HERO BANNER CARD - Operational Panel Style */}
-            <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="relative z-10 space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold text-white">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Panel Kontrol SPMB</span>
+          {activeTab === 'pendaftar' && (
+            <>
+              {/* HERO */}
+              <Hero
+                chip="Panel Kontrol SPMB"
+                title="Dashboard Operasional SPMB"
+                subtitle="SMK Muhammadiyah Bawang • Rekapitulasi Data & Verifikasi Real-Time"
+                actions={
+                  <>
+                    <motion.button
+                      type="button"
+                      whileTap={shouldReduceMotion ? undefined : { scale: 0.95 }}
+                      onClick={handleExportCSV}
+                      className="ui-cta ui-shine"
+                      title="Unduh data pendaftar format CSV"
+                    >
+                      <Download className="h-5 w-5 text-indigo-600" />
+                      <span>Download Rekap CSV</span>
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      whileTap={shouldReduceMotion ? undefined : { scale: 0.95 }}
+                      onClick={handleExportJSON}
+                      className="ui-cta ui-cta--ghost"
+                      title="Unduh berkas cadangan format JSON"
+                    >
+                      <Download className="h-5 w-5" />
+                      <span>Backup JSON</span>
+                    </motion.button>
+                  </>
+                }
+              />
+
+              {/* KARTU STATISTIK */}
+              <Stagger className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                <StatCard
+                  tone="blue"
+                  index={0}
+                  label="Total Pendaftar"
+                  icon={Users}
+                  value={<CountUp value={stats.total} />}
+                  unit="siswa"
+                  caption="Terdaftar di sistem"
+                />
+                <StatCard
+                  tone="amber"
+                  index={1}
+                  label="Menunggu Verifikasi"
+                  icon={Clock}
+                  value={<CountUp value={Math.max(0, stats.total - stats.lolos)} />}
+                  unit="perlu dicek"
+                  action={{
+                    label: 'Periksa berkas',
+                    onClick: () => {
+                      setFilterStatus('Menunggu Verifikasi');
+                      setPage(1);
+                    },
+                  }}
+                />
+                <StatCard
+                  tone="green"
+                  index={2}
+                  label="Diterima / Lolos"
+                  icon={CheckCircle2}
+                  value={<CountUp value={stats.lolos} />}
+                  unit="siswa"
+                  caption="Lolos administrasi"
+                />
+                <StatCard
+                  tone="rose"
+                  index={3}
+                  label="Pilihan Jurusan"
+                  icon={GraduationCap}
+                  value={
+                    <span className="flex items-end gap-3 text-[1.9rem] sm:text-4xl">
+                      {([['TO', stats.to], ['TJKT', stats.tjkt], ['AKL', stats.akl]] as [string, number][]).map(([k, v]) => (
+                        <span key={k} className="flex flex-col leading-none">
+                          <CountUp value={v} />
+                          <span className="mt-1.5 text-[0.7rem] font-semibold opacity-80">{k}</span>
+                        </span>
+                      ))}
+                    </span>
+                  }
+                  caption="Distribusi pilihan keahlian"
+                />
+              </Stagger>
+
+              {/* STATUS & KUOTA */}
+              <section className="ui-panel space-y-5 p-5 sm:p-7">
+                <PanelTitle
+                  title="Status Pendaftaran & Kuota Jurusan"
+                  live
+                  right={
+                    <span className="text-sm text-slate-500">
+                      Total <span className="font-bold text-slate-800">{totalCount}</span> pendaftar tersaring
+                    </span>
+                  }
+                />
+
+                <Stagger className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  <StatusTile tone="blue" label="Total Masuk" value={<CountUp value={stats.total} />} />
+                  <StatusTile tone="amber" label="Teknik Otomotif" value={<CountUp value={stats.to} />} />
+                  <StatusTile tone="violet" label="TJKT" value={<CountUp value={stats.tjkt} />} />
+                  <StatusTile tone="green" label="AKL" value={<CountUp value={stats.akl} />} />
+                  <StatusTile tone="cyan" className="col-span-2 sm:col-span-1" label="Diterima" value={<CountUp value={stats.lolos} />} />
+                </Stagger>
+
+                <div className="ui-note">
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+                  <span>Semua data pendaftaran aktif tersinkronisasi secara real-time dengan server cloud.</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-                  Dashboard Operasional SPMB
-                </h2>
-                <p className="text-xs sm:text-sm text-indigo-100 font-medium">
-                  SMK Muhammadiyah Bawang • Rekapitulasi Data & Verifikasi Real-Time
-                </p>
-              </div>
+              </section>
 
-              <div className="relative z-10 flex flex-wrap items-center gap-3">
-                <motion.button
-                  whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
-                  whileHover={shouldReduceMotion ? undefined : { scale: 1.02 }}
-                  onClick={handleExportCSV}
-                  className="px-5 py-3.5 bg-white hover:bg-slate-50 active:scale-[0.97] text-slate-900 rounded-2xl text-xs sm:text-sm font-bold shadow-lg transition-all flex items-center gap-2.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                  title="Unduh data pendaftar format CSV"
-                >
-                  <Download className="w-4 h-4 text-indigo-600" />
-                  <span>Download Rekap CSV</span>
-                </motion.button>
-                <motion.button
-                  whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
-                  whileHover={shouldReduceMotion ? undefined : { scale: 1.02 }}
-                  onClick={handleExportJSON}
-                  className="px-4 py-3.5 bg-white/15 hover:bg-white/25 active:scale-[0.97] text-white border border-white/20 rounded-2xl text-xs sm:text-sm font-bold backdrop-blur-sm transition-all flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                  title="Unduh berkas cadangan format JSON"
-                >
-                  <Download className="w-4 h-4 text-white" />
-                  <span>Backup JSON</span>
-                </motion.button>
-              </div>
-            </div>
-
-            {/* 4 KPI CARDS (Solid Colors with Micro-interactions & Stagger) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Card 1: Biru Solid (Total Pendaftar) */}
-              <motion.div
-                initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: shouldReduceMotion ? 0 : 0.03 }}
-                whileHover={shouldReduceMotion ? undefined : { y: -3 }}
-                className="bg-blue-600 rounded-3xl p-6 text-white shadow-md hover:shadow-lg relative overflow-hidden flex flex-col justify-between min-h-[148px] transition-shadow duration-200"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white/90 uppercase tracking-wider">Total Pendaftar</span>
-                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                    <Users className="w-4 h-4 text-white" />
+              {/* FILTER */}
+              <section className="ui-panel ui-form p-4 sm:p-5">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,1.6fr)_1fr_1fr_auto] lg:items-end">
+                  <div className="relative col-span-2 lg:col-span-1">
+                    <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Cari NIK, Nama, No. Daftar, SMP..."
+                      aria-label="Cari pendaftar"
+                      className="w-full pl-11 pr-4"
+                    />
                   </div>
-                </div>
-                <div>
-                  <div className="text-4xl sm:text-5xl font-black tracking-tight">{stats.total}</div>
-                  <p className="text-xs text-white/80 mt-1">Siswa terdaftar di sistem</p>
-                </div>
-                <Users className="absolute -right-4 -bottom-4 w-28 h-28 text-white/10 pointer-events-none" />
-              </motion.div>
 
-              {/* Card 2: Kuning/Amber Solid (Menunggu Verifikasi) */}
-              <motion.div
-                initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: shouldReduceMotion ? 0 : 0.07 }}
-                whileHover={shouldReduceMotion ? undefined : { y: -3 }}
-                className="bg-amber-500 rounded-3xl p-6 text-slate-950 shadow-md hover:shadow-lg relative overflow-hidden flex flex-col justify-between min-h-[148px] transition-shadow duration-200"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-900 uppercase tracking-wider">Menunggu Verifikasi</span>
-                  <div className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center">
-                    <Clock className="w-4 h-4 text-slate-900" />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-4xl sm:text-5xl font-black tracking-tight">{Math.max(0, stats.total - stats.lolos)}</div>
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold text-slate-500">
+                    <span className="flex items-center gap-1.5"><Filter className="h-3.5 w-3.5" />Jurusan</span>
+                    <select
+                      value={filterJurusan}
+                      onChange={(e) => { setFilterJurusan(e.target.value); setPage(1); }}
+                      className="w-full px-3 font-semibold text-slate-700"
+                    >
+                      <option value="ALL">Semua Jurusan</option>
+                      <option value="TO">Teknik Otomotif (TO)</option>
+                      <option value="TJKT">TJKT</option>
+                      <option value="AKL">AKL</option>
+                    </select>
+                  </label>
+
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold text-slate-500">
+                    <span>Status</span>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+                      className="w-full px-3 font-semibold text-slate-700"
+                    >
+                      <option value="ALL">Semua Status</option>
+                      <option value="Berkas Fisik">Berkas Fisik</option>
+                      <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
+                      <option value="Terverifikasi">Terverifikasi</option>
+                      <option value="Diterima">Diterima</option>
+                      <option value="Cadangan">Cadangan</option>
+                    </select>
+                  </label>
+
                   <motion.button
+                    type="button"
                     whileTap={shouldReduceMotion ? undefined : { scale: 0.95 }}
-                    onClick={() => { setFilterStatus('Menunggu Verifikasi'); setPage(1); }}
-                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/10 hover:bg-black/20 active:scale-95 text-xs font-bold text-slate-900 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+                    onClick={refreshAll}
+                    disabled={isLoadingList}
+                    className="col-span-2 flex h-[2.9rem] cursor-pointer items-center justify-center gap-2 rounded-2xl bg-indigo-50 px-5 text-sm font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 disabled:opacity-60 lg:col-span-1 lg:h-[2.6rem]"
+                    title="Muat ulang data pendaftar"
                   >
-                    <span>Periksa berkas &rarr;</span>
+                    <RefreshCw className={`h-4 w-4 ${isLoadingList ? 'animate-spin' : ''}`} />
+                    <span>{isLoadingList ? 'Memuat...' : 'Muat Ulang'}</span>
                   </motion.button>
                 </div>
-                <Clock className="absolute -right-4 -bottom-4 w-28 h-28 text-black/10 pointer-events-none" />
-              </motion.div>
+              </section>
 
-              {/* Card 3: Hijau/Emerald Solid (Diterima / Terverifikasi) */}
-              <motion.div
-                initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: shouldReduceMotion ? 0 : 0.11 }}
-                whileHover={shouldReduceMotion ? undefined : { y: -3 }}
-                className="bg-emerald-600 rounded-3xl p-6 text-white shadow-md hover:shadow-lg relative overflow-hidden flex flex-col justify-between min-h-[148px] transition-shadow duration-200"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white/90 uppercase tracking-wider">Diterima / Lolos</span>
-                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                    <CheckCircle2 className="w-4 h-4 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-4xl sm:text-5xl font-black tracking-tight">{stats.lolos}</div>
-                  <p className="text-xs text-white/80 mt-1">Siswa lolos administrasi</p>
-                </div>
-                <CheckCircle2 className="absolute -right-4 -bottom-4 w-28 h-28 text-white/10 pointer-events-none" />
-              </motion.div>
-
-              {/* Card 4: Merah/Rose Solid (Pilihan Jurusan) */}
-              <motion.div
-                initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: shouldReduceMotion ? 0 : 0.15 }}
-                whileHover={shouldReduceMotion ? undefined : { y: -3 }}
-                className="bg-rose-600 rounded-3xl p-6 text-white shadow-md hover:shadow-lg relative overflow-hidden flex flex-col justify-between min-h-[148px] transition-shadow duration-200"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white/90 uppercase tracking-wider">Pilihan Jurusan</span>
-                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                    <GraduationCap className="w-4 h-4 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-2xl sm:text-3xl font-black tracking-tight">
-                    TO {stats.to} · TJKT {stats.tjkt} · AKL {stats.akl}
-                  </div>
-                  <p className="text-xs text-white/80 mt-1">Distribusi pilihan keahlian</p>
-                </div>
-                <GraduationCap className="absolute -right-4 -bottom-4 w-28 h-28 text-white/10 pointer-events-none" />
-              </motion.div>
-            </div>
-
-            {/* STATUS PIPELINE HORIZONTAL CHIPS & STATUS BANNER */}
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 sm:p-7 space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-1.5 h-5 bg-indigo-600 rounded-full" />
-                  <h3 className="font-extrabold text-slate-800 text-sm">Status Pendaftaran & Kuota Jurusan</h3>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-100">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Live
-                  </span>
-                </div>
-
-                <div className="text-xs text-slate-500 font-medium">
-                  Total <span className="font-bold text-slate-700">{totalCount}</span> pendaftar tersaring
-                </div>
-              </div>
-
-              {/* Horizontal Status Chips (Pastel Colors as in reference) */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div className="bg-blue-50/70 border border-blue-100 rounded-2xl p-4 text-center">
-                  <span className="text-[11px] font-bold text-blue-800 block">Total Masuk</span>
-                  <span className="text-2xl font-black text-blue-700 mt-1 block">{stats.total}</span>
-                </div>
-                <div className="bg-amber-50/70 border border-amber-100 rounded-2xl p-4 text-center">
-                  <span className="text-[11px] font-bold text-amber-800 block">Teknik Otomotif</span>
-                  <span className="text-2xl font-black text-amber-700 mt-1 block">{stats.to}</span>
-                </div>
-                <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 text-center">
-                  <span className="text-[11px] font-bold text-indigo-800 block">TJKT</span>
-                  <span className="text-2xl font-black text-indigo-700 mt-1 block">{stats.tjkt}</span>
-                </div>
-                <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-4 text-center">
-                  <span className="text-[11px] font-bold text-emerald-800 block">AKL</span>
-                  <span className="text-2xl font-black text-emerald-700 mt-1 block">{stats.akl}</span>
-                </div>
-                <div className="bg-purple-50/70 border border-purple-100 rounded-2xl p-4 text-center col-span-2 sm:col-span-1">
-                  <span className="text-[11px] font-bold text-purple-800 block">Diterima</span>
-                  <span className="text-2xl font-black text-purple-700 mt-1 block">{stats.lolos}</span>
-                </div>
-              </div>
-
-              {/* Calm Status Banner / Empty-state Style */}
-              <div className="bg-emerald-50/60 border border-emerald-100/80 rounded-2xl p-3.5 text-center text-xs text-emerald-800 flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Semua data pendaftaran aktif tersinkronisasi secara real-time dengan server cloud.</span>
-              </div>
-            </div>
-
-            {/* Filter Bar & Controls */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="relative w-full md:w-80">
-                <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari NIK, Nama, No. Daftar, SMP..."
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50"
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                  <Filter className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Jurusan:</span>
-                  <select
-                    value={filterJurusan}
-                    onChange={(e) => { setFilterJurusan(e.target.value); setPage(1); }}
-                    className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="ALL">Semua Jurusan</option>
-                    <option value="TO">Teknik Otomotif (TO)</option>
-                    <option value="TJKT">TJKT</option>
-                    <option value="AKL">AKL</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                  <span>Status:</span>
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
-                    className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="ALL">Semua Status</option>
-                    <option value="Berkas Fisik">Berkas Fisik</option>
-                    <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
-                    <option value="Terverifikasi">Terverifikasi</option>
-                    <option value="Diterima">Diterima</option>
-                    <option value="Cadangan">Cadangan</option>
-                  </select>
-                </div>
-
-                <button
-                  onClick={refreshAll}
-                  disabled={isLoadingList}
-                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
-                  title="Muat ulang data pendaftar"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingList ? 'animate-spin' : ''}`} />
-                  <span>{isLoadingList ? 'Memuat...' : 'Muat Ulang'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Tabel Pendaftar Container */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50/80 border-b border-slate-100 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
-                    <tr>
-                      <th className="px-4 py-3.5">No. Pendaftaran</th>
-                      <th className="px-4 py-3.5">NIK Siswa</th>
-                      <th className="px-4 py-3.5">Nama Lengkap</th>
-                      <th className="px-4 py-3.5">Jurusan</th>
-                      <th className="px-4 py-3.5">Asal Sekolah</th>
-                      <th className="px-4 py-3.5">No. WhatsApp</th>
-                      <th className="px-4 py-3.5">Status Pendaftaran</th>
-                      <th className="px-4 py-3.5 text-center">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredStudents.length === 0 ? (
+              {/* DAFTAR PENDAFTAR */}
+              <section className="ui-panel overflow-hidden">
+                {/* Tabel (tablet & desktop) */}
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-indigo-50/70 text-xs font-semibold text-indigo-900/70">
                       <tr>
-                        <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
-                          Tidak ada data pendaftar yang cocok dengan filter.
-                        </td>
+                        <th className="px-4 py-4">No. Pendaftaran</th>
+                        <th className="px-4 py-4">NIK Siswa</th>
+                        <th className="px-4 py-4">Nama Lengkap</th>
+                        <th className="px-4 py-4">Jurusan</th>
+                        <th className="px-4 py-4">Asal Sekolah</th>
+                        <th className="px-4 py-4">No. WhatsApp</th>
+                        <th className="px-4 py-4">Status Pendaftaran</th>
+                        <th className="px-4 py-4 text-center">Aksi</th>
                       </tr>
-                    ) : (
-                      filteredStudents.map((std) => (
-                        <tr key={std.id} className="hover:bg-blue-50/40 transition-colors">
-                          <td className="px-4 py-3.5 font-mono font-bold text-blue-700">{std.nomor_pendaftaran}</td>
-                          <td className="px-4 py-3.5 font-mono text-slate-700">{std.nik}</td>
-                          <td className="px-4 py-3.5 font-bold text-slate-900">{std.nama_lengkap}</td>
-                          <td className="px-4 py-3.5">
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                std.jurusan_pilihan === 'TO'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : std.jurusan_pilihan === 'TJKT'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-emerald-100 text-emerald-800'
-                              }`}
-                            >
-                              {std.jurusan_pilihan}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-slate-600">{std.data_diri?.asal_sekolah || '-'}</td>
-                          <td className="px-4 py-3.5 text-slate-600">
-                            <a
-                              href={`https://wa.me/62${(std.no_wa || '').replace(/^0/, '')}?text=${encodeURIComponent(
-                                `Assalamu'alaikum Warahmatullahi Wabarakatuh. Yth. Saudara/i ${std.nama_lengkap} (No. Pendaftaran: ${std.nomor_pendaftaran}), kami dari Panitia PPDB SMK Muhammadiyah Bawang ingin mengonfirmasikan status pendaftaran Anda (${std.status_pendaftaran}). Terima kasih.`
-                              )}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-emerald-600 hover:underline font-mono"
-                              title="Hubungi Siswa via WhatsApp Formal"
-                            >
-                              {std.no_wa}
-                            </a>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span
-                              className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                std.status_pendaftaran === 'Diterima'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : std.status_pendaftaran === 'Terverifikasi'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : std.status_pendaftaran === 'Menunggu Verifikasi'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : std.status_pendaftaran === 'Cadangan'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-slate-200 text-slate-700'
-                              }`}
-                            >
-                              {std.status_pendaftaran}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                onClick={() => handleOpenDetail(std)}
-                                className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors"
-                                title="Lihat Detail & Verifikasi"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => openEdit(std)}
-                                className="p-1.5 text-amber-600 hover:bg-amber-100 rounded transition-colors"
-                                title="Edit Data Pendaftar"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setResetTarget(std)}
-                                className="p-1.5 text-slate-600 hover:bg-slate-200 rounded transition-colors"
-                                title="Reset Password"
-                              >
-                                <KeyRound className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => openDelete(std)}
-                                className="p-1.5 text-rose-500 hover:bg-rose-100 rounded transition-colors"
-                                title="Hapus Data"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredStudents.length === 0 && isLoadingList ? (
+                        [0, 1, 2, 3, 4].map((i) => (
+                          <tr key={`sk-${i}`} aria-hidden>
+                            {[7, 9, 8, 4, 7, 6, 6].map((w, c) => (
+                              <td key={c} className="px-4 py-4">
+                                <div className="ui-skel h-4 !rounded-full" style={{ width: `${w * 10 + 20}%`, maxWidth: '12rem' }} />
+                              </td>
+                            ))}
+                            <td className="px-4 py-4">
+                              <div className="ui-skel mx-auto h-8 w-28 !rounded-xl" />
+                            </td>
+                          </tr>
+                        ))
+                      ) : filteredStudents.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                            Tidak ada data pendaftar yang cocok dengan filter.
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 text-xs text-slate-600">
-                <span>
-                  {totalCount === 0
-                    ? 'Tidak ada data'
-                    : `Menampilkan ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, totalCount)} dari ${totalCount} pendaftar`}
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page <= 1 || isLoadingList}
-                    className="px-3 py-1.5 rounded-md border border-slate-300 bg-white font-semibold disabled:opacity-40"
-                  >
-                    Sebelumnya
-                  </button>
-                  <span className="font-semibold tabular-nums">
-                    Hal {page} / {Math.max(1, Math.ceil(totalCount / PAGE_SIZE))}
-                  </span>
-                  <button
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={page >= Math.ceil(totalCount / PAGE_SIZE) || isLoadingList}
-                    className="px-3 py-1.5 rounded-md border border-slate-300 bg-white font-semibold disabled:opacity-40"
-                  >
-                    Berikutnya
-                  </button>
+                      ) : (
+                        filteredStudents.map((std) => (
+                          <tr key={std.id} className="transition-colors hover:bg-indigo-50/50">
+                            <td className="px-4 py-3.5 font-mono font-bold text-indigo-700">{std.nomor_pendaftaran}</td>
+                            <td className="px-4 py-3.5 font-mono text-slate-700">{std.nik}</td>
+                            <td className="px-4 py-3.5 font-bold text-slate-900">{std.nama_lengkap}</td>
+                            <td className="px-4 py-3.5">
+                              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${jurusanBadge(std.jurusan_pilihan)}`}>
+                                {std.jurusan_pilihan}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 text-slate-600">{std.data_diri?.asal_sekolah || '-'}</td>
+                            <td className="px-4 py-3.5">
+                              <a
+                                href={waHref(std)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-mono text-emerald-600 hover:underline"
+                                title="Hubungi Siswa via WhatsApp Formal"
+                              >
+                                {std.no_wa}
+                              </a>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${statusBadge(std.status_pendaftaran)}`}>
+                                {std.status_pendaftaran}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => handleOpenDetail(std)}
+                                  className="flex h-9 w-9 items-center justify-center rounded-xl text-blue-600 transition-all hover:bg-blue-100 active:scale-90"
+                                  title="Lihat Detail & Verifikasi"
+                                  aria-label="Lihat detail dan verifikasi"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => openEdit(std)}
+                                  className="flex h-9 w-9 items-center justify-center rounded-xl text-amber-600 transition-all hover:bg-amber-100 active:scale-90"
+                                  title="Edit Data Pendaftar"
+                                  aria-label="Edit data pendaftar"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => setResetTarget(std)}
+                                  className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition-all hover:bg-slate-200 active:scale-90"
+                                  title="Reset Password"
+                                  aria-label="Reset password"
+                                >
+                                  <KeyRound className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => openDelete(std)}
+                                  className="flex h-9 w-9 items-center justify-center rounded-xl text-rose-500 transition-all hover:bg-rose-100 active:scale-90"
+                                  title="Hapus Data"
+                                  aria-label="Hapus data"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            </div>
-          </>
-        )}
+
+                {/* Kartu (ponsel) */}
+                <div className="space-y-3 p-3 md:hidden">
+                  {filteredStudents.length === 0 ? (
+                    isLoadingList ? (
+                      [0, 1, 2].map((i) => (
+                        <div key={i} className="space-y-3 rounded-3xl border border-slate-100 bg-slate-50/60 p-4" aria-hidden>
+                          <div className="ui-skel h-4 w-2/3 !rounded-full" />
+                          <div className="ui-skel h-3 w-1/2 !rounded-full" />
+                          <div className="ui-skel h-12 !rounded-2xl" />
+                        </div>
+                      ))
+                    ) : (
+                      <p className="px-4 py-10 text-center text-sm text-slate-400">
+                        Tidak ada data pendaftar yang cocok dengan filter.
+                      </p>
+                    )
+                  ) : (
+                    <Stagger className="space-y-3">
+                      {filteredStudents.map((std) => (
+                        <motion.article
+                          key={std.id}
+                          variants={itemVariants}
+                          className="space-y-3 rounded-3xl border border-slate-100 bg-gradient-to-b from-white to-slate-50/70 p-4 shadow-[0_16px_28px_-24px_rgba(67,56,202,.55)]"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h3 className="truncate text-base font-bold text-slate-900">{std.nama_lengkap}</h3>
+                              <p className="font-mono text-xs font-bold text-indigo-700">{std.nomor_pendaftaran}</p>
+                            </div>
+                            <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${jurusanBadge(std.jurusan_pilihan)}`}>
+                              {std.jurusan_pilihan}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusBadge(std.status_pendaftaran)}`}>
+                              {std.status_pendaftaran}
+                            </span>
+                            <a
+                              href={waHref(std)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 font-mono text-xs font-semibold text-emerald-700"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" />
+                              {std.no_wa}
+                            </a>
+                          </div>
+
+                          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                            <dt className="text-slate-400">NIK</dt>
+                            <dd className="truncate font-mono text-slate-700">{std.nik}</dd>
+                            <dt className="text-slate-400">Asal</dt>
+                            <dd className="truncate text-slate-700">{std.data_diri?.asal_sekolah || '-'}</dd>
+                          </dl>
+
+                          <div className="grid grid-cols-4 gap-2 pt-1">
+                            <button onClick={() => handleOpenDetail(std)} className="flex h-12 flex-col items-center justify-center gap-0.5 rounded-2xl bg-blue-50 text-[0.7rem] font-semibold text-blue-700 transition-transform active:scale-90">
+                              <Eye className="h-4 w-4" />Detail
+                            </button>
+                            <button onClick={() => openEdit(std)} className="flex h-12 flex-col items-center justify-center gap-0.5 rounded-2xl bg-amber-50 text-[0.7rem] font-semibold text-amber-700 transition-transform active:scale-90">
+                              <Pencil className="h-4 w-4" />Edit
+                            </button>
+                            <button onClick={() => setResetTarget(std)} className="flex h-12 flex-col items-center justify-center gap-0.5 rounded-2xl bg-slate-100 text-[0.7rem] font-semibold text-slate-700 transition-transform active:scale-90">
+                              <KeyRound className="h-4 w-4" />Reset
+                            </button>
+                            <button onClick={() => openDelete(std)} className="flex h-12 flex-col items-center justify-center gap-0.5 rounded-2xl bg-rose-50 text-[0.7rem] font-semibold text-rose-600 transition-transform active:scale-90">
+                              <Trash2 className="h-4 w-4" />Hapus
+                            </button>
+                          </div>
+                        </motion.article>
+                      ))}
+                    </Stagger>
+                  )}
+                </div>
+
+                {/* Paginasi */}
+                <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-100 px-4 py-4 text-sm text-slate-600 sm:flex-row">
+                  <span className="text-center sm:text-left">
+                    {totalCount === 0
+                      ? 'Tidak ada data'
+                      : `Menampilkan ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, totalCount)} dari ${totalCount} pendaftar`}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1 || isLoadingList}
+                      className="flex h-10 items-center gap-1 rounded-full bg-indigo-50 pl-3 pr-4 font-semibold text-indigo-700 transition-all hover:bg-indigo-100 active:scale-95 disabled:opacity-40"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Sebelumnya
+                    </button>
+                    <span className="min-w-[4.5rem] text-center font-semibold tabular-nums text-slate-700">
+                      Hal {page} / {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={page >= Math.ceil(totalCount / PAGE_SIZE) || isLoadingList}
+                      className="flex h-10 items-center gap-1 rounded-full bg-indigo-50 pl-4 pr-3 font-semibold text-indigo-700 transition-all hover:bg-indigo-100 active:scale-95 disabled:opacity-40"
+                    >
+                      Berikutnya
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
+        </ViewTransition>
       </main>
 
-      <footer className="px-4 sm:px-8 py-4 border-t border-slate-200 bg-white text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2 max-w-7xl mx-auto w-full">
+      <footer className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-2 px-4 py-6 text-xs text-slate-400 sm:flex-row sm:px-6">
         <span>Copyright © 2026 SPMB SMK MUHIBA | by @hndx07</span>
         <a
           href="https://www.smkmuhiba.sch.id"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-600 hover:underline"
+          className="font-medium text-indigo-600 hover:underline"
         >
           Website Resmi: www.smkmuhiba.sch.id
         </a>
@@ -1892,9 +1909,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto"
+          className="ui-scope ui-form fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-950/65 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto"
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 sm:p-8 relative my-8 animate-in fade-in duration-200 space-y-6">
+          <div className="bg-white rounded-[2rem] shadow-[0_40px_80px_-30px_rgba(30,27,75,.65)] max-w-3xl w-full p-5 sm:p-8 relative my-4 sm:my-8 animate-in fade-in zoom-in-95 duration-300 space-y-6">
             <div className="flex items-start justify-between border-b pb-4">
               <div>
                 <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">
@@ -1908,7 +1925,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               <button
                 onClick={() => setSelectedStudent(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-full transition-all active:scale-90"
                 aria-label="Tutup"
               >
                 <X className="w-5 h-5" />
@@ -1917,7 +1934,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               {/* Data Diri */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-4 rounded-3xl bg-slate-50/80 border border-slate-100 space-y-2">
                 <h4 className="font-bold text-slate-800 uppercase pb-1 border-b">Data Diri</h4>
                 <div className="grid grid-cols-2 gap-1.5">
                   <span className="text-slate-500">NISN:</span>
@@ -1943,7 +1960,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               {/* Data Alamat */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-4 rounded-3xl bg-slate-50/80 border border-slate-100 space-y-2">
                 <h4 className="font-bold text-slate-800 uppercase pb-1 border-b">Data Alamat</h4>
                 <div className="grid grid-cols-2 gap-1.5">
                   <span className="text-slate-500">Dukuh/Jalan:</span>
@@ -1966,7 +1983,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               {/* Data Orang Tua */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-4 rounded-3xl bg-slate-50/80 border border-slate-100 space-y-2">
                 <h4 className="font-bold text-slate-800 uppercase pb-1 border-b">Data Orang Tua</h4>
                 <div className="grid grid-cols-2 gap-1.5">
                   <span className="text-slate-500">Nama Ayah:</span>
@@ -1993,7 +2010,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               {/* Berkas */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-4 rounded-3xl bg-slate-50/80 border border-slate-100 space-y-2">
                 <h4 className="font-bold text-slate-800 uppercase pb-1 border-b">Berkas Terunggah</h4>
                 <div className="space-y-2 text-xs">
                   <BerkasRow label="Kartu Keluarga" item={selectedStudent.data_berkas?.kartu_keluarga} onOpen={openBerkas} />
@@ -2010,7 +2027,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             {/* Verifikasi Status */}
-            <div className="p-5 rounded-xl bg-blue-50/70 border border-blue-200 space-y-4">
+            <div className="p-5 rounded-3xl bg-indigo-50/70 border border-indigo-100 space-y-4">
               <h4 className="text-xs font-bold text-blue-950 uppercase tracking-wider">
                 Verifikasi Status Pendaftaran
               </h4>
@@ -2049,7 +2066,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <button
                   type="button"
                   onClick={handleUpdateStatus}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm transition-colors flex items-center gap-2"
+                  className="ui-shine h-12 px-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:brightness-110 text-white font-bold text-sm rounded-2xl shadow-[0_18px_30px_-16px_rgba(91,61,240,.9)] transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>Simpan Perubahan Status</span>
@@ -2059,7 +2076,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <button
                     type="button"
                     onClick={() => openEdit(selectedStudent)}
-                    className="px-4 py-2 text-xs font-bold text-amber-700 border border-amber-300 hover:bg-amber-50 rounded-md inline-flex items-center gap-1.5 transition-colors"
+                    className="h-11 px-4 text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-2xl inline-flex items-center gap-1.5 transition-all active:scale-95"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                     <span>Edit Data</span>
@@ -2067,7 +2084,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <button
                     type="button"
                     onClick={() => setResetTarget(selectedStudent)}
-                    className="px-4 py-2 text-xs font-bold text-slate-700 border border-slate-300 hover:bg-slate-50 rounded-md inline-flex items-center gap-1.5 transition-colors"
+                    className="h-11 px-4 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-2xl inline-flex items-center gap-1.5 transition-all active:scale-95"
                   >
                     <KeyRound className="w-3.5 h-3.5" />
                     <span>Reset Password</span>
@@ -2094,9 +2111,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           role="dialog"
           aria-modal="true"
           aria-label="Edit data pendaftar"
-          className="fixed inset-0 z-[60] flex items-start justify-center bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto"
+          className="ui-scope ui-form fixed inset-0 z-[60] flex items-start justify-center bg-slate-950/65 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto"
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 sm:p-8 relative my-8 space-y-5">
+          <div className="bg-white rounded-[2rem] shadow-[0_40px_80px_-30px_rgba(30,27,75,.65)] max-w-3xl w-full p-5 sm:p-8 relative my-4 sm:my-8 animate-in fade-in zoom-in-95 duration-300 space-y-5">
             <div className="flex items-start justify-between border-b pb-4">
               <div>
                 <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">
@@ -2112,7 +2129,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
               <button
                 onClick={() => !isSaving && closeEdit()}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-full transition-all active:scale-90"
                 aria-label="Tutup"
               >
                 <X className="w-5 h-5" />
@@ -2120,14 +2137,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             {editError && (
-              <div className="p-3.5 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-xs text-red-700">
+              <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2.5 text-xs text-red-700">
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
                 <span>{editError}</span>
               </div>
             )}
 
             {/* Identitas & status */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+            <div className="p-4 rounded-3xl bg-slate-50/80 border border-slate-100 space-y-3">
               <h4 className="font-bold text-slate-800 uppercase pb-1 border-b text-xs">Identitas &amp; Status</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="block sm:col-span-2">
@@ -2198,7 +2215,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             {/* Seksi data JSON */}
             {(['data_diri', 'data_alamat', 'data_orang_tua'] as const).map((section) => (
-              <div key={section} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              <div key={section} className="p-4 rounded-3xl bg-slate-50/80 border border-slate-100 space-y-3">
                 <h4 className="font-bold text-slate-800 uppercase pb-1 border-b text-xs">
                   {SECTION_META[section].title}
                 </h4>
@@ -2228,7 +2245,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 type="button"
                 onClick={handleSaveEdit}
                 disabled={isSaving}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs rounded-md shadow-sm transition-colors flex items-center gap-2"
+                className="ui-shine h-12 px-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:brightness-110 disabled:opacity-60 text-white font-bold text-sm rounded-2xl shadow-[0_18px_30px_-16px_rgba(91,61,240,.9)] transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 <span>{isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
@@ -2246,9 +2263,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           role="alertdialog"
           aria-modal="true"
           aria-label="Konfirmasi hapus pendaftar"
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4"
+          className="ui-scope fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/65 backdrop-blur-sm p-3 sm:p-4"
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+          <div className="bg-white rounded-[2rem] shadow-[0_40px_80px_-30px_rgba(30,27,75,.65)] max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-300">
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
                 <Trash2 className="w-4 h-4" />
@@ -2265,13 +2282,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             </div>
 
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 space-y-1">
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 space-y-1">
               <p className="font-bold">Tindakan ini permanen dan tidak bisa dibatalkan.</p>
               <p>Data pendaftaran, akun login, dan semua berkas yang diunggah akan dihapus.</p>
             </div>
 
             {deleteError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 text-xs text-red-700">
+              <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2 text-xs text-red-700">
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
                 <span>{deleteError}</span>
               </div>
@@ -2304,7 +2321,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={isDeleting || deleteConfirmText.trim() !== 'HAPUS'}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-md shadow-sm transition-colors flex items-center gap-2"
+                className="h-12 px-5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm rounded-2xl shadow-[0_18px_30px_-16px_rgba(225,29,72,.9)] transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isDeleting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 <span>{isDeleting ? 'Menghapus...' : 'Hapus permanen'}</span>

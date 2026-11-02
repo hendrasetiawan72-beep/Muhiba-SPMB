@@ -28,14 +28,63 @@ import {
   FileCheck2,
   KeyRound,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Student, User as UserType, JurusanType } from '../types/database';
 import { dbService } from '../services/supabase';
 import { credentialStore } from '../services/credentialStore';
+import { Hero, Stagger, StatCard, StatusTile, PanelTitle, SegTabs, ProgressRing, BottomNav, Sheet, ViewTransition, LOGO_URL } from './ui/kit';
+import { useHistorySync } from './ui/navigation';
 const ChangePasswordModal = React.lazy(() =>
   import('./ChangePasswordModal').then((m) => ({ default: m.ChangePasswordModal }))
 );
+
+const DOCS: { title: string; badge: string; tone: 'wajib' | 'amber'; desc: string }[] = [
+  {
+    "title": "Foto copy Kartu Keluarga",
+    "badge": "Wajib",
+    "tone": "wajib",
+    "desc": "Salinan Kartu Keluarga (KK) terbaru calon siswa"
+  },
+  {
+    "title": "Foto copy Akta Kelahiran",
+    "badge": "Wajib",
+    "tone": "wajib",
+    "desc": "Akta kelahiran resmi dari Disdukcapil"
+  },
+  {
+    "title": "Nomor NISN",
+    "badge": "Wajib",
+    "tone": "wajib",
+    "desc": "Dapat dilihat pada rapor sekolah asal atau surat keterangan"
+  },
+  {
+    "title": "Fotocopy Ijazah SMP/MTs atau SD/MI",
+    "badge": "Wajib",
+    "tone": "wajib",
+    "desc": "Bagi yang ijazah SMP belum terbit, dapat menggunakan FC Ijazah SD"
+  },
+  {
+    "title": "Foto copy KTP Orang Tua / Wali",
+    "badge": "Wajib",
+    "tone": "wajib",
+    "desc": "Kartu identitas ayah/ibu atau wali murid yang sah"
+  },
+  {
+    "title": "Kartu Bantuan (KIP, PKH, KKS)",
+    "badge": "Jika Ada",
+    "tone": "amber",
+    "desc": "Program jaminan sosial dari pemerintah (opsional jika memiliki)"
+  },
+  {
+    "title": "Prestasi / Piagam Penghargaan",
+    "badge": "Jalur Prestasi",
+    "tone": "amber",
+    "desc": "Sertifikat piagam kejuaraan akademik maupun non-akademik tingkat kecamatan/kabupaten/provinsi"
+  }
+];
 
 interface StudentDashboardProps {
   currentUser: UserType;
@@ -61,6 +110,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [showWarningBanner, setShowWarningBanner] = useState(true);
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const [showLocalChangePassword, setShowLocalChangePassword] = useState(false);
+  // UI saja: panel "Persiapan berkas" di Beranda (terbuka di layar lebar, tertutup di ponsel)
+  const [showDocs, setShowDocs] = useState<boolean>(() => typeof window !== 'undefined' && window.innerWidth >= 768);
+
+  // Geser/tombol kembali: menu & tab formulir ikut tersimpan di riwayat browser
+  useHistorySync(
+    'sd',
+    { menu: activeMenu, tab: activeFormTab },
+    (v: { menu: 'beranda' | 'formulir' | 'pembayaran' | 'pengumuman'; tab: 'diri' | 'alamat' | 'ortu' | 'berkas' }) => {
+      setActiveMenu(v.menu);
+      setActiveFormTab(v.tab);
+    }
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -691,243 +752,180 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     "SMP Muhammadiyah Batang", "SMP Muhammadiyah Bawang", "SMP Muhammadiyah Limpung", "SMP NU Batang"
   ];
 
+  const doneCount = [isDiriLengkap, isAlamatLengkap, isOrtuLengkap, isBerkasLengkap].filter(Boolean).length;
+  const progressPercent = doneCount * 25;
+  const initial = (student.nama_lengkap?.charAt(0) || 'S').toUpperCase();
+
+  const openChangePassword = () => {
+    if (onRequestChangePassword) {
+      onRequestChangePassword();
+    } else {
+      setShowLocalChangePassword(true);
+    }
+  };
+
+  type MenuKey = 'beranda' | 'formulir' | 'pembayaran' | 'pengumuman';
+  const navItems: { key: MenuKey; label: string; shortLabel: string; icon: LucideIcon }[] = [
+    { key: 'beranda', label: 'Beranda', shortLabel: 'Beranda', icon: Home },
+    { key: 'formulir', label: 'Formulir Pendaftaran', shortLabel: 'Formulir', icon: FileText },
+    ...(isSemuaFormLengkap
+      ? [{ key: 'pembayaran' as MenuKey, label: 'Biaya & Pembayaran', shortLabel: 'Biaya', icon: CreditCard }]
+      : []),
+    { key: 'pengumuman', label: 'Pengumuman Hasil', shortLabel: 'Hasil', icon: Megaphone },
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
-      
+    <div className="ui-scope ui-page flex flex-col">
+
       {saveToast && (
-        <div className="fixed top-5 right-5 z-50 bg-emerald-600 text-white px-5 py-3 rounded-lg shadow-xl flex items-center gap-2.5 text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200">
-          <Check className="w-4 h-4 bg-emerald-700 p-0.5 rounded-full" />
+        <div
+          role="status"
+          className="fixed left-1/2 top-4 z-[80] flex w-[calc(100%_-_2rem)] max-w-sm -translate-x-1/2 items-center gap-3 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-[0_24px_40px_-16px_rgba(15,23,42,.6)] animate-in fade-in slide-in-from-top-4 duration-200"
+          style={{ marginTop: 'env(safe-area-inset-top, 0px)' }}
+        >
+          <Check className="h-5 w-5 shrink-0 rounded-full bg-emerald-700 p-0.5" />
           <span>{saveToast}</span>
         </div>
       )}
 
-      <div className="flex-1 flex flex-col md:flex-row">
-        
-        {mobileSidebarOpen && (
-          <div 
-            onClick={() => setMobileSidebarOpen(false)}
-            className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs md:hidden animate-in fade-in"
-          />
-        )}
-
-        <aside className={`
-          fixed md:static inset-y-0 left-0 z-50
-          w-64 bg-white border-r border-slate-200 shadow-xl md:shadow-none flex flex-col justify-between shrink-0
-          transition-all duration-300 ease-in-out
-          ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          ${!isSidebarOpen ? 'md:-ml-64' : 'md:ml-0'}
-        `}>
-          <div>
-            <div className="h-[61px] px-4 bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white border-b border-indigo-900/40 flex items-center justify-between shadow-xs">
-              <div className="flex items-center gap-2.5">
-                <img
-                  src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEitrsbiiNxOvmcHcN42oOETm0n2rp4n_UYCdRDLH05Z0fD7mLw5rNXwVxft7SBrIMQyi3LSs9DUa-v6QZBrKjE8o9G7RQ171bu0cirIUmWWD6E8wxn9Ua-t61RbRENkAb-U9bhBgdtq-eh0JYAN3hu0r9sCeNdjGFODdPWaNN-5v-NmQB63uOuMRAvgkODt/s320/69228.png"
-                  alt="Logo"
-                  className="w-8 h-8 object-contain drop-shadow"
-                />
-                <div>
-                  <h2 className="text-xs font-black tracking-wider text-white uppercase drop-shadow-xs">
-                    SPMB SMK MUHIBA
-                  </h2>
-                  <p className="text-[10px] text-blue-200 font-semibold tracking-tight">
-                    Sistem Penerimaan Siswa Baru
-                  </p>
-                </div>
-              </div>
-              
-              <button 
-                onClick={() => {
-                  setMobileSidebarOpen(false);
-                  setIsSidebarOpen(false);
-                }}
-                className="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
-                title="Sembunyikan Bilah Samping"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="py-4">
-              <p className="px-5 text-[10px] font-black text-slate-500 tracking-wider uppercase mb-2">
-                MAIN MENU
-              </p>
-              <nav className="space-y-1.5 px-3">
-                <button
-                  onClick={() => {
-                    setActiveMenu('beranda');
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
-                    activeMenu === 'beranda'
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25'
-                      : 'text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-700'
-                  }`}
-                >
-                  <Home className="w-4 h-4 shrink-0" />
-                  <span>Beranda</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setActiveMenu('formulir');
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
-                    activeMenu === 'formulir'
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25'
-                      : 'text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-700'
-                  }`}
-                >
-                  <FileText className="w-4 h-4 shrink-0" />
-                  <span>Formulir Pendaftaran</span>
-                </button>
-
-                {isSemuaFormLengkap && (
-                  <button
-                    onClick={() => {
-                      setActiveMenu('pembayaran');
-                      setMobileSidebarOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
-                      activeMenu === 'pembayaran'
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25'
-                        : 'text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-700'
-                    }`}
-                  >
-                    <CreditCard className="w-4 h-4 shrink-0" />
-                    <span>Biaya & Pembayaran</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={() => {
-                    setActiveMenu('pengumuman');
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
-                    activeMenu === 'pengumuman'
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25'
-                      : 'text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-700'
-                  }`}
-                >
-                  <Megaphone className="w-4 h-4 shrink-0" />
-                  <span>Pengumuman Hasil</span>
-                </button>
-              </nav>
+      {/* Header gradien */}
+      <header className="ui-header">
+        <div className="flex h-[4.25rem] items-center justify-between gap-3 px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="ui-hbtn hidden !px-0 w-10 md:inline-flex"
+              title={isSidebarOpen ? 'Sembunyikan Bilah Samping' : 'Buka Bilah Samping'}
+              aria-label="Toggle Sidebar"
+              aria-expanded={isSidebarOpen}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <img src={LOGO_URL} alt="Logo SMK Muhammadiyah Bawang" className="h-10 w-10 shrink-0 object-contain drop-shadow-md" referrerPolicy="no-referrer" />
+            <div className="min-w-0 leading-tight">
+              <p className="truncate text-base font-extrabold tracking-tight sm:text-lg">SPMB Muhiba</p>
+              <p className="truncate text-xs text-indigo-100">Panel Siswa • SMK Muhammadiyah Bawang</p>
             </div>
           </div>
 
-          <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-2.5">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <span className="hidden items-center gap-2 rounded-full border border-emerald-300/40 bg-emerald-400/20 px-3 py-1.5 text-xs font-semibold text-emerald-50 sm:inline-flex">
+              <span className="ui-dot" />
+              Terhubung
+            </span>
+            <div className="hidden text-right leading-tight lg:block">
+              <p className="max-w-[10rem] truncate text-sm font-semibold">{student.nama_lengkap}</p>
+              <p className="font-mono text-[0.7rem] text-indigo-100">No. {student.nomor_pendaftaran}</p>
+            </div>
             <button
               type="button"
-              onClick={() => {
-                if (onRequestChangePassword) {
-                  onRequestChangePassword();
-                } else {
-                  setShowLocalChangePassword(true);
-                }
-              }}
-              className="w-full text-left text-xs font-bold text-slate-700 hover:text-blue-700 flex items-center justify-between py-2 px-3 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="ui-avatar md:hidden"
+              aria-label="Buka menu akun"
+            >
+              {initial}
+            </button>
+            <span className="ui-avatar hidden md:inline-flex" aria-hidden>{initial}</span>
+            <span className="hidden h-7 w-px bg-white/25 md:block" aria-hidden />
+            <button
+              type="button"
+              onClick={onLogout}
+              className="ui-hbtn hidden !px-0 w-10 md:inline-flex"
+              title="Keluar dari akun siswa"
+              aria-label="Logout"
+            >
+              <LogOut className="h-[1.1rem] w-[1.1rem]" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex flex-1 flex-col md:flex-row">
+
+        {/* Bilah samping (tablet & desktop). Di ponsel diganti navigasi bawah. */}
+        <aside
+          className={`hidden shrink-0 flex-col justify-between border-r border-slate-200/70 bg-white/70 backdrop-blur-xl transition-[margin] duration-300 ease-in-out md:sticky md:top-[4.25rem] md:flex md:h-[calc(100dvh_-_4.25rem)] md:w-64 ${
+            isSidebarOpen ? 'md:ml-0' : 'md:-ml-64'
+          }`}
+        >
+          <nav className="space-y-1.5 p-3" aria-label="Menu utama siswa">
+            {navItems.map((it) => {
+              const active = activeMenu === it.key;
+              const Icon = it.icon;
+              return (
+                <button
+                  key={it.key}
+                  type="button"
+                  onClick={() => {
+                    setActiveMenu(it.key);
+                    setMobileSidebarOpen(false);
+                  }}
+                  aria-current={active ? 'page' : undefined}
+                  className={`relative flex w-full cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                    active ? 'text-white' : 'text-slate-600 hover:bg-indigo-50 hover:text-indigo-700'
+                  }`}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="sidebar-pill"
+                      className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 shadow-[0_16px_26px_-14px_rgba(91,61,240,.9)]"
+                      transition={{ type: 'spring', stiffness: 460, damping: 36 }}
+                    />
+                  )}
+                  <Icon className="relative h-[1.15rem] w-[1.15rem] shrink-0" />
+                  <span className="relative">{it.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="space-y-2.5 border-t border-slate-200/70 p-4">
+            <button
+              type="button"
+              onClick={openChangePassword}
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-2xl bg-slate-100 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 transition-all hover:bg-indigo-50 hover:text-indigo-700 active:scale-95"
               title="Ganti kata sandi akun"
             >
-              <span className="flex items-center gap-2">
-                <KeyRound className="w-3.5 h-3.5 text-slate-500" />
-                <span>Ubah Password</span>
-              </span>
+              <KeyRound className="h-4 w-4 text-slate-500" />
+              <span>Ubah Password</span>
             </button>
 
             <a
               href="https://www.smkmuhiba.sch.id"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full text-left text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center justify-between py-2 px-3 rounded-lg bg-blue-50 border border-blue-200 transition-colors"
+              className="flex w-full items-center justify-between rounded-2xl bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition-all hover:bg-indigo-100 active:scale-95"
             >
               <span>Website Sekolah</span>
-              <ExternalLink className="w-3.5 h-3.5" />
+              <ExternalLink className="h-4 w-4" />
             </a>
 
             <button
+              type="button"
               onClick={onNavigateHome}
-              className="w-full text-left text-xs font-bold text-slate-700 hover:text-blue-700 flex items-center gap-2 py-2 px-3 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-2xl bg-slate-100 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 transition-all hover:bg-indigo-50 hover:text-indigo-700 active:scale-95"
             >
               <span>← Beranda PPDB</span>
             </button>
 
             <button
+              type="button"
               onClick={onLogout}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+              className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-rose-600 text-sm font-bold text-white shadow-[0_16px_26px_-14px_rgba(225,29,72,.9)] transition-all hover:bg-rose-700 active:scale-95"
             >
-              <LogOut className="w-4 h-4 stroke-[2.5]" />
-              <span>KELUAR / LOGOUT</span>
+              <LogOut className="h-4 w-4" />
+              <span>Keluar / Logout</span>
             </button>
           </div>
         </aside>
 
-        <main className="flex-1 flex flex-col min-w-0">
-          
-          <header className="sticky top-0 z-30 h-[61px] bg-[#151329] text-white shadow-lg border-b border-indigo-950/80 px-4 sm:px-8 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  if (window.innerWidth < 768) {
-                    setMobileSidebarOpen(!mobileSidebarOpen);
-                  } else {
-                    setIsSidebarOpen(!isSidebarOpen);
-                  }
-                }}
-                className="p-2 bg-indigo-950/70 hover:bg-indigo-900 border border-indigo-800/40 text-white rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer group"
-                title={isSidebarOpen ? 'Sembunyikan Bilah Samping' : 'Buka Bilah Samping'}
-                aria-label="Toggle Sidebar"
-              >
-                <Menu className="w-5 h-5 group-hover:scale-105 transition-transform" />
-              </button>
+        <main className="flex min-w-0 flex-1 flex-col">
 
-              <div className="flex flex-col">
-                <span className="text-xs sm:text-sm font-black tracking-wider uppercase text-white">
-                  PANEL SISWA SPMB
-                </span>
-                <span className="text-[10px] text-indigo-300 font-semibold hidden sm:inline">
-                  SMK Muhammadiyah Bawang
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 border border-emerald-400/40 rounded-full text-[11px] font-extrabold text-emerald-200 backdrop-blur-xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <span>Terhubung</span>
-              </div>
-
-              <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-indigo-950/70 border border-indigo-800/40 text-xs">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 text-white flex items-center justify-center font-black text-xs shadow-xs">
-                  {student.nama_lengkap?.charAt(0) || 'S'}
-                </div>
-                <div className="text-right hidden sm:block">
-                  <span className="block text-xs font-bold text-white leading-tight truncate max-w-[140px]">
-                    {student.nama_lengkap}
-                  </span>
-                  <span className="block text-[10px] text-indigo-300 font-mono font-semibold">
-                    No. {student.nomor_pendaftaran}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                onClick={onLogout}
-                className="p-2 sm:px-3 sm:py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
-                title="Keluar dari akun siswa"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-            </div>
-          </header>
-
-          <div className="p-4 sm:p-8 space-y-6 pb-24 md:pb-8">
+          <div className="mx-auto w-full max-w-5xl space-y-5 p-4 pb-6 sm:p-8">
 
             {newCredentials && (
-              <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white rounded-2xl p-5 sm:p-6 shadow-xl border border-amber-400/50 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+              <div className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 text-white rounded-[2rem] p-5 sm:p-7 shadow-[0_34px_50px_-30px_rgba(234,120,0,.9)] border border-amber-300/40 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/20">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-white text-amber-600 flex items-center justify-center font-black shadow">
@@ -953,8 +951,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
-                  <div className="bg-white/95 rounded-lg p-3.5 text-slate-800 shadow-sm flex items-center justify-between gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-white/10 backdrop-blur-sm p-3 sm:p-4 rounded-3xl border border-white/20">
+                  <div className="bg-white/95 rounded-2xl p-3.5 text-slate-800 shadow-sm flex items-center justify-between gap-3">
                     <div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
                         Username (NIK 16 Digit)
@@ -965,14 +963,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     </div>
                     <button
                       onClick={() => handleCopyText(newCredentials.nik, 'username')}
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-xs font-bold transition-colors flex items-center gap-1 shrink-0"
+                      className="h-10 px-3.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shrink-0"
                     >
                       <Copy className="w-3.5 h-3.5" />
                       <span>{copiedField === 'username' ? 'Tersalin!' : 'Salin'}</span>
                     </button>
                   </div>
 
-                  <div className="bg-white/95 rounded-lg p-3.5 text-slate-800 shadow-sm flex items-center justify-between gap-3">
+                  <div className="bg-white/95 rounded-2xl p-3.5 text-slate-800 shadow-sm flex items-center justify-between gap-3">
                     <div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
                         Password Pendaftaran
@@ -983,7 +981,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     </div>
                     <button
                       onClick={() => handleCopyText(newCredentials.password, 'password')}
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-xs font-bold transition-colors flex items-center gap-1 shrink-0"
+                      className="h-10 px-3.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shrink-0"
                     >
                       <Copy className="w-3.5 h-3.5" />
                       <span>{copiedField === 'password' ? 'Tersalin!' : 'Salin'}</span>
@@ -999,7 +997,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
                     <button
                       onClick={handleDownloadCredentialsPDF}
-                      className="w-full sm:w-auto px-5 py-2.5 bg-white hover:bg-amber-50 text-slate-900 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto min-h-12 px-5 py-2.5 bg-white hover:bg-amber-50 active:scale-95 text-slate-900 font-extrabold text-xs rounded-2xl shadow-md transition-all flex items-center justify-center gap-2"
                     >
                       <Download className="w-4 h-4 text-amber-600" />
                       <span>Unduh PDF Username & Password</span>
@@ -1007,7 +1005,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                     <button
                       onClick={handleCloseCredentialsWarning}
-                      className="w-full sm:w-auto px-4 py-2.5 bg-amber-700/80 hover:bg-amber-800 text-white font-bold text-xs rounded-xl transition-colors text-center"
+                      className="w-full sm:w-auto min-h-12 px-4 py-2.5 bg-amber-700/80 hover:bg-amber-800 active:scale-95 text-white font-bold text-xs rounded-2xl transition-all text-center"
                     >
                       Saya sudah menyimpan / Tutup
                     </button>
@@ -1016,435 +1014,318 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               </div>
             )}
 
-            {activeMenu === 'beranda' && (
-              <div className="space-y-6">
-                
-                {/* HERO BANNER CARD - Operational Panel Style */}
-                <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                  <div className="relative z-10 space-y-2">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold text-white">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>Status Pendaftaran: {student.status_pendaftaran || 'Berkas Fisik'}</span>
-                    </div>
-                    <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-                      Hai, {student.nama_lengkap}!
-                    </h1>
-                    <p className="text-xs sm:text-sm text-indigo-100 font-medium">
-                      No. Pendaftaran: <span className="font-mono font-bold text-white">{student.nomor_pendaftaran}</span> • Pilihan: <span className="font-bold text-yellow-300">{student.jurusan_pilihan || 'Belum dipilih'}</span>
-                    </p>
-                  </div>
+            <ViewTransition viewKey={activeMenu}>
 
-                  <div className="relative z-10 flex flex-wrap items-center gap-3">
+            {activeMenu === 'beranda' && (
+              <div className="space-y-5">
+
+                <Hero
+                  chip={<>Status Pendaftaran: {student.status_pendaftaran || 'Berkas Fisik'}</>}
+                  title={<>Hai, {student.nama_lengkap}!</>}
+                  subtitle={
+                    <>
+                      No. Pendaftaran: <span className="font-mono font-bold text-white">{student.nomor_pendaftaran}</span> • Pilihan:{' '}
+                      <span className="font-bold text-yellow-300">{student.jurusan_pilihan || 'Belum dipilih'}</span>
+                    </>
+                  }
+                  actions={
                     <motion.button
+                      type="button"
                       onClick={() => {
                         setActiveMenu('formulir');
                         handleSelectTab('diri');
                       }}
-                      whileHover={shouldReduceMotion ? {} : { scale: 1.02 }}
-                      whileTap={{ scale: 0.96 }}
-                      className="px-5 py-3.5 bg-white hover:bg-slate-50 text-slate-900 rounded-2xl text-xs sm:text-sm font-bold shadow-lg transition-all flex items-center gap-2.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-700"
+                      whileTap={shouldReduceMotion ? undefined : { scale: 0.95 }}
+                      className="ui-cta ui-shine"
                     >
-                      <FileText className="w-4 h-4 text-indigo-600" />
-                      <span>Lengkapi Formulir &rarr;</span>
+                      <FileText className="h-5 w-5 text-indigo-600" />
+                      <span>Lengkapi Formulir</span>
+                      <ArrowRight className="h-4 w-4" />
                     </motion.button>
+                  }
+                >
+                  <div className="flex items-center gap-4 pt-2">
+                    <ProgressRing percent={progressPercent} label={`Formulir terisi ${progressPercent} persen`} />
+                    <div className="min-w-0 text-sm leading-snug">
+                      <p className="font-bold text-white">{doneCount} dari 4 bagian terisi</p>
+                      <p className="text-indigo-100">
+                        {doneCount === 4 ? 'Semua data lengkap. Tinggal menunggu verifikasi.' : 'Lengkapi sisanya agar berkas bisa diverifikasi.'}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </Hero>
 
-                {/* 4 KPI CARDS (Solid Colors from Reference Style with Motion & Tactile States) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Card 1: Biru Solid (Data Diri) */}
-                  <motion.div 
-                    initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, delay: 0.03 }}
-                    whileHover={shouldReduceMotion ? {} : { y: -3 }}
-                    whileTap={{ scale: 0.98 }}
+                {/* 4 bagian formulir */}
+                <Stagger className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                  <StatCard
+                    tone="blue"
+                    index={0}
+                    label="1. Data Diri"
+                    icon={User}
+                    value={
+                      <span className="flex items-center gap-2 text-[1.35rem] leading-tight sm:text-2xl">
+                        {isDiriLengkap && <CheckCircle2 className="h-6 w-6 shrink-0" />}
+                        {isDiriLengkap ? 'Lengkap' : 'Belum lengkap'}
+                      </span>
+                    }
+                    caption="Biodata calon siswa & NIK"
                     onClick={() => {
                       setActiveMenu('formulir');
                       handleSelectTab('diri');
                     }}
-                    className="bg-blue-600 rounded-3xl p-6 text-white shadow-md relative overflow-hidden flex flex-col justify-between min-h-[148px] cursor-pointer hover:shadow-xl transition-shadow select-none"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white/90 uppercase tracking-wider">1. Data Diri</span>
-                      <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                        <User className="w-4 h-4 text-white" />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-2xl sm:text-3xl font-black tracking-tight">
-                        {isDiriLengkap ? 'LENGKAP' : 'BELUM LENGKAP'}
-                      </div>
-                      <p className="text-xs text-white/80 mt-1">Biodata calon siswa & NIK</p>
-                    </div>
-                    <User className="absolute -right-4 -bottom-4 w-28 h-28 text-white/10 pointer-events-none" />
-                  </motion.div>
-
-                  {/* Card 2: Kuning/Amber Solid (Data Alamat) */}
-                  <motion.div 
-                    initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, delay: 0.07 }}
-                    whileHover={shouldReduceMotion || !isTabAccessible('alamat') ? {} : { y: -3 }}
-                    whileTap={isTabAccessible('alamat') ? { scale: 0.98 } : {}}
+                    ariaLabel="Buka formulir Data Diri"
+                  />
+                  <StatCard
+                    tone="amber"
+                    index={1}
+                    label="2. Data Alamat"
+                    icon={MapPin}
+                    locked={!isTabAccessible('alamat')}
+                    value={
+                      <span className="flex items-center gap-2 text-[1.35rem] leading-tight sm:text-2xl">
+                        {isAlamatLengkap && <CheckCircle2 className="h-6 w-6 shrink-0" />}
+                        {!isTabAccessible('alamat') && !isAlamatLengkap && <Lock className="h-5 w-5 shrink-0" />}
+                        {isAlamatLengkap ? 'Lengkap' : !isTabAccessible('alamat') ? 'Terkunci' : 'Belum lengkap'}
+                      </span>
+                    }
+                    caption={!isTabAccessible('alamat') ? 'Isi data diri dahulu' : 'Domisili & tempat tinggal'}
                     onClick={() => {
                       if (isTabAccessible('alamat')) {
                         setActiveMenu('formulir');
                         handleSelectTab('alamat');
                       }
                     }}
-                    className={`bg-amber-500 rounded-3xl p-6 text-slate-950 shadow-md relative overflow-hidden flex flex-col justify-between min-h-[148px] transition-shadow select-none ${
-                      isTabAccessible('alamat') ? 'cursor-pointer hover:shadow-xl' : 'opacity-85'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-slate-900 uppercase tracking-wider">2. Data Alamat</span>
-                      <div className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center">
-                        <MapPin className="w-4 h-4 text-slate-900" />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-2xl sm:text-3xl font-black tracking-tight">
-                        {isAlamatLengkap ? 'LENGKAP' : !isTabAccessible('alamat') ? 'TERKUNCI' : 'BELUM LENGKAP'}
-                      </div>
-                      <p className="text-xs text-slate-900/80 mt-1">
-                        {!isTabAccessible('alamat') ? 'Isi data diri dahulu' : 'Domisili & tempat tinggal'}
-                      </p>
-                    </div>
-                    <MapPin className="absolute -right-4 -bottom-4 w-28 h-28 text-black/10 pointer-events-none" />
-                  </motion.div>
-
-                  {/* Card 3: Hijau/Emerald Solid (Data Orang Tua) */}
-                  <motion.div 
-                    initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, delay: 0.11 }}
-                    whileHover={shouldReduceMotion || !isTabAccessible('ortu') ? {} : { y: -3 }}
-                    whileTap={isTabAccessible('ortu') ? { scale: 0.98 } : {}}
+                    ariaLabel="Buka formulir Data Alamat"
+                  />
+                  <StatCard
+                    tone="green"
+                    index={2}
+                    label="3. Orang Tua / Wali"
+                    icon={Users}
+                    locked={!isTabAccessible('ortu')}
+                    value={
+                      <span className="flex items-center gap-2 text-[1.35rem] leading-tight sm:text-2xl">
+                        {isOrtuLengkap && <CheckCircle2 className="h-6 w-6 shrink-0" />}
+                        {!isTabAccessible('ortu') && !isOrtuLengkap && <Lock className="h-5 w-5 shrink-0" />}
+                        {isOrtuLengkap ? 'Lengkap' : !isTabAccessible('ortu') ? 'Terkunci' : 'Belum lengkap'}
+                      </span>
+                    }
+                    caption={!isTabAccessible('ortu') ? 'Isi alamat dahulu' : 'Data ayah, ibu, atau wali'}
                     onClick={() => {
                       if (isTabAccessible('ortu')) {
                         setActiveMenu('formulir');
                         handleSelectTab('ortu');
                       }
                     }}
-                    className={`bg-emerald-600 rounded-3xl p-6 text-white shadow-md relative overflow-hidden flex flex-col justify-between min-h-[148px] transition-shadow select-none ${
-                      isTabAccessible('ortu') ? 'cursor-pointer hover:shadow-xl' : 'opacity-85'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white/90 uppercase tracking-wider">3. Orang Tua / Wali</span>
-                      <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                        <Users className="w-4 h-4 text-white" />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-2xl sm:text-3xl font-black tracking-tight">
-                        {isOrtuLengkap ? 'LENGKAP' : !isTabAccessible('ortu') ? 'TERKUNCI' : 'BELUM LENGKAP'}
-                      </div>
-                      <p className="text-xs text-white/80 mt-1">
-                        {!isTabAccessible('ortu') ? 'Isi alamat dahulu' : 'Data ayah, ibu, atau wali'}
-                      </p>
-                    </div>
-                    <Users className="absolute -right-4 -bottom-4 w-28 h-28 text-white/10 pointer-events-none" />
-                  </motion.div>
-
-                  {/* Card 4: Merah/Rose Solid (Upload Berkas) */}
-                  <motion.div 
-                    initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, delay: 0.15 }}
-                    whileHover={shouldReduceMotion || !isTabAccessible('berkas') ? {} : { y: -3 }}
-                    whileTap={isTabAccessible('berkas') ? { scale: 0.98 } : {}}
+                    ariaLabel="Buka formulir Orang Tua atau Wali"
+                  />
+                  <StatCard
+                    tone="rose"
+                    index={3}
+                    label="4. Upload Berkas"
+                    icon={FolderCheck}
+                    locked={!isTabAccessible('berkas')}
+                    value={
+                      <span className="flex items-center gap-2 text-[1.35rem] leading-tight sm:text-2xl">
+                        {isBerkasLengkap && <CheckCircle2 className="h-6 w-6 shrink-0" />}
+                        {!isTabAccessible('berkas') && !isBerkasLengkap && <Lock className="h-5 w-5 shrink-0" />}
+                        {isBerkasLengkap ? 'Lengkap' : !isTabAccessible('berkas') ? 'Terkunci' : 'Belum lengkap'}
+                      </span>
+                    }
+                    caption="KK, Akta, SKL, Pas Foto"
                     onClick={() => {
                       if (isTabAccessible('berkas')) {
                         setActiveMenu('formulir');
                         handleSelectTab('berkas');
                       }
                     }}
-                    className={`bg-rose-600 rounded-3xl p-6 text-white shadow-md relative overflow-hidden flex flex-col justify-between min-h-[148px] transition-shadow select-none ${
-                      isTabAccessible('berkas') ? 'cursor-pointer hover:shadow-xl' : 'opacity-85'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white/90 uppercase tracking-wider">4. Upload Berkas</span>
-                      <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                        <FolderCheck className="w-4 h-4 text-white" />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-2xl sm:text-3xl font-black tracking-tight">
-                        {isBerkasLengkap ? 'LENGKAP' : !isTabAccessible('berkas') ? 'TERKUNCI' : 'BELUM LENGKAP'}
-                      </div>
-                      <p className="text-xs text-white/80 mt-1">KK, Akta, SKL, Pas Foto</p>
-                    </div>
-                    <FolderCheck className="absolute -right-4 -bottom-4 w-28 h-28 text-white/10 pointer-events-none" />
-                  </motion.div>
-                </div>
+                    ariaLabel="Buka formulir Upload Berkas"
+                  />
+                </Stagger>
 
-                {/* STATUS PIPELINE HORIZONTAL CHIPS & STATUS BANNER */}
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 sm:p-7 space-y-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-1.5 h-5 bg-indigo-600 rounded-full" />
-                      <h3 className="font-extrabold text-slate-800 text-sm">Tahapan Proses Pendaftaran</h3>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-100">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Live
+                {/* Tahapan proses */}
+                <section className="ui-panel space-y-5 p-5 sm:p-7">
+                  <PanelTitle
+                    title="Tahapan Proses Pendaftaran"
+                    live
+                    right={
+                      <span className="text-sm text-slate-500">
+                        Status saat ini: <span className="font-bold text-indigo-700">{student.status_pendaftaran || 'Berkas Fisik'}</span>
                       </span>
-                    </div>
+                    }
+                  />
 
-                    <div className="text-xs text-slate-500 font-medium">
-                      Status Saat Ini: <span className="font-bold text-indigo-700">{student.status_pendaftaran || 'Berkas Fisik'}</span>
-                    </div>
-                  </div>
+                  <Stagger className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <StatusTile
+                      tone={isSemuaFormLengkap ? 'green' : 'blue'}
+                      label="1. Isi Formulir"
+                      value={
+                        <span className="block text-[0.95rem] font-bold leading-snug">
+                          {isSemuaFormLengkap ? '✓ Selesai Diisi' : 'Sedang Dilengkapi'}
+                        </span>
+                      }
+                    />
+                    <StatusTile
+                      tone={
+                        student.status_pendaftaran === 'Menunggu Verifikasi' ||
+                        student.status_pendaftaran === 'Terverifikasi' ||
+                        student.status_pendaftaran === 'Diterima'
+                          ? 'amber'
+                          : 'slate'
+                      }
+                      label="2. Verifikasi Berkas"
+                      value={
+                        <span className="block text-[0.95rem] font-bold leading-snug">
+                          {student.status_pendaftaran === 'Menunggu Verifikasi'
+                            ? 'Menunggu Panitia'
+                            : student.status_pendaftaran === 'Terverifikasi' || student.status_pendaftaran === 'Diterima'
+                            ? '✓ Terverifikasi'
+                            : 'Belum Diajukan'}
+                        </span>
+                      }
+                    />
+                    <StatusTile
+                      tone={student.status_pendaftaran === 'Terverifikasi' || student.status_pendaftaran === 'Diterima' ? 'blue' : 'slate'}
+                      label="3. Biaya Masuk"
+                      value={
+                        <span className="block text-[0.95rem] font-bold leading-snug">
+                          {isSemuaFormLengkap ? 'Bisa Dikonfirmasi' : 'Terkunci'}
+                        </span>
+                      }
+                    />
+                    <StatusTile
+                      tone={student.status_pendaftaran === 'Diterima' ? 'violet' : 'slate'}
+                      label="4. Pengumuman"
+                      value={
+                        <span className="block text-[0.95rem] font-bold leading-snug">
+                          {student.status_pendaftaran === 'Diterima' ? '✓ DITERIMA' : 'Belum Diumumkan'}
+                        </span>
+                      }
+                    />
+                  </Stagger>
 
-                  {/* Horizontal Stage Chips (Pastel Colors) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className={`p-4 rounded-2xl text-center border transition-all ${
-                      isSemuaFormLengkap
-                        ? 'bg-emerald-50/80 border-emerald-200 text-emerald-800'
-                        : 'bg-blue-50/70 border-blue-100 text-blue-800'
-                    }`}>
-                      <span className="text-[11px] font-bold block">1. Isi Formulir</span>
-                      <span className="text-xs font-semibold mt-1 block">
-                        {isSemuaFormLengkap ? '✓ Selesai Diisi' : 'Sedang Dilengkapi'}
-                      </span>
-                    </div>
-
-                    <div className={`p-4 rounded-2xl text-center border transition-all ${
-                      student.status_pendaftaran === 'Menunggu Verifikasi' || student.status_pendaftaran === 'Terverifikasi' || student.status_pendaftaran === 'Diterima'
-                        ? 'bg-amber-50/80 border-amber-200 text-amber-800'
-                        : 'bg-slate-50 border-slate-200 text-slate-600'
-                    }`}>
-                      <span className="text-[11px] font-bold block">2. Verifikasi Berkas</span>
-                      <span className="text-xs font-semibold mt-1 block">
-                        {student.status_pendaftaran === 'Menunggu Verifikasi'
-                          ? 'Menunggu Panitia'
-                          : student.status_pendaftaran === 'Terverifikasi' || student.status_pendaftaran === 'Diterima'
-                          ? '✓ Terverifikasi'
-                          : 'Belum Diajukan'}
-                      </span>
-                    </div>
-
-                    <div className={`p-4 rounded-2xl text-center border transition-all ${
-                      student.status_pendaftaran === 'Terverifikasi' || student.status_pendaftaran === 'Diterima'
-                        ? 'bg-indigo-50/80 border-indigo-200 text-indigo-800'
-                        : 'bg-slate-50 border-slate-200 text-slate-600'
-                    }`}>
-                      <span className="text-[11px] font-bold block">3. Biaya Masuk</span>
-                      <span className="text-xs font-semibold mt-1 block">
-                        {isSemuaFormLengkap ? 'Bisa Dikonfirmasi' : 'Terkunci'}
-                      </span>
-                    </div>
-
-                    <div className={`p-4 rounded-2xl text-center border transition-all ${
-                      student.status_pendaftaran === 'Diterima'
-                        ? 'bg-purple-50/80 border-purple-200 text-purple-800 font-bold'
-                        : 'bg-slate-50 border-slate-200 text-slate-600'
-                    }`}>
-                      <span className="text-[11px] font-bold block">4. Pengumuman</span>
-                      <span className="text-xs font-semibold mt-1 block">
-                        {student.status_pendaftaran === 'Diterima' ? '✓ DITERIMA' : 'Belum Diumumkan'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Calm status message */}
-                  <div className="bg-emerald-50/60 border border-emerald-100/80 rounded-2xl p-3.5 text-center text-xs text-emerald-800 flex items-center justify-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div className="ui-note">
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
                     <span>Data tersimpan otomatis di database cloud. Pastikan seluruh formulir terisi lengkap.</span>
                   </div>
-                </div>
+                </section>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden transition-all">
-                  
-                  <div className="h-1.5 bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800" />
+                {/* Persiapan berkas (bisa dilipat) */}
+                <section className="ui-panel overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowDocs((v) => !v)}
+                    aria-expanded={showDocs}
+                    aria-controls="panel-persiapan-berkas"
+                    className="flex w-full cursor-pointer items-center justify-between gap-3 p-5 text-left transition-colors hover:bg-indigo-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 sm:px-7"
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-[0_14px_24px_-12px_rgba(91,61,240,.9)]">
+                        <Megaphone className="h-5 w-5" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-base font-bold text-slate-900">Informasi Pendaftaran</span>
+                        <span className="block truncate text-xs text-slate-500">Tahun Ajaran 2026/2027 • 7 dokumen persyaratan</span>
+                      </span>
+                    </span>
+                    <ChevronDown className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-300 ${showDocs ? 'rotate-180' : ''}`} />
+                  </button>
 
-                  <div className="p-6 sm:p-8 space-y-6">
-                    <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-sm shadow-blue-500/20">
-                          <Megaphone className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-slate-900 tracking-wide uppercase">Informasi Pendaftaran</span>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
+                  <AnimatePresence initial={false}>
+                    {showDocs && (
+                      <motion.div
+                        id="panel-persiapan-berkas"
+                        key="docs"
+                        initial={shouldReduceMotion ? false : { height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={shouldReduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                        className="overflow-hidden"
+                      >
+                        <div className="space-y-5 px-5 pb-5 sm:px-7 sm:pb-7">
+                          <div className="flex items-center justify-between gap-3 rounded-3xl bg-slate-50 px-4 py-3">
+                            <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
                               Pengumuman Resmi
                             </span>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                              <Clock className="h-3.5 w-3.5 text-slate-400" />
+                              2026-02-02 10:40:54
+                            </span>
                           </div>
-                          <p className="text-[11px] text-slate-500 font-medium">
-                            Tahun Ajaran 2026/2027 • SPMB SMK Muhammadiyah Bawang
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/70">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        <span>2026-02-02 10:40:54</span>
-                      </div>
-                    </div>
 
-                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white p-5 sm:p-6 shadow-md shadow-indigo-900/10">
-                      <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto space-y-2">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold bg-white/15 backdrop-blur-xs text-yellow-300 border border-white/20">
-                          Selamat Datang Calon Peserta Didik Baru
-                        </span>
-                        <h3 className="text-base sm:text-xl font-black tracking-tight text-white leading-snug">
-                          Sekolah Pencetak Wirausaha • Siap Kerja • Siap Kuliah
-                        </h3>
-                        <p className="text-xs text-blue-100 max-w-lg">
-                          Persiapkan masa depan gemilang dengan pendidikan vokasi unggul dan berkarakter islami bersama SMK Muhammadiyah Bawang.
-                        </p>
-                      </div>
-                      <div className="absolute -top-12 -right-12 w-44 h-44 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-                      <div className="absolute -bottom-12 -left-12 w-44 h-44 bg-purple-500/20 rounded-full blur-2xl pointer-events-none" />
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
-                          <span>Sebelum mendaftar, silakan persiapkan berkas berikut :</span>
-                        </h4>
-                        <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
-                          7 Dokumen Persyaratan
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                        
-                        <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
-                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
-                                Foto copy Kartu Keluarga
+                          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-700 via-indigo-700 to-violet-700 p-5 text-center text-white shadow-[0_26px_40px_-28px_rgba(67,56,202,.9)] sm:p-6">
+                            <div className="relative z-10 mx-auto max-w-2xl space-y-2">
+                              <span className="inline-flex items-center rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-semibold text-yellow-300">
+                                Selamat Datang Calon Peserta Didik Baru
+                              </span>
+                              <h3 className="text-lg font-extrabold leading-snug tracking-tight sm:text-xl">
+                                Sekolah Pencetak Wirausaha • Siap Kerja • Siap Kuliah
+                              </h3>
+                              <p className="text-sm text-blue-100">
+                                Persiapkan masa depan gemilang dengan pendidikan vokasi unggul dan berkarakter islami bersama SMK Muhammadiyah Bawang.
                               </p>
-                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">Wajib</span>
                             </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5">Salinan Kartu Keluarga (KK) terbaru calon siswa</p>
+                            <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-white/10 blur-2xl" />
+                            <div className="pointer-events-none absolute -bottom-12 -left-12 h-44 w-44 rounded-full bg-violet-400/20 blur-2xl" />
                           </div>
-                        </div>
 
-                        <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
-                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
-                                Foto copy Akta Kelahiran
-                              </p>
-                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">Wajib</span>
+                          <div className="space-y-3">
+                            <h4 className="text-sm font-bold text-slate-900">Sebelum mendaftar, silakan persiapkan berkas berikut :</h4>
+                            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+                              {DOCS.map((d) => (
+                                <div
+                                  key={d.title}
+                                  className="group flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 transition-colors hover:border-indigo-200 hover:bg-white"
+                                >
+                                  <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm ring-4 ring-emerald-50 transition-transform group-hover:scale-110">
+                                    <Check className="h-3 w-3 stroke-[3]" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                                      <p className="text-sm font-bold text-slate-800">{d.title}</p>
+                                      <span
+                                        className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold ${
+                                          d.tone === 'amber' ? 'bg-amber-50 text-amber-700' : 'bg-white text-slate-500 ring-1 ring-slate-200'
+                                        }`}
+                                      >
+                                        {d.badge}
+                                      </span>
+                                    </div>
+                                    <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{d.desc}</p>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5">Akta kelahiran resmi dari Disdukcapil</p>
                           </div>
-                        </div>
 
-                        <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
-                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
-                                Nomor NISN
-                              </p>
-                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">Wajib</span>
+                          <div className="flex flex-col items-stretch justify-between gap-4 rounded-3xl bg-gradient-to-r from-blue-50 via-indigo-50/60 to-slate-50 p-4 sm:flex-row sm:items-center sm:p-5">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-[0_14px_24px_-12px_rgba(37,99,235,.9)]">
+                                <FileCheck2 className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-900">
+                                  Setelah berkas disiapkan, silakan lengkapi data formulir pendaftaran kamu
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  Pengisian data lengkap menjamin validasi berkas lebih cepat oleh panitia.
+                                </p>
+                              </div>
                             </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5">Dapat dilihat pada rapor sekolah asal atau surat keterangan</p>
+                            <button
+                              type="button"
+                              onClick={() => setActiveMenu('formulir')}
+                              className="ui-shine group flex h-12 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 text-sm font-bold text-white shadow-[0_18px_30px_-16px_rgba(91,61,240,.9)] transition-all hover:brightness-110 active:scale-95"
+                            >
+                              <span>Buka & Lengkapi Formulir Sekarang</span>
+                              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                            </button>
                           </div>
                         </div>
-
-                        <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
-                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
-                                Fotocopy Ijazah SMP/MTs atau SD/MI
-                              </p>
-                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">Wajib</span>
-                            </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5">Bagi yang ijazah SMP belum terbit, dapat menggunakan FC Ijazah SD</p>
-                          </div>
-                        </div>
-
-                        <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
-                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
-                                Foto copy KTP Orang Tua / Wali
-                              </p>
-                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">Wajib</span>
-                            </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5">Kartu identitas ayah/ibu atau wali murid yang sah</p>
-                          </div>
-                        </div>
-
-                        <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
-                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
-                                Kartu Bantuan (KIP, PKH, KKS)
-                              </p>
-                              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 shrink-0">Jika Ada</span>
-                            </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5">Program jaminan sosial dari pemerintah (opsional jika memiliki)</p>
-                          </div>
-                        </div>
-
-                        <div className="md:col-span-2 p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all duration-200 flex items-start gap-3 group">
-                          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs ring-4 ring-emerald-50 mt-0.5 group-hover:scale-110 transition-transform">
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
-                                Prestasi / Piagam Penghargaan
-                              </p>
-                              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 shrink-0">Jalur Prestasi</span>
-                            </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5">Sertifikat piagam kejuaraan akademik maupun non-akademik tingkat kecamatan/kabupaten/provinsi</p>
-                          </div>
-                        </div>
-
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl p-4 sm:p-5 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-slate-50 border border-blue-200/70 flex flex-col sm:flex-row items-center justify-between gap-4">
-                      <div className="flex items-center gap-3 text-center sm:text-left">
-                        <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-500/20 shrink-0">
-                          <FileCheck2 className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="text-xs sm:text-sm font-bold text-slate-900">
-                            Setelah berkas disiapkan, silakan lengkapi data formulir pendaftaran kamu
-                          </p>
-                          <p className="text-[11px] text-slate-500 font-medium">
-                            Pengisian data lengkap menjamin validasi berkas lebih cepat oleh panitia.
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setActiveMenu('formulir')}
-                        className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 active:scale-95 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer group"
-                      >
-                        <span>Buka & Lengkapi Formulir Sekarang</span>
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </button>
-                    </div>
-
-                  </div>
-                </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </section>
 
               </div>
             )}
@@ -1453,14 +1334,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               <div className="space-y-6">
 
                 {showWarningBanner && (
-                  <div className="bg-amber-500 text-white p-3.5 rounded-lg flex items-center justify-between text-xs font-semibold shadow-sm">
+                  <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 rounded-3xl flex items-center justify-between gap-3 text-sm font-semibold shadow-[0_22px_34px_-22px_rgba(234,120,0,.9)]">
                     <div className="flex items-center gap-2">
                       <AlertCircle className="w-4 h-4" />
                       <span>Untuk mencetak formulir ada dimenu pembayaran setelah verifikasi.</span>
                     </div>
                     <button 
                       onClick={() => setShowWarningBanner(false)}
-                      className="text-white/80 hover:text-white p-0.5"
+                      className="text-white/80 hover:text-white hover:bg-white/20 p-2 rounded-full transition-all active:scale-90 shrink-0"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -1469,82 +1350,70 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   
-                  <div className="lg:col-span-8 bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
+                  <div className="ui-panel ui-form lg:col-span-8 p-4 sm:p-8 space-y-6">
                     
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
                       <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 text-indigo-600 flex items-center justify-center shrink-0">
                           <User className="w-8 h-8" />
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-400 font-semibold uppercase block">Status Pendaftaran</span>
-                          <span className="inline-block mt-0.5 px-3 py-0.5 bg-blue-500 text-white rounded text-[11px] font-bold">
+                          <span className="text-xs text-slate-400 font-semibold block">Status Pendaftaran</span>
+                          <span className="inline-block mt-1 px-3 py-1 bg-indigo-600 text-white rounded-full text-xs font-bold">
                             {student.status_pendaftaran || 'Berkas Fisik'}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-lg">
-                        <button
-                          type="button"
-                          onClick={() => handleSelectTab('diri')}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1.5 ${
-                            activeFormTab === 'diri'
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'text-slate-600 hover:text-slate-900'
-                          }`}
-                        >
-                          <User className="w-3.5 h-3.5" />
-                          <span>Data Diri</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleSelectTab('alamat')}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1.5 ${
-                            activeFormTab === 'alamat'
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : isTabAccessible('alamat')
-                              ? 'text-slate-600 hover:text-slate-900'
-                              : 'text-slate-400 bg-slate-200/50 cursor-not-allowed'
-                          }`}
-                          title={!isTabAccessible('alamat') ? 'Lengkapi Data Diri terlebih dahulu' : ''}
-                        >
-                          {isTabAccessible('alamat') ? <MapPin className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                          <span>Data Alamat</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleSelectTab('ortu')}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1.5 ${
-                            activeFormTab === 'ortu'
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : isTabAccessible('ortu')
-                              ? 'text-slate-600 hover:text-slate-900'
-                              : 'text-slate-400 bg-slate-200/50 cursor-not-allowed'
-                          }`}
-                          title={!isTabAccessible('ortu') ? 'Lengkapi Data Diri & Alamat terlebih dahulu' : ''}
-                        >
-                          {isTabAccessible('ortu') ? <Users className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                          <span>Orang Tua</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleSelectTab('berkas')}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1.5 ${
-                            activeFormTab === 'berkas'
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : isTabAccessible('berkas')
-                              ? 'text-slate-600 hover:text-slate-900'
-                              : 'text-slate-400 bg-slate-200/50 cursor-not-allowed'
-                          }`}
-                          title={!isTabAccessible('berkas') ? 'Lengkapi Data Diri, Alamat & Orang Tua terlebih dahulu' : ''}
-                        >
-                          {isTabAccessible('berkas') ? <FolderCheck className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                          <span>Data Berkas</span>
-                        </button>
+                      <div className="ui-scroll-x -mx-1 px-1 sm:mx-0 sm:px-0">
+                        <SegTabs
+                          id="formtab"
+                          ariaLabel="Bagian formulir pendaftaran"
+                          className="min-w-max"
+                          active={activeFormTab}
+                          onChange={(k) => handleSelectTab(k as 'diri' | 'alamat' | 'ortu' | 'berkas')}
+                          items={[
+                            {
+                              key: 'diri',
+                              icon: User,
+                              label: (
+                                <span className="inline-flex items-center gap-1">
+                                  Data Diri {isDiriLengkap && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                                </span>
+                              ),
+                            },
+                            {
+                              key: 'alamat',
+                              icon: isTabAccessible('alamat') ? MapPin : Lock,
+                              disabled: !isTabAccessible('alamat'),
+                              label: (
+                                <span className="inline-flex items-center gap-1">
+                                  Data Alamat {isAlamatLengkap && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                                </span>
+                              ),
+                            },
+                            {
+                              key: 'ortu',
+                              icon: isTabAccessible('ortu') ? Users : Lock,
+                              disabled: !isTabAccessible('ortu'),
+                              label: (
+                                <span className="inline-flex items-center gap-1">
+                                  Orang Tua {isOrtuLengkap && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                                </span>
+                              ),
+                            },
+                            {
+                              key: 'berkas',
+                              icon: isTabAccessible('berkas') ? FolderCheck : Lock,
+                              disabled: !isTabAccessible('berkas'),
+                              label: (
+                                <span className="inline-flex items-center gap-1">
+                                  Data Berkas {isBerkasLengkap && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                                </span>
+                              ),
+                            },
+                          ]}
+                        />
                       </div>
                     </div>
 
@@ -2356,7 +2225,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                   </div>
 
-                  <div className="lg:col-span-4 bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 space-y-6">
+                  <div className="ui-panel hidden lg:block lg:col-span-4 p-6 space-y-5">
                     <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Progres Pengisian Formulir
                     </h3>
@@ -2494,7 +2363,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                     </div>
 
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 space-y-2">
+                    <div className="p-4 rounded-3xl bg-slate-50 border border-slate-100 text-xs text-slate-600 space-y-2">
                       <p className="font-bold text-slate-800">Petunjuk Panitia:</p>
                       <p className="text-[11px] leading-relaxed">
                         Setelah semua data terisi lengkap, status pendaftaran akan diproses oleh verifikator SMK Muhammadiyah Bawang.
@@ -2509,15 +2378,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             )}
 
             {activeMenu === 'pembayaran' && isSemuaFormLengkap && (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
-                  <div className="flex items-center justify-between pb-4 border-b">
+              <div className="ui-panel p-5 sm:p-8 space-y-6">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100">
                     <div>
                       <h2 className="text-base font-bold text-slate-900">Rincian Pembayaran & Cetak Formulir</h2>
                       <p className="text-xs text-slate-500">Informasi administrasi pendaftaran siswa baru SMK Muhammadiyah Bawang</p>
                     </div>
                     <button
                       onClick={handlePrintFormulir}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm transition-colors flex items-center gap-1.5"
+                      className="ui-shine h-11 px-5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:brightness-110 text-white font-bold text-sm rounded-2xl shadow-[0_18px_30px_-16px_rgba(91,61,240,.9)] transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Printer className="w-3.5 h-3.5" />
                       <span>Cetak Formulir Lengkap</span>
@@ -2525,20 +2394,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100">
                       <p className="text-xs text-emerald-800 font-semibold">Biaya Pendaftaran / Formulir</p>
                       <p className="text-2xl font-black text-emerald-700 mt-1">GRATIS (Rp 0,-)</p>
                       <p className="text-[11px] text-emerald-600 mt-0.5">Program Bebas Biaya Gelombang 1 Sekolah SMART</p>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
+                    <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100">
                       <p className="text-xs text-blue-800 font-semibold">Biaya Seragam & Atribut Sekolah</p>
                       <p className="text-2xl font-black text-blue-700 mt-1">Rp 350.000,-</p>
                       <p className="text-[11px] text-blue-600 mt-0.5">3 Stel Seragam Praktik, Pramuka, Hizbul Wathan & Jas</p>
                     </div>
                   </div>
 
-                  <div className="border border-slate-200 rounded-xl p-6 bg-slate-50/50 space-y-4">
+                  <div className="rounded-3xl bg-slate-50/70 p-4 sm:p-6 space-y-4">
                     <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
                       Status Pembayaran Siswa
                     </h4>
@@ -2571,14 +2440,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               )}
 
             {activeMenu === 'pengumuman' && (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
-                <div className="pb-4 border-b">
+              <div className="ui-panel p-5 sm:p-8 space-y-6">
+                <div className="pb-4 border-b border-slate-100">
                   <h2 className="text-base font-bold text-slate-900">Pengumuman Hasil Seleksi</h2>
                   <p className="text-xs text-slate-500">Status kelulusan penerimaan peserta didik baru tahun ajaran 2026/2027</p>
                 </div>
 
                 {student.status_pendaftaran === 'Diterima' && (
-                  <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
+                  <div className="p-6 sm:p-8 rounded-[2rem] bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
                       <CheckCircle2 className="w-8 h-8" />
                     </div>
@@ -2600,7 +2469,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 )}
 
                 {student.status_pendaftaran === 'Terverifikasi' && (
-                  <div className="p-6 rounded-2xl bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
+                  <div className="p-6 sm:p-8 rounded-[2rem] bg-gradient-to-br from-teal-50 to-emerald-50 border border-teal-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center mx-auto shadow-inner">
                       <CheckCircle2 className="w-8 h-8" />
                     </div>
@@ -2620,7 +2489,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 )}
 
                 {student.status_pendaftaran === 'Cadangan' && (
-                  <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
+                  <div className="p-6 sm:p-8 rounded-[2rem] bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
                       <Clock className="w-8 h-8" />
                     </div>
@@ -2637,7 +2506,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 )}
 
                 {(student.status_pendaftaran === 'Menunggu Verifikasi' || (isSemuaFormLengkap && student.status_pendaftaran !== 'Diterima' && student.status_pendaftaran !== 'Terverifikasi' && student.status_pendaftaran !== 'Cadangan')) && (
-                  <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
+                  <div className="p-6 sm:p-8 rounded-[2rem] bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto shadow-inner">
                       <Clock className="w-8 h-8 animate-spin" />
                     </div>
@@ -2661,7 +2530,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                  student.status_pendaftaran !== 'Terverifikasi' && 
                  student.status_pendaftaran !== 'Cadangan' && 
                  student.status_pendaftaran !== 'Menunggu Verifikasi' && (
-                  <div className="p-6 rounded-2xl bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
+                  <div className="p-6 sm:p-8 rounded-[2rem] bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-300 text-center space-y-3 max-w-xl mx-auto shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto shadow-inner">
                       <AlertCircle className="w-8 h-8" />
                     </div>
@@ -2677,7 +2546,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           setActiveMenu('formulir');
                           handleSelectTab('diri');
                         }}
-                        className="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg shadow-md transition-colors"
+                        className="h-12 px-6 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-2xl shadow-[0_18px_30px_-16px_rgba(234,88,12,.9)] transition-all active:scale-95"
                       >
                         Lengkapi Formulir Sekarang
                       </button>
@@ -2690,9 +2559,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               </div>
             )}
 
+            </ViewTransition>
+
           </div>
 
-          <footer className="mt-auto px-4 sm:px-8 py-4 border-t border-slate-200 bg-white text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <footer className="mt-auto px-4 sm:px-8 pt-4 pb-[calc(7rem_+_env(safe-area-inset-bottom,0px))] md:pb-5 text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
             <span>Copyright © 2026 SPMB SMK MUHIBA | by @hndx07</span>
             <a
               href="https://www.smkmuhiba.sch.id"
@@ -2721,62 +2592,86 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </React.Suspense>
       )}
 
-      {/* Mobile Bottom Navigation Bar (Operational Mobile Nav) */}
-      <nav aria-label="Navigasi Bawah Siswa" className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-2 py-1.5 flex items-center justify-around shadow-lg shadow-slate-900/10">
-        <button
-          type="button"
-          onClick={() => setActiveMenu('beranda')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-[10px] font-bold transition-all ${
-            activeMenu === 'beranda'
-              ? 'text-indigo-600 bg-indigo-50/80'
-              : 'text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <Home className="w-4 h-4" />
-          <span>Beranda</span>
-        </button>
+      {/* Navigasi bawah (ponsel) */}
+      <BottomNav
+        label="Navigasi Bawah Siswa"
+        items={[
+          ...navItems.map((it) => ({
+            key: it.key,
+            label: it.shortLabel,
+            icon: it.icon,
+            active: activeMenu === it.key && !mobileSidebarOpen,
+            onClick: () => {
+              setMobileSidebarOpen(false);
+              setActiveMenu(it.key);
+            },
+          })),
+          {
+            key: 'akun',
+            label: 'Akun',
+            icon: User,
+            active: mobileSidebarOpen,
+            onClick: () => setMobileSidebarOpen(true),
+          },
+        ]}
+      />
 
-        <button
-          type="button"
-          onClick={() => setActiveMenu('formulir')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-[10px] font-bold transition-all ${
-            activeMenu === 'formulir'
-              ? 'text-indigo-600 bg-indigo-50/80'
-              : 'text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          <span>Formulir</span>
-        </button>
+      {/* Menu akun (ponsel) — pengganti bilah samping */}
+      <Sheet open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} title="Akun saya">
+        <div className="mb-4 flex items-center gap-3 rounded-3xl bg-indigo-50/80 p-3.5">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-lg font-bold text-white shadow-md">
+            {initial}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-slate-900">{student.nama_lengkap}</p>
+            <p className="font-mono text-xs text-slate-500">No. {student.nomor_pendaftaran}</p>
+          </div>
+        </div>
 
-        {isSemuaFormLengkap && (
+        <div className="space-y-2.5">
           <button
             type="button"
-            onClick={() => setActiveMenu('pembayaran')}
-            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-[10px] font-bold transition-all ${
-              activeMenu === 'pembayaran'
-                ? 'text-indigo-600 bg-indigo-50/80'
-                : 'text-slate-500 hover:text-slate-900'
-            }`}
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              openChangePassword();
+            }}
+            className="flex h-12 w-full cursor-pointer items-center gap-3 rounded-2xl bg-slate-100 px-4 text-left text-sm font-semibold text-slate-700 transition-all active:scale-[0.97]"
           >
-            <CreditCard className="w-4 h-4" />
-            <span>Biaya</span>
+            <KeyRound className="h-4 w-4 text-slate-500" />
+            <span>Ubah Password</span>
           </button>
-        )}
 
-        <button
-          type="button"
-          onClick={() => setActiveMenu('pengumuman')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-[10px] font-bold transition-all ${
-            activeMenu === 'pengumuman'
-              ? 'text-indigo-600 bg-indigo-50/80'
-              : 'text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <Megaphone className="w-4 h-4" />
-          <span>Pengumuman</span>
-        </button>
-      </nav>
+          <a
+            href="https://www.smkmuhiba.sch.id"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-12 w-full items-center justify-between rounded-2xl bg-indigo-50 px-4 text-sm font-semibold text-indigo-700 transition-all active:scale-[0.97]"
+          >
+            <span>Website Sekolah</span>
+            <ExternalLink className="h-4 w-4" />
+          </a>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              onNavigateHome();
+            }}
+            className="flex h-12 w-full cursor-pointer items-center gap-3 rounded-2xl bg-slate-100 px-4 text-left text-sm font-semibold text-slate-700 transition-all active:scale-[0.97]"
+          >
+            <span>← Beranda PPDB</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onLogout}
+            className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-rose-600 text-sm font-bold text-white shadow-[0_16px_26px_-14px_rgba(225,29,72,.9)] transition-all active:scale-[0.97]"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Keluar / Logout</span>
+          </button>
+        </div>
+      </Sheet>
     </div>
   );
 };
