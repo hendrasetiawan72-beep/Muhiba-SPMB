@@ -23,8 +23,9 @@ interface NavbarProps {
   onPreloadLogin?: () => void;
 }
 
+/** Logo sama dengan yang dipakai di footer LandingPage */
 const LOGO_URL =
-  'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgzWdtCjCcX2chJuhLX_26N5MmkVK-1SkyO7kgXznQQJPQa6_TB_EJzD1WWpztg7yX9RBRE7rGn0t2Z3FdG06mwwT6pQix8t6vnlcOBm_EgGl9z0jeJemJkppP0KIIjkXGksQvaCLh2dz-gOF6a2H213VQBL6Am8Elhmd76OOnphogk-EoTTbkYbg0TQJhv/s512/34690.png';
+  'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEitrsbiiNxOvmcHcN42oOETm0n2rp4n_UYCdRDLH05Z0fD7mLw5rNXwVxft7SBrIMQyi3LSs9DUa-v6QZBrKjE8o9G7RQ171bu0cirIUmWWD6E8wxn9Ua-t61RbRENkAb-U9bhBgdtq-eh0JYAN3hu0r9sCeNdjGFODdPWaNN-5v-NmQB63uOuMRAvgkODt/s1774/69228.png';
 
 /** Mencari section hingga muncul (halaman beranda bisa baru saja tampil) lalu menggulir halus ke sana. */
 const scrollToSection = (sectionId: string) => {
@@ -40,9 +41,33 @@ const scrollToSection = (sectionId: string) => {
 };
 
 const JURUSAN_MENU = [
-  { id: 'jurusan-to', short: 'TO', full: 'Teknik Otomotif', mobile: 'Teknik Otomotif (TO)', dot: 'bg-amber-400' },
-  { id: 'jurusan-tjkt', short: 'TJKT', full: 'Teknik Komputer & Jaringan', mobile: 'Teknik Jaringan Komputer (TJKT)', dot: 'bg-blue-400' },
-  { id: 'jurusan-akl', short: 'AKL', full: 'Akuntansi & Keuangan', mobile: 'Akuntansi & Keuangan (AKL)', dot: 'bg-emerald-400' },
+  {
+    id: 'jurusan-to',
+    short: 'TO',
+    full: 'Teknik Otomotif',
+    desc: 'Mesin, TBSM & teknologi kendaraan',
+    mobile: 'Teknik Otomotif (TO)',
+    dot: 'bg-amber-400',
+    accent: 'from-amber-500 to-orange-500',
+  },
+  {
+    id: 'jurusan-tjkt',
+    short: 'TJKT',
+    full: 'Teknik Komputer & Jaringan',
+    desc: 'Fiber optic, Mikrotik & keamanan siber',
+    mobile: 'Teknik Jaringan Komputer (TJKT)',
+    dot: 'bg-blue-400',
+    accent: 'from-blue-500 to-indigo-500',
+  },
+  {
+    id: 'jurusan-akl',
+    short: 'AKL',
+    full: 'Akuntansi & Keuangan',
+    desc: 'Fintech, perbankan & akuntansi digital',
+    mobile: 'Akuntansi & Keuangan (AKL)',
+    dot: 'bg-emerald-400',
+    accent: 'from-emerald-500 to-teal-500',
+  },
 ];
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -56,6 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [jurusanDropdownOpen, setJurusanDropdownOpen] = useState(false);
+  const [hoveredJurusan, setHoveredJurusan] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const reduce = useReducedMotion();
 
@@ -63,12 +89,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     setActiveView(view);
     setMenuOpen(false);
     setJurusanDropdownOpen(false);
+    setHoveredJurusan(null);
 
     if (typeof window === 'undefined') return;
     if (sectionId) {
       scrollToSection(sectionId);
     } else if (view === 'home' && activeView === 'home') {
-      // sudah di beranda: gulir halus ke atas. (Dari halaman lain, reset posisi ditangani transisi halaman.)
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -79,12 +105,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     const onDown = (e: MouseEvent) => {
       if (jurusanDropdownOpen && dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setJurusanDropdownOpen(false);
+        setHoveredJurusan(null);
       }
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setJurusanDropdownOpen(false);
         setMenuOpen(false);
+        setHoveredJurusan(null);
       }
     };
     document.addEventListener('mousedown', onDown);
@@ -108,7 +136,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <header className="ui-header z-50">
         <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
 
-          {/* Brand */}
+          {/* Brand — hanya logo + judul, tanpa keterangan tambahan */}
           <button
             type="button"
             onClick={() => navigateTo('home')}
@@ -118,14 +146,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             <img
               src={LOGO_URL}
               alt="Logo SMK Muhammadiyah Bawang"
-              className="h-10 w-10 shrink-0 object-contain drop-shadow-md"
+              className="h-11 w-11 shrink-0 object-contain drop-shadow-md sm:h-12 sm:w-12"
               referrerPolicy="no-referrer"
               loading="eager"
               decoding="async"
             />
-            <span className="min-w-0 leading-tight">
-              <span className="block truncate text-[0.95rem] font-extrabold tracking-tight sm:text-base">SPMB SMK MUHIBA</span>
-              <span className="hidden truncate text-xs text-indigo-100 min-[400px]:block">SMK Muhammadiyah Bawang</span>
+            <span className="min-w-0 truncate text-[0.95rem] font-extrabold tracking-tight text-white sm:text-base">
+              SPMB SMK MUHIBA
             </span>
           </button>
 
@@ -144,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               Profil Sekolah
             </button>
 
-            {/* Jurusan */}
+            {/* Jurusan — deskripsi tersembunyi, muncul saat hover/expand dengan animasi slide */}
             <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
@@ -154,32 +181,74 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className={`${linkBase} ${jurusanDropdownOpen ? linkActive : linkIdle} flex items-center gap-1`}
               >
                 <span>Jurusan</span>
-                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${jurusanDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-200 ${jurusanDropdownOpen ? 'rotate-180' : ''}`}
+                />
               </button>
 
               <AnimatePresence>
                 {jurusanDropdownOpen && (
                   <motion.div
                     role="menu"
-                    initial={reduce ? false : { opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-                    className="absolute left-0 top-full z-50 mt-2 w-72 rounded-2xl border border-slate-100 bg-white p-1.5 text-slate-800 shadow-[0_30px_50px_-20px_rgba(30,27,75,.45)]"
+                    initial={reduce ? false : { opacity: 0, y: -8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    className="absolute left-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-100 bg-white p-1.5 text-slate-800 shadow-[0_30px_50px_-20px_rgba(30,27,75,.45)]"
                   >
-                    {JURUSAN_MENU.map((j) => (
-                      <button
-                        key={j.id}
-                        type="button"
-                        role="menuitem"
-                        onClick={() => navigateTo('home', j.id)}
-                        className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-sm font-medium transition-colors hover:bg-indigo-50 focus-visible:bg-indigo-50 focus-visible:outline-none"
-                      >
-                        <span className={`h-2 w-2 shrink-0 rounded-full ${j.dot}`} />
-                        <span className="flex-1">{j.full}</span>
-                        <span className="text-xs font-semibold text-slate-400">{j.short}</span>
-                      </button>
-                    ))}
+                    {JURUSAN_MENU.map((j, idx) => {
+                      const isExpanded = hoveredJurusan === j.id;
+                      return (
+                        <motion.button
+                          key={j.id}
+                          type="button"
+                          role="menuitem"
+                          initial={reduce ? false : { opacity: 0, x: -12 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{
+                            duration: 0.22,
+                            delay: reduce ? 0 : idx * 0.05,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                          onClick={() => navigateTo('home', j.id)}
+                          onMouseEnter={() => setHoveredJurusan(j.id)}
+                          onMouseLeave={() => setHoveredJurusan(null)}
+                          onFocus={() => setHoveredJurusan(j.id)}
+                          onBlur={() => setHoveredJurusan(null)}
+                          className="group relative flex w-full flex-col overflow-hidden rounded-xl px-3.5 py-2.5 text-left transition-colors hover:bg-indigo-50 focus-visible:bg-indigo-50 focus-visible:outline-none"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`h-2.5 w-2.5 shrink-0 rounded-full ${j.dot} shadow-sm ring-2 ring-white transition-transform duration-200 group-hover:scale-125`}
+                            />
+                            <span className="flex-1 text-sm font-semibold text-slate-800">{j.full}</span>
+                            <span
+                              className={`rounded-md bg-gradient-to-r ${j.accent} px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow-sm`}
+                            >
+                              {j.short}
+                            </span>
+                          </div>
+
+                          {/* Deskripsi tersembunyi → slide terbuka saat hover / fokus */}
+                          <AnimatePresence initial={false}>
+                            {isExpanded && (
+                              <motion.div
+                                key="desc"
+                                initial={reduce ? false : { height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                                className="overflow-hidden"
+                              >
+                                <p className="mt-1.5 pl-5 text-xs leading-relaxed text-slate-500">
+                                  {j.desc}
+                                </p>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.button>
+                      );
+                    })}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -235,13 +304,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   Login
                 </button>
+                {/* Daftar Sekarang → merah (bukan putih) */}
                 <button
                   type="button"
                   onClick={() => navigateTo('portal')}
                   onMouseEnter={onPreloadPortal}
                   onTouchStart={onPreloadPortal}
                   onFocus={onPreloadPortal}
-                  className="flex h-10 cursor-pointer items-center rounded-xl bg-white px-4 text-sm font-bold text-indigo-700 shadow-[0_14px_24px_-14px_rgba(15,23,42,.6)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                  className="flex h-10 cursor-pointer items-center rounded-xl bg-gradient-to-r from-red-600 to-rose-600 px-4 text-sm font-bold text-white shadow-[0_14px_24px_-14px_rgba(220,38,38,.55)] transition-all hover:from-red-500 hover:to-rose-500 hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                 >
                   <span className="sm:hidden">Daftar</span>
                   <span className="hidden sm:inline">Daftar Sekarang</span>
@@ -263,7 +333,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Menu ponsel/tablet: melayang di bawah header, tidak mendorong isi halaman */}
+        {/* Menu ponsel/tablet: melayang di bawah header */}
         <AnimatePresence>
           {menuOpen && (
             <motion.div
@@ -300,9 +370,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                 <p className="px-4 pb-1 pt-3 text-xs font-semibold text-slate-400">Jurusan</p>
                 {JURUSAN_MENU.map((j) => (
-                  <button key={j.id} type="button" onClick={() => navigateTo('home', j.id)} className={mobileRow}>
+                  <button
+                    key={j.id}
+                    type="button"
+                    onClick={() => navigateTo('home', j.id)}
+                    className={mobileRow}
+                  >
                     <span className="flex items-center gap-3">
-                      <span className={`h-2 w-2 rounded-full ${j.dot}`} />
+                      <span className={`h-2.5 w-2.5 rounded-full ${j.dot}`} />
                       <span>{j.mobile}</span>
                     </span>
                     <ChevronRight className="h-4 w-4 text-slate-300" />
@@ -314,7 +389,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <>
                       <button
                         type="button"
-                        onClick={() => navigateTo(currentUser.role === 'admin' ? 'admin-dashboard' : 'student-dashboard')}
+                        onClick={() =>
+                          navigateTo(currentUser.role === 'admin' ? 'admin-dashboard' : 'student-dashboard')
+                        }
                         className="flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-sm font-bold text-white shadow-[0_18px_30px_-16px_rgba(91,61,240,.9)] transition-transform active:scale-[0.97]"
                       >
                         Buka Dashboard
@@ -329,12 +406,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </>
                   ) : (
                     <div className="flex flex-col gap-2.5 sm:hidden">
+                      {/* Tombol daftar mobile juga merah */}
                       <button
                         type="button"
                         onClick={() => navigateTo('portal')}
                         onTouchStart={onPreloadPortal}
                         onMouseEnter={onPreloadPortal}
-                        className="flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-sm font-bold text-white shadow-[0_18px_30px_-16px_rgba(91,61,240,.9)] transition-transform active:scale-[0.97]"
+                        className="flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 text-sm font-bold text-white shadow-[0_18px_30px_-16px_rgba(220,38,38,.7)] transition-transform active:scale-[0.97]"
                       >
                         Daftar Sekarang
                       </button>
