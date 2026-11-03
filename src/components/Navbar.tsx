@@ -134,8 +134,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="ui-header !bg-gradient-to-r !from-blue-700 !via-indigo-700 !to-violet-600 z-50">
-        <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+      <header className="ui-header relative !bg-gradient-to-r !from-blue-700 !via-indigo-700 !to-violet-600 z-50 overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[url('/Logo-1.png')] bg-center bg-contain bg-no-repeat opacity-[0.15]"
+      />
+        <div className="relative z-10 mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
 
           {/* Brand — hanya logo (tanpa teks), ukuran dioptimalkan */}
           <button
