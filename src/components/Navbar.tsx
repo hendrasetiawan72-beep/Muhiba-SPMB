@@ -30,6 +30,16 @@ const LOGO_URL =
 /** Gambar background navbar (opacity 15%). Ganti path ini jika ingin gambar lain. */
 const BG_IMAGE_URL = '/Logo-1.png';
 
+/** Tinggi bar navbar. Dipakai agar gambar di menu mobile menyambung dengan gambar di header. */
+const BAR_HEIGHT = '4.25rem';
+
+/** Gambar selalu selebar layar (header & menu sama lebar) sehingga skalanya identik dan menyatu. */
+const bgBase: React.CSSProperties = {
+  backgroundImage: `url('${BG_IMAGE_URL}')`,
+  backgroundSize: '100% auto',
+  backgroundRepeat: 'no-repeat',
+};
+
 /** Mencari section hingga muncul (halaman beranda bisa baru saja tampil) lalu menggulir halus ke sana. */
 const scrollToSection = (sectionId: string) => {
   // cegah skrip "gulir cepat ke Profil" di LandingPage membajak gulir dari menu
@@ -141,8 +151,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             Dibungkus overflow-hidden agar gambar tidak keluar dari bar, sementara dropdown tetap bisa keluar. */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <div
-            className="h-full w-full bg-cover bg-center bg-no-repeat opacity-[0.15]"
-            style={{ backgroundImage: `url('${BG_IMAGE_URL}')` }}
+            className="h-full w-full opacity-[0.15]"
+            style={{ ...bgBase, backgroundPosition: 'center top' }}
           />
         </div>
 
@@ -353,8 +363,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-x-0 top-full max-h-[calc(100dvh_-_4.25rem)] overflow-y-auto rounded-b-[2rem] !bg-gradient-to-b !from-indigo-700 !via-indigo-800 !to-violet-800 px-3 pb-5 pt-3 shadow-[0_40px_60px_-24px_rgba(30,27,75,.55)] lg:hidden"
+              className="absolute inset-x-0 top-full overflow-hidden rounded-b-[2rem] !bg-gradient-to-b !from-indigo-700 !via-indigo-800 !to-violet-800 shadow-[0_40px_60px_-24px_rgba(30,27,75,.55)] lg:hidden"
             >
+              {/* Lanjutan gambar header: digeser naik setinggi bar agar menyambung mulus */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 z-0 opacity-[0.15]"
+                style={{ ...bgBase, backgroundPosition: `center -${BAR_HEIGHT}` }}
+              />
+              <div className="relative z-10 max-h-[calc(100dvh_-_4.25rem)] overflow-y-auto px-3 pb-5 pt-3">
               <div className="mx-auto max-w-xl space-y-1">
                 <button type="button" onClick={() => navigateTo('home')} className={mobileRow}>
                   <span>Beranda</span>
@@ -436,6 +453,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   )}
                 </div>
+              </div>
               </div>
             </motion.div>
           )}
