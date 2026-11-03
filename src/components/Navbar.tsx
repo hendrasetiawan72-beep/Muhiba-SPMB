@@ -125,7 +125,7 @@ return (
 <header className="ui-header relative !bg-gradient-to-r !from-blue-700 !via-indigo-700 !to-violet-600 z-50 overflow-visible">
   <div
     aria-hidden="true"
-    className="pointer-events-none absolute inset-y-0 right-0 z-0 w-44 bg-[url('/Logo-1.png')] bg-right-center bg-[length:150px_auto] bg-no-repeat opacity-[0.15] sm:w-52 sm:bg-[length:170px_auto]"
+    className="pointer-events-none absolute top-0 right-0 z-0 h-[5.25rem] w-44 bg-[url('/Logo-1.png')] bg-right-center bg-[length:120px_auto] bg-no-repeat opacity-[0.15] sm:w-52 sm:bg-[length:145px_auto]"
     />
     <div className="relative z-10 mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
       {/* Brand — hanya logo (tanpa teks), ukuran dioptimalkan */}
