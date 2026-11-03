@@ -122,17 +122,18 @@ const mobileRow =
 'flex h-12 w-full items-center justify-between rounded-2xl px-4 text-left text-[0.95rem] font-medium text-white/90 transition-colors active:bg-white/15 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30';
 return (
 <>
-<header className="ui-header relative !bg-gradient-to-r !from-blue-700 !via-indigo-700 !to-violet-600 z-50 overflow-visible">
-  <div
-    aria-hidden="true"
-    className="pointer-events-none absolute top-0 right-0 z-0 h-[5.25rem] w-44 bg-[url('/Logo-1.png')] bg-right-center bg-[length:120px_auto] bg-no-repeat opacity-[0.15] sm:w-52 sm:bg-[length:145px_auto]"
-    />
-    <div className="relative z-10 mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+<header className="ui-header !bg-gradient-to-r !from-blue-700 !via-indigo-700 !to-violet-600 z-50 overflow-visible">
+  <div className="relative mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+    {/* Watermark Logo-1: hanya di area bar Navbar, tidak ikut memanjang ke menu mobile */}
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-14 w-28 -translate-x-1/2 -translate-y-1/2 bg-[url('/Logo-1.png')] bg-center bg-contain bg-no-repeat opacity-[0.15]"
+      />
       {/* Brand — hanya logo (tanpa teks), ukuran dioptimalkan */}
       <button
         type="button"
         onClick={() => navigateTo('home')}
-        className="flex shrink-0 items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+        className="relative z-10 flex shrink-0 items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
         aria-label="SPMB SMK Muhiba, ke beranda"
         >
         <img
@@ -145,7 +146,7 @@ return (
         />
       </button>
       {/* Navigasi desktop */}
-      <nav className="hidden items-center gap-1 lg:flex" aria-label="Navigasi utama">
+      <nav className="relative z-10 hidden items-center gap-1 lg:flex" aria-label="Navigasi utama">
         <button
           type="button"
           onClick={() => navigateTo('home')}
@@ -248,7 +249,7 @@ return (
       </button>
     </nav>
     {/* Aksi */}
-    <div className="flex shrink-0 items-center gap-2">
+    <div className="relative z-10 flex shrink-0 items-center gap-2">
       {currentUser ? (
       <div className="hidden items-center gap-2 sm:flex">
         {currentUser.role === 'admin' ? (
