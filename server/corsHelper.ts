@@ -56,10 +56,14 @@ export function applyCors(req: any, res: any): boolean {
     return false;
   }
 
+  // Respons bergantung pada Origin -> cegah cache bersama menyajikan header CORS origin lain
+  res.setHeader('Vary', 'Origin');
+
   if (requestOrigin) {
     res.setHeader('Access-Control-Allow-Origin', requestOrigin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
+  res.setHeader('Access-Control-Max-Age', '600');
 
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.setHeader(

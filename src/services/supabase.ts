@@ -211,11 +211,20 @@ class DatabaseService {
     if (!this.supabase) throw new Error('Supabase client tidak tersedia.');
 
     // 1. Fetch Profile directly from database (source of truth for role)
-    const { data: profileData, error: profileErr } = await this.supabase
+    let { data: profileData, error: profileErr } = await this.supabase
       .from('profiles')
-      .select('*')
+      .select(DatabaseService.PROFILE_COLUMNS)
       .eq('id', authUser.id)
       .maybeSingle();
+
+    if (profileErr?.code === '42703') {
+      // kolom belum ada di database -> ulangi dengan kolom dasar agar peran tetap terbaca benar
+      ({ data: profileData, error: profileErr } = await this.supabase
+        .from('profiles')
+        .select(DatabaseService.PROFILE_COLUMNS_BASE)
+        .eq('id', authUser.id)
+        .maybeSingle());
+    }
 
     if (profileErr) {
       console.warn('Error reading profile in session restore:', profileErr);
@@ -241,7 +250,7 @@ class DatabaseService {
     if (userRole === 'student') {
       const { data: stdRecord, error: stdErr } = await this.supabase
         .from('students')
-        .select('*')
+        .select(DatabaseService.STUDENT_COLUMNS)
         .eq('user_id', authUser.id)
         .maybeSingle();
 
@@ -318,7 +327,7 @@ class DatabaseService {
 
     const { data, error } = await this.supabase
       .from('students')
-      .select('*')
+      .select(DatabaseService.STUDENT_COLUMNS)
       .eq('nik', nik.trim())
       .maybeSingle();
 
@@ -338,7 +347,7 @@ class DatabaseService {
 
     const { data, error } = await this.supabase
       .from('students')
-      .select('*')
+      .select(DatabaseService.STUDENT_COLUMNS)
       .eq('id', id)
       .maybeSingle();
 
@@ -356,7 +365,7 @@ class DatabaseService {
 
     const { data, error } = await this.supabase
       .from('students')
-      .select('*')
+      .select(DatabaseService.STUDENT_COLUMNS)
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -378,6 +387,12 @@ class DatabaseService {
   /**
    * Server-side paginated list for Admin with search and filters
    */
+  /** Proyeksi kolom eksplisit (pengganti select('*')): sama persis dengan interface Student. */
+  private static readonly STUDENT_COLUMNS =
+    'id, user_id, nik, nama_lengkap, jurusan_pilihan, no_wa, status_pendaftaran, nomor_pendaftaran, tanggal_daftar, catatan_admin, data_diri, data_alamat, data_orang_tua, data_berkas, created_at, updated_at';
+  private static readonly PROFILE_COLUMNS = 'id, nik, full_name, role, must_change_password';
+  private static readonly PROFILE_COLUMNS_BASE = 'id, nik, full_name, role';
+
   private static readonly STUDENT_LIST_COLUMNS =
     'id, user_id, nik, nama_lengkap, jurusan_pilihan, no_wa, status_pendaftaran, nomor_pendaftaran, tanggal_daftar, catatan_admin, created_at, updated_at, data_diri, data_alamat, data_orang_tua, data_berkas';
 
@@ -560,7 +575,7 @@ class DatabaseService {
       .from('students')
       .update(updatePayload)
       .eq('id', studentId)
-      .select()
+      .select(DatabaseService.STUDENT_COLUMNS)
       .single();
 
     if (error) {
@@ -583,7 +598,7 @@ class DatabaseService {
       .from('students')
       .update({ data_alamat: dataAlamat })
       .eq('id', studentId)
-      .select()
+      .select(DatabaseService.STUDENT_COLUMNS)
       .single();
 
     if (error) {
@@ -616,7 +631,7 @@ class DatabaseService {
       .from('students')
       .update({ data_orang_tua: dataOrangTua })
       .eq('id', studentId)
-      .select()
+      .select(DatabaseService.STUDENT_COLUMNS)
       .single();
 
     if (error) {
@@ -694,7 +709,7 @@ class DatabaseService {
         data_berkas: mergedBerkas,
       })
       .eq('id', studentId)
-      .select()
+      .select(DatabaseService.STUDENT_COLUMNS)
       .single();
 
     if (error) {
@@ -717,7 +732,7 @@ class DatabaseService {
         status_pendaftaran: 'Menunggu Verifikasi',
       })
       .eq('id', studentId)
-      .select()
+      .select(DatabaseService.STUDENT_COLUMNS)
       .single();
 
     if (error) {
@@ -745,7 +760,7 @@ class DatabaseService {
       .from('students')
       .update(payload)
       .eq('nik', nik.trim())
-      .select()
+      .select(DatabaseService.STUDENT_COLUMNS)
       .single();
 
     if (error) {
@@ -818,8 +833,34 @@ class DatabaseService {
       throw new Error(resJson.message || 'Gagal mereset kata sandi siswa.');
     }
 
+    // Server TIDAK lagi mengembalikan password pada respons reset. Password sementara diambil
+    // SEKALI lewat rahasia sekali-tampil (hanya admin yang sama, berlaku singkat).
+    // Jika server lama masih mengirim temporaryPassword langsung, tetap didukung (kompatibilitas rollout).
+    let temporaryPassword: string = typeof resJson.temporaryPassword === 'string' ? resJson.temporaryPassword : '';
+
+    if (!temporaryPassword) {
+      if (!resJson.secret_id) throw new Error('Gagal mereset kata sandi siswa.');
+
+      const { data: freshSession } = await this.supabase.auth.getSession();
+      const revealResp = await fetch('/api/admin/reset-password-reveal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${freshSession?.session?.access_token || token}`,
+        },
+        body: JSON.stringify({ secret_id: resJson.secret_id }),
+      });
+      const revealJson = await revealResp.json().catch(() => ({}));
+      if (!revealResp.ok || !revealJson.success || typeof revealJson.temporaryPassword !== 'string') {
+        throw new Error(
+          revealJson.message || 'Reset berhasil, tetapi password sementara gagal ditampilkan. Silakan ulangi reset.'
+        );
+      }
+      temporaryPassword = revealJson.temporaryPassword;
+    }
+
     return {
-      temporaryPassword: resJson.temporaryPassword,
+      temporaryPassword,
       nama_lengkap: resJson.nama_lengkap,
       nomor_pendaftaran: resJson.nomor_pendaftaran,
       no_wa: resJson.no_wa,

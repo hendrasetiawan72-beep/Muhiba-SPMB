@@ -1,4 +1,11 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { validateTurnstileOutcome } from './security';
+
+// Proyeksi kolom eksplisit (hindari select('*') agar kolom baru/sensitif tidak ikut terkirim)
+const PROFILE_COLUMNS = 'id, nik, full_name, role, must_change_password';
+const PROFILE_COLUMNS_BASE = 'id, nik, full_name, role'; // fallback bila kolom must_change_password belum ada
+const STUDENT_COLUMNS =
+  'id, user_id, nik, nama_lengkap, jurusan_pilihan, no_wa, status_pendaftaran, nomor_pendaftaran, tanggal_daftar, catatan_admin, data_diri, data_alamat, data_orang_tua, data_berkas, created_at, updated_at';
 
 // Environment variable retrieval
 function getEnv(key: string, fallbackKey?: string): string {
@@ -144,7 +151,11 @@ function rateLimitResponse(result: RateResult): ApiResponse | null {
 }
 
 /** Verifikasi Turnstile. null = lolos; ApiResponse = error. */
-async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResponse | null> {
+async function checkTurnstile(
+  token: unknown,
+  clientIp: string,
+  expectedAction: string = 'login'
+): Promise<ApiResponse | null> {
   const secret = getEnv('TURNSTILE_SECRET_KEY');
 
   if (!secret) {
@@ -179,6 +190,12 @@ async function checkTurnstile(token: unknown, clientIp: string): Promise<ApiResp
     const outcome: any = await resp.json();
     if (!outcome.success) {
       console.warn('[Turnstile Login] Gagal:', outcome['error-codes']);
+      return fail('Verifikasi keamanan gagal. Muat ulang halaman dan coba lagi.');
+    }
+    // Tolak token yang dibuat di domain lain atau untuk aksi lain (mis. token halaman pendaftaran)
+    const verdict = validateTurnstileOutcome(outcome, expectedAction);
+    if (!verdict.ok) {
+      console.warn('[Turnstile Login] Ditolak:', verdict.reason);
       return fail('Verifikasi keamanan gagal. Muat ulang halaman dan coba lagi.');
     }
     return null;
@@ -375,11 +392,20 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     const authUser = authData.user;
     const clientForProfile = supabaseAdmin || supabaseAnon;
 
-    const { data: profileData, error: profileErr } = await clientForProfile
+    let { data: profileData, error: profileErr } = await clientForProfile
       .from('profiles')
-      .select('*')
+      .select(PROFILE_COLUMNS)
       .eq('id', authUser.id)
       .maybeSingle();
+
+    if (profileErr?.code === '42703') {
+      // kolom belum ada di database -> ulangi dengan kolom dasar (jangan sampai admin terbaca sebagai siswa)
+      ({ data: profileData, error: profileErr } = await clientForProfile
+        .from('profiles')
+        .select(PROFILE_COLUMNS_BASE)
+        .eq('id', authUser.id)
+        .maybeSingle());
+    }
 
     if (profileErr) {
       console.warn('[handleLogin] Profile query notice:', profileErr.message);
@@ -415,7 +441,7 @@ export async function handleLogin(body: any, clientIpRaw: string = ''): Promise<
     if (verifiedRole === 'student') {
       const { data: stdRecord } = await clientForProfile
         .from('students')
-        .select('*')
+        .select(STUDENT_COLUMNS)
         .eq('user_id', authUser.id)
         .maybeSingle();
 

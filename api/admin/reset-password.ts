@@ -11,6 +11,9 @@ import crypto from 'crypto';
 //   4. Pembatasan frekuensi: per pendaftar dan per admin (dihitung dari activity_logs).
 //   5. Password sementara acak, penanda must_change_password, sesi lama dicabut.
 //   6. Setiap percobaan (berhasil / gagal) dicatat di activity_logs.
+//   7. Password sementara TIDAK PERNAH dikembalikan oleh endpoint ini. Ia disimpan terenkripsi
+//      (AES-256-GCM) sebagai rahasia SEKALI-TAMPIL dan diambil admin yang sama lewat
+//      POST /api/admin/reset-password-reveal (TTL singkat, atomik, ciphertext dikosongkan).
 
 const MAX_RESET_PER_TARGET_24H = 3; // maksimal reset berhasil per pendaftar per 24 jam
 const MAX_ATTEMPTS_PER_ADMIN_1H = 20; // maksimal percobaan (berhasil + gagal) per admin per jam
@@ -40,6 +43,9 @@ const normDate = (v: unknown): string | null => {
 };
 
 import { applyCors } from '../../server/corsHelper';
+import { encryptSecret, isUuid } from '../../server/security';
+
+const SECRET_TTL_SECONDS = 300; // password sementara hanya bisa diambil dalam 5 menit
 
 export default async function handler(req: any, res: any) {
   if (!applyCors(req, res)) {
@@ -106,6 +112,10 @@ export default async function handler(req: any, res: any) {
 
     const targetUserId = typeof body?.user_id === 'string' ? body.user_id.trim() : '';
     const targetNik = typeof body?.nik === 'string' ? body.nik.trim() : '';
+
+    if ((targetUserId && !isUuid(targetUserId)) || targetNik.length > 32) {
+      return res.status(400).json({ success: false, message: 'Identitas pendaftar target tidak valid.' });
+    }
     const verifikasi = body?.verifikasi && typeof body.verifikasi === 'object' ? body.verifikasi : {};
 
     if (!targetUserId && !targetNik) {
@@ -237,16 +247,52 @@ export default async function handler(req: any, res: any) {
     // 7. Password sementara acak (Mhb@ + 12 karakter heksadesimal)
     const tempPassword = `Mhb@${crypto.randomBytes(6).toString('hex')}`;
 
+    // Simpan password sementara sebagai rahasia sekali-tampil (terenkripsi) SEBELUM mengubah
+    // password Auth. Bila penyimpanan gagal, tidak ada perubahan apa pun pada akun siswa.
+    let secretId = '';
+    try {
+      const ciphertext = await encryptSecret(tempPassword, `${callerId}:${userId}`);
+      const expiresAt = new Date(Date.now() + SECRET_TTL_SECONDS * 1000).toISOString();
+
+      // bersihkan rahasia kedaluwarsa (best effort)
+      await supabaseAdmin
+        .from('password_reset_secrets')
+        .delete()
+        .lt('expires_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+      const { data: secretRow, error: secretErr } = await supabaseAdmin
+        .from('password_reset_secrets')
+        .insert({ actor_id: callerId, target_user_id: userId, ciphertext, expires_at: expiresAt })
+        .select('id')
+        .single();
+      if (secretErr || !secretRow?.id) throw new Error(secretErr?.message || 'SECRET_INSERT_FAILED');
+      secretId = secretRow.id;
+    } catch (secretEx: any) {
+      console.error('[Admin Reset Password] Penyimpanan rahasia sekali-tampil gagal:', secretEx?.message);
+      return res.status(503).json({
+        success: false,
+        message: 'Layanan reset password belum siap. Hubungi pengelola sistem.',
+      });
+    }
+    const discardSecret = async () => {
+      try {
+        await supabaseAdmin.from('password_reset_secrets').delete().eq('id', secretId);
+      } catch {
+        /* best effort */
+      }
+    };
+
     // Update kata sandi Auth terlebih dahulu (jika gagal, flag must_change_password belum berubah)
     const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       password: tempPassword,
     });
 
     if (updateErr) {
-      console.error('[Admin Reset Password] Error updateUserById:', updateErr);
+      console.error('[Admin Reset Password] Error updateUserById:', updateErr.message);
+      await discardSecret();
       return res.status(500).json({
         success: false,
-        message: `Gagal memperbarui kata sandi user: ${updateErr.message}`,
+        message: 'Gagal memperbarui kata sandi akun. Silakan coba lagi.',
       });
     }
 
@@ -276,6 +322,7 @@ export default async function handler(req: any, res: any) {
       } catch (logErr) {
         console.error('[Admin Reset Password] Gagal mencatat log kegagalan:', logErr);
       }
+      await discardSecret();
       return res.status(503).json({
         success: false,
         code: 'SESSION_REVOCATION_FAILED',
@@ -303,6 +350,7 @@ export default async function handler(req: any, res: any) {
       } catch (logErr) {
         console.error('[Admin Reset Password] Gagal mencatat log flag error:', logErr);
       }
+      await discardSecret();
       return res.status(500).json({
         success: false,
         code: 'PASSWORD_FLAG_UPDATE_FAILED',
@@ -316,6 +364,7 @@ export default async function handler(req: any, res: any) {
       action: 'RESET_PASSWORD',
       detail: {
         metode: 'reset_panitia',
+        password_delivery: 'one_time_secret',
         verifikasi: { nomor_pendaftaran: 'cocok', no_wa: 'cocok', tanggal_lahir: dobStatus },
         sesi_dicabut: true,
         must_change_password_set: true,
@@ -325,7 +374,9 @@ export default async function handler(req: any, res: any) {
 
     return res.status(200).json({
       success: true,
-      temporaryPassword: tempPassword,
+      // Password sementara TIDAK disertakan. Ambil sekali lewat /api/admin/reset-password-reveal.
+      secret_id: secretId,
+      secret_expires_in: SECRET_TTL_SECONDS,
       nama_lengkap: student.nama_lengkap,
       nomor_pendaftaran: student.nomor_pendaftaran,
       no_wa: student.no_wa,
@@ -334,7 +385,7 @@ export default async function handler(req: any, res: any) {
       message: 'Kata sandi berhasil direset oleh administrator.',
     });
   } catch (err: any) {
-    console.error('[Admin Reset Password] Unexpected error:', err);
+    console.error('[Admin Reset Password] Unexpected error:', err?.message);
     return res.status(500).json({
       success: false,
       message: 'Terjadi kesalahan server saat mereset kata sandi.',

@@ -643,7 +643,7 @@ const LogPanel: React.FC<{ refreshKey: number }> = ({ refreshKey }) => {
 
       let query = client
         .from('activity_logs')
-        .select('*')
+        .select('id, created_at, actor_id, actor_name, action, target_student_id, target_nik, target_nama, target_nomor, detail')
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
         .range(offset, offset + LOG_PAGE_SIZE - 1);

@@ -1,5 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { applyCors } from '../../server/corsHelper';
+import { adminActionAllowed, isUuid } from '../../server/security';
+
+// Batas aksi hapus per admin (melindungi dari penyalahgunaan token admin yang bocor)
+const DELETE_LIMIT_PER_HOUR = 120;
 
 /**
  * M-01: Membersihkan seluruh berkas di folder storage secara rekursif.
@@ -130,6 +134,14 @@ export default async function handler(req: any, res: any) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya administrator yang diizinkan.' });
     }
 
+    const rl = await adminActionAllowed(supabaseAdmin, 'admin:delete', callerData.user.id, DELETE_LIMIT_PER_HOUR, 3600);
+    if (rl === 'limited') {
+      return res.status(429).json({
+        success: false,
+        message: 'Terlalu banyak penghapusan dalam waktu singkat. Coba lagi dalam 1 jam.',
+      });
+    }
+
     let body = req.body;
     if (typeof body === 'string') {
       try {
@@ -148,6 +160,9 @@ export default async function handler(req: any, res: any) {
         success: false,
         message: 'Identitas pendaftar (NIK atau student_id) wajib disertakan.',
       });
+    }
+    if (targetNik.length > 32 || (targetStudentId && !isUuid(targetStudentId))) {
+      return res.status(400).json({ success: false, message: 'Identitas pendaftar tidak valid.' });
     }
 
     let targetStudent: any = null;
@@ -205,10 +220,10 @@ export default async function handler(req: any, res: any) {
     });
 
     if (cascadeErr) {
-      console.error('[Admin Delete] Error delete_student_cascade:', cascadeErr);
+      console.error('[Admin Delete] Error delete_student_cascade:', cascadeErr.message);
       return res.status(500).json({
         success: false,
-        message: `Gagal menghapus data siswa dari database: ${cascadeErr.message}`,
+        message: 'Gagal menghapus data siswa dari database. Silakan coba lagi.',
       });
     }
 
@@ -225,10 +240,10 @@ export default async function handler(req: any, res: any) {
     // 6. Hapus akun auth via auth.admin.deleteUser
     const { error: delAuthErr } = await supabaseAdmin.auth.admin.deleteUser(userIdToDelete);
     if (delAuthErr) {
-      console.error('[Admin Delete] Error deleteUser:', delAuthErr);
+      console.error('[Admin Delete] Error deleteUser:', delAuthErr.message);
       return res.status(500).json({
         success: false,
-        message: `Data database berhasil dihapus, namun akun autentikasi gagal dihapus: ${delAuthErr.message}`,
+        message: 'Data database berhasil dihapus, namun akun autentikasi gagal dihapus. Hubungi pengelola sistem.',
       });
     }
 
@@ -261,14 +276,13 @@ export default async function handler(req: any, res: any) {
     return res.status(200).json({
       success: true,
       storageCleaned: storageErrors.length === 0,
-      storageErrors: storageErrors.length > 0 ? storageErrors : undefined,
       message,
     });
   } catch (err: any) {
-    console.error('[Admin Delete] Unexpected error:', err);
+    console.error('[Admin Delete] Unexpected error:', err?.message);
     return res.status(500).json({
       success: false,
-      message: err.message || 'Terjadi kesalahan sistem saat menghapus pendaftar.',
+      message: 'Terjadi kesalahan sistem saat menghapus pendaftar.',
     });
   }
 }

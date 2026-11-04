@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { formatTanggalDaftarJakarta } from '../../server/authHandlers';
 import { applyCors } from '../../server/corsHelper';
+import { validateTurnstileOutcome } from '../../server/security';
 
 // Vercel / Cloudflare Worker: POST /api/auth/register
 export default async function handler(req: any, res: any) {
@@ -104,6 +105,16 @@ export default async function handler(req: any, res: any) {
 
         if (!turnstileOutcome.success) {
           console.warn('[Turnstile] Verifikasi gagal:', turnstileOutcome['error-codes']);
+          return res.status(403).json({
+            code: 'CAPTCHA_FAILED',
+            message:
+              'Verifikasi keamanan Cloudflare Turnstile gagal. Silakan muat ulang halaman dan coba lagi.',
+          });
+        }
+        // Tolak token dari domain lain atau untuk aksi lain (mis. token halaman login)
+        const turnstileVerdict = validateTurnstileOutcome(turnstileOutcome, 'register');
+        if (!turnstileVerdict.ok) {
+          console.warn('[Turnstile] Ditolak:', turnstileVerdict.reason);
           return res.status(403).json({
             code: 'CAPTCHA_FAILED',
             message:

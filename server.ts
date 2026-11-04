@@ -7,6 +7,7 @@ import registerHandler from './api/auth/register';
 import loginHandler from './api/auth/login';
 import deleteStudentHandler from './api/admin/delete-student';
 import resetPasswordHandler from './api/admin/reset-password';
+import resetPasswordRevealHandler from './api/admin/reset-password-reveal';
 import { applyCors } from './server/corsHelper';
 
 dotenv.config();
@@ -44,6 +45,7 @@ app.all('/api/auth/register', (req: Request, res: Response) => registerHandler(r
 app.all('/api/auth/login', (req: Request, res: Response) => loginHandler(req, res));
 app.all('/api/admin/delete-student', (req: Request, res: Response) => deleteStudentHandler(req, res));
 app.all('/api/admin/reset-password', (req: Request, res: Response) => resetPasswordHandler(req, res));
+app.all('/api/admin/reset-password-reveal', (req: Request, res: Response) => resetPasswordRevealHandler(req, res));
 
 // Explicit JSON 404 handler for unmatched /api/* requests (never return HTML for API calls)
 app.all('/api/*', (req: Request, res: Response) => {

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { compressImage } from '../Utils/compressImage';
+import { KIND_MIME, safeDisplayName, sniffFileKind } from '../Utils/fileSignature';
 import {
   BERKAS_BUCKET,
   BERKAS_LIMITS,
@@ -46,12 +47,27 @@ export async function uploadBerkasFile(
   const validationError = validateBerkasFile(file);
   if (validationError) throw new Error(validationError);
 
-  const mime = guessMime(file);
+  const declaredMime = guessMime(file);
+
+  // Validasi isi file (magic bytes): ekstensi/Content-Type bisa dipalsukan, isi file tidak.
+  const detectedKind = await sniffFileKind(file);
+  if (!detectedKind) {
+    throw new Error('Isi berkas tidak valid. Hanya PDF, JPG, PNG, atau WEBP asli yang diperbolehkan.');
+  }
+  if ((detectedKind === 'pdf') !== (declaredMime === 'application/pdf')) {
+    throw new Error('Isi berkas tidak sesuai dengan tipe/ekstensi file. Gunakan file PDF atau foto yang asli.');
+  }
+  const mime = KIND_MIME[detectedKind];
   let finalFile: File = file;
 
   if (mime !== 'application/pdf') {
     const typed = file.type ? file : new File([file], file.name, { type: mime });
     finalFile = await compressImage(typed, COMPRESS_PRESET[jenis]);
+  }
+
+  // Hasil akhir (termasuk hasil kompresi) juga harus tetap berisi format yang valid
+  if (!(await sniffFileKind(finalFile))) {
+    throw new Error('Berkas tidak dapat diproses. Coba pilih foto atau file lain.');
   }
 
   if (finalFile.size > BERKAS_LIMITS.BUCKET_MAX_BYTES) {
@@ -95,7 +111,7 @@ export async function uploadBerkasFile(
     .createSignedUrl(path, 3600);
 
   return {
-    nama_file: finalFile.name || `${jenis}.${ext}`,
+    nama_file: safeDisplayName(finalFile.name, `${jenis}.${ext}`),
     path,
     url: signed?.signedUrl ?? '',
     ukuran: formatBytes(finalFile.size),

@@ -85,6 +85,7 @@ function useTurnstile(active: boolean) {
       try {
         widgetIdRef.current = ts.render(containerRef.current, {
           sitekey: siteKey,
+          action: 'register',
           theme: 'light',
           callback: (t: string) => {
             if (cancelled) return;

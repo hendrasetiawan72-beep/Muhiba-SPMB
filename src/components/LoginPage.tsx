@@ -45,6 +45,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       try {
         turnstileWidgetIdRef.current = ts.render(turnstileContainerRef.current, {
           sitekey: siteKey,
+          action: 'login',
           theme: 'light',
           callback: (token: string) => setTurnstileToken(token),
           'expired-callback': () => setTurnstileToken(''),

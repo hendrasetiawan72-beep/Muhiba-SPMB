@@ -4,6 +4,8 @@ import registerHandler from '../api/auth/register';
 import loginHandler from '../api/auth/login';
 import deleteStudentHandler from '../api/admin/delete-student';
 import resetPasswordHandler from '../api/admin/reset-password';
+import resetPasswordRevealHandler from '../api/admin/reset-password-reveal';
+import { timingSafeEqualStr } from '../server/security';
 
 interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
@@ -27,6 +29,7 @@ const routes: Record<string, VercelStyleHandler> = {
   '/api/auth/login': loginHandler,
   '/api/admin/delete-student': deleteStudentHandler,
   '/api/admin/reset-password': resetPasswordHandler,
+  '/api/admin/reset-password-reveal': resetPasswordRevealHandler,
 };
 
 function jsonResponse(status: number, payload: unknown, extraHeaders: Record<string, string> = {}): Response {
@@ -37,6 +40,7 @@ function jsonResponse(status: number, payload: unknown, extraHeaders: Record<str
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    'Strict-Transport-Security': 'max-age=31536000',
     ...extraHeaders,
   });
   return new Response(JSON.stringify(payload), { status, headers });
@@ -48,6 +52,7 @@ function applySecurityHeaders(headers: Headers) {
   headers.set('X-Frame-Options', 'DENY');
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  headers.set('Strict-Transport-Security', 'max-age=31536000');
   // CSP longgar agar React + Turnstile + Google Fonts tetap jalan.
   // Sesuaikan domain Supabase Anda jika perlu.
   headers.set(
@@ -188,7 +193,7 @@ export default {
       if (!secret || secret.length < 16) {
         return jsonResponse(404, { success: false, message: 'Not found' });
       }
-      if (provided !== secret) {
+      if (!timingSafeEqualStr(provided, secret)) {
         return jsonResponse(403, { success: false, message: 'Forbidden' });
       }
 
